@@ -1,0 +1,11 @@
+[package]
+name = "elastic_distances"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dashmap = "5.5.3"
+lazy_static = "1.4.0"
+parking_lot = "0.12.3"
+pyo3 = "0.21.2"
+rayon = "1.10.0"
