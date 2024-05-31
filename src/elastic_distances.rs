@@ -41,15 +41,6 @@ pub fn euclidean(x1: &[f64], x2: &[f64], cached: bool) -> f64 {
 lazy_static! {
     static ref ERP_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
-#[test]
-pub fn test_erp() {
-    let s1 = vec![1.0, 2.0, 3.0, 4.0];//vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-    let s2 =vec![5.0, 6.0, 7.0, 8.0];// vec![0.0, 1.0, 8.0, 5.0, 9.0, 1.0, 2.0, 8.0];
-    // start time
-    let start = std::time::Instant::now();
-    let result = erp(&s1, &s2, 0.0, 1.0, false);
-    println!("ERP: {}, time: {:?}", result, start.elapsed());
-}
 
 pub fn erp(x1: &[f64], x2: &[f64], gap_penalty: f64, band: f64, cached: bool) -> f64 {
     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
@@ -74,11 +65,8 @@ pub fn erp(x1: &[f64], x2: &[f64], gap_penalty: f64, band: f64, cached: bool) ->
     let mut previous = vec![f64::INFINITY; m + 1];
     previous[0] = 0.0;
 
-    let g_x1 = x1.iter().map(|x| x - gap_penalty).collect::<Vec<_>>();
-    let g_x2 = x2.iter().map(|x| x - gap_penalty).collect::<Vec<_>>();
-
-    let g_x1_sum = g_x1.iter().sum::<f64>();
-    let g_x2_sum = g_x2.iter().sum::<f64>();
+    let g_x1 = x1.iter().map(|x| (x - gap_penalty).abs()).collect::<Vec<_>>();
+    let g_x2 = x2.iter().map(|x| (x - gap_penalty).abs()).collect::<Vec<_>>();
 
     for i in 1..=n {
         let lower = alpha * (i as f64) - sakoe_chiba_window_radius;
@@ -90,11 +78,11 @@ pub fn erp(x1: &[f64], x2: &[f64], gap_penalty: f64, band: f64, cached: bool) ->
         current[..].fill(f64::INFINITY);
 
         // closure to handle the insertion of g_x_sum as padding in the first element of the timeseries
-        let x1 = |i| if i == 0 { 0.0 } else { x1[i - 1] };
-        let x2 = |i| if i == 0 { 0.0 } else { x2[i - 1] };
+        let x1 = |i| if i == 0 {g_x1[i]} else { x1[i - 1] };
+        let x2 = |i| if i == 0 {g_x2[i]} else { x2[i - 1] };
 
         for j in lower..=upper {
-            let cost = x1(i - 1) - x2(j - 1);
+            let cost = (x1(i - 1) - x2(j - 1)).abs();
             current[j] = (previous[j - 1] + cost).min(previous[j] + g_x1[i - 1]).min(current[j - 1] + g_x2[j - 1]);
         }
         swap(&mut previous, &mut current);
@@ -112,6 +100,71 @@ pub fn erp(x1: &[f64], x2: &[f64], gap_penalty: f64, band: f64, cached: bool) ->
     }
 
     distance
+
+}
+
+lazy_static! {
+    static ref LCSS_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+}
+pub fn lcss(x1: &[f64], x2: &[f64], epsilon: f64, band: f64, cached: bool) -> f64 {
+    let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
+    if cached {
+        let x1_cache = FloatVecEq(x1.to_vec());
+        let x2_cache = FloatVecEq(x2.to_vec());
+        key_cache = (x1_cache, x2_cache);
+
+        if let Some(value) = LCSS_CACHE.get(&key_cache) {
+            return *value.value();
+        }
+    }
+
+    let n = x1.len();
+    let m = x2.len();
+
+    let sakoe_chiba_window_radius = (n as f64 + 1.0) * band;
+
+    let alpha = ((m) as f64) / ((n) as f64);
+
+    let mut current = vec![0.0; m + 1];
+    let mut previous = vec![0.0; m + 1];
+    previous[0] = 0.0;
+
+    for i in 1..=n {
+        let lower = alpha * (i as f64) - sakoe_chiba_window_radius;
+        let upper = alpha * (i as f64) + sakoe_chiba_window_radius;
+
+        let lower = max(1, lower.ceil() as usize);
+        let upper = min(m, upper.floor() as usize);
+
+        current[..].fill(0.0);
+
+        // closure to handle the insertion of g_x_sum as padding in the first element of the timeseries
+        let x1 = |i| if i == 0 {0.0} else { x1[i - 1] };
+        let x2 = |i| if i == 0 {0.0} else { x2[i - 1] };
+
+        for j in lower..=upper {
+            let cost = (x1(i - 1) - x2(j - 1)).abs();
+            if cost <= epsilon {
+                current[j] = previous[j - 1] + 1.0;
+            } else {
+                current[j] = f64::max(previous[j], current[j - 1]);
+            }
+        }
+        swap(&mut previous, &mut current);
+    }
+
+    let distance = (min(n, m) as f64 - previous[m]) / min(n, m) as f64;
+
+    if cached {
+        if LCSS_CACHE.len() > 1e6 as usize {
+            return distance;
+        }
+        LCSS_CACHE.insert(key_cache.clone(), distance);
+        swap(&mut key_cache.0, &mut key_cache.1);
+        LCSS_CACHE.insert(key_cache, distance);
+    }
+
+    return distance;
 
 }
 
