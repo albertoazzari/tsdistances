@@ -8,6 +8,45 @@ use crate::elastic_distances;
 const MIN_CHUNK_SIZE: usize = 16;
 const CHUNKS_PER_THREAD: usize = 8;
 
+/// Computes the pairwise distance between two sets of timeseries.
+/// 
+/// This function computes the distance between each pair of timeseries (one from each set) using the
+/// provided distance function. The computation is parallelized across multiple threads to improve
+/// performance. The number of threads used can be controlled via the `n_jobs` parameter.
+/// 
+fn compute_distance(distance: impl (Fn(&[f64], &[f64]) -> f64) + Sync + Send, x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, n_jobs: i32) -> Vec<Vec<f64>> {
+    let n_jobs = if n_jobs == -1 {
+        rayon::current_num_threads() as usize
+    } else {
+        n_jobs.max(1) as usize
+    };
+
+    let semaphore = parking_lot::Mutex::new(n_jobs);
+    let cond_var = parking_lot::Condvar::new();
+
+    let distance_matrix = x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
+        .map(|a| {
+            let mut guard = semaphore.lock();
+            while *guard == 0 {
+                cond_var.wait(&mut guard);
+            }
+            *guard -= 1;
+            drop(guard);
+            
+            let result = a.iter().map(|a| {
+                x2.iter()
+                .map(|b| distance(a, b))
+                .collect::<Vec<_>>()
+            }).collect::<Vec<_>>();
+            let mut guard = semaphore.lock();
+            *guard += 1;
+            cond_var.notify_one();
+            result
+        }).flatten().collect::<Vec<_>>();
+        distance_matrix
+
+}
+
 #[pyfunction]
 /// Computes the pairwise Euclidean distances between two sets of timeseries.
 ///
@@ -52,35 +91,29 @@ const CHUNKS_PER_THREAD: usize = 8;
 /// # Notes
 /// - The function uses a mutex and condition variable to manage thread synchronization.
 /// - The computation splits the input data into chunks to balance the load across the available threads.
-pub fn euclidean(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, cached: bool, n_jobs: i32) -> Vec<Vec<f64>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
-    } else {
-        n_jobs.max(1) as usize
-    };
+pub fn euclidean(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, cached: bool, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    if x1.is_empty() || x2.is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err("Input timeseries set must not be empty"));
+    }
 
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
+    let x1_len = x1[0].len();
+    for (i, ts) in x1.iter().enumerate() {
+        if ts.len() != x1_len {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!("Timeseries at index {} in x1 has inconsistent length", i)));
+        }
+    }
+    for (i, ts) in x2.iter().enumerate() {
+        if ts.len() != x1_len {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!("Timeseries at index {} in x2 has inconsistent length", i)));
+        }
+    }
 
-    x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            
-            let result = a.iter().map(|a| {
-                x2.iter()
-                .map(|b| elastic_distances::euclidean(a, b, cached))
-                .collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        }).flatten().collect::<Vec<_>>()
+    let distance_matrix = compute_distance(|a, b| elastic_distances::euclidean(a, b, cached), x1, x2, n_jobs);
+    if cached {
+        elastic_distances::EUCLIDEAN_CACHE.clear();
+    }
+    Ok(distance_matrix)
+
 }
 
 #[pyfunction]
@@ -125,35 +158,18 @@ pub fn euclidean(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, cached: bool, n_jobs: i32
 /// result = tsdistances.erp(x1, x2, gap_penalty=1.0, band=1.0, cached=False, n_jobs=4)
 /// print(result)  # Output: [[18.0, 27.0], [9.0, 18.0]]
 /// ```
-pub fn erp(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, gap_penalty: f64, band: f64, cached: bool, n_jobs: i32) -> Vec<Vec<f64>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
-    } else {
-        n_jobs.max(1) as usize
-    };
-
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
-
-    x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            
-            let result = a.iter().map(|a| {
-                x2.iter()
-                .map(|b| elastic_distances::erp(a, b, gap_penalty, band, cached))
-                .collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        }).flatten().collect::<Vec<_>>()
+pub fn erp(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, gap_penalty: f64, band: f64, cached: bool, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    if gap_penalty < 0.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err("Gap penalty must be non-negative"));
+    }
+    if band < 0.0 && band > 1.0{
+        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba Band must be between 0 and 1"));
+    }
+    let distance_matrix = compute_distance(|a, b| elastic_distances::erp(a, b, gap_penalty, band, cached), x1, x2, n_jobs);
+    if cached {
+        elastic_distances::ERP_CACHE.clear();
+    }
+    Ok(distance_matrix)
 }
 
 #[pyfunction]
@@ -198,35 +214,18 @@ pub fn erp(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, gap_penalty: f64, band: f64, ca
 /// result = tsdistances.lcss(x1, x2, epsilon=2.5, band=1.0, cached=False, n_jobs=4)
 /// print(result)  # Output: [[0.6666, 0.6666], [0.3333, 0.6666]]
 /// ```
-pub fn lcss(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, epsilon: f64, band: f64, cached: bool, n_jobs: i32) -> Vec<Vec<f64>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
-    } else {
-        n_jobs.max(1) as usize
-    };
-
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
-
-    x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            
-            let result = a.iter().map(|a| {
-                x2.iter()
-                .map(|b| elastic_distances::lcss(a, b, epsilon, band, cached))
-                .collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        }).flatten().collect::<Vec<_>>()
+pub fn lcss(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, epsilon: f64, band: f64, cached: bool, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    if epsilon < 0.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err("Epsilon must be non-negative"));
+    }
+    if band < 0.0 && band > 1.0{
+        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba Band must be between 0 and 1"));
+    }
+    let distance_matrix = compute_distance(|a, b| elastic_distances::lcss(a, b, epsilon, band, cached), x1, x2, n_jobs);
+    if cached {
+        elastic_distances::LCSS_CACHE.clear();
+    }
+    Ok(distance_matrix)
 }
 
 #[pyfunction]
@@ -272,35 +271,22 @@ pub fn lcss(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, epsilon: f64, band: f64, cache
 /// result = tsdistances.twe(x1, x2, stiffness=1.0, penalty=0.5, band=1.0, cached=False, n_jobs=4)
 /// print(result)  # Output: [[30.0, 45.0], [15.0, 30.0]]
 /// ```
-pub fn twe(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, stiffness: f64, penalty: f64, band: f64, cached: bool, n_jobs: i32) -> Vec<Vec<f64>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
-    } else {
-        n_jobs.max(1) as usize
-    };
+pub fn twe(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, stiffness: f64, penalty: f64, band: f64, cached: bool, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    if stiffness < 0.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err("Stiffness (nu) must be non-negative"));
+    }
+    if penalty < 0.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err("Penalty (lambda) must be non-negative"));
+    }
+    if band < 0.0 && band > 1.0{
+        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba Band must be between 0 and 1"));
+    }
 
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
-
-    x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            
-            let result = a.iter().map(|a| {
-                x2.iter()
-                .map(|b| elastic_distances::twe(a, b, stiffness, penalty, band, cached))
-                .collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        }).flatten().collect::<Vec<_>>()
+    let distance_matrix = compute_distance(|a, b| elastic_distances::twe(a, b, stiffness, penalty, band, cached), x1, x2, n_jobs);
+    if cached {
+        elastic_distances::TWE_CACHE.clear();
+    }
+    Ok(distance_matrix)
 }
 
 #[pyfunction]
@@ -344,35 +330,15 @@ pub fn twe(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, stiffness: f64, penalty: f64, b
 /// result = tsdistances.dtw(x1, x2, band=0.5, cached=False, n_jobs=4)
 /// print(result)  # Output: [[108.0, 243.0], [26.0, 108.0]]
 /// ```
-pub fn dtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs: i32) -> Vec<Vec<f64>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
-    } else {
-        n_jobs.max(1) as usize
-    };
-
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
-
-    x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            
-            let result = a.iter().map(|a| {
-                x2.iter()
-                .map(|b| elastic_distances::dtw(a, b, band, cached))
-                .collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        }).flatten().collect::<Vec<_>>()
+pub fn dtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    if band < 0.0 && band > 1.0{
+        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba Band must be between 0 and 1"));
+    }
+    let distance_matrix = compute_distance(|a, b| elastic_distances::dtw(a, b, band, cached), x1, x2, n_jobs);
+    if cached {
+        elastic_distances::DTW_CACHE.clear();
+    }
+    Ok(distance_matrix)
     
 }
 
@@ -417,36 +383,15 @@ pub fn dtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs
 /// result = tsdistances.ddtw(x1, x2, band=0.5, cached=False, n_jobs=4)
 /// print(result)  # Output: [[0.0, 0.0], [0.0, 0.0]]
 /// ```
-pub fn ddtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs: i32) -> Vec<Vec<f64>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
-    } else {
-        n_jobs.max(1) as usize
-    };
-
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
-
-    x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            
-            let result = a.iter().map(|a| {
-                x2.iter()
-                .map(|b| elastic_distances::ddtw(a, b, band, cached))
-                .collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        }).flatten().collect::<Vec<_>>()
-    
+pub fn ddtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    if band < 0.0 && band > 1.0{
+        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba Band must be between 0 and 1"));
+    }
+    let distance_matrix = compute_distance(|a, b| elastic_distances::ddtw(a, b, band, cached), x1, x2, n_jobs);
+    if cached {
+        elastic_distances::DDTW_CACHE.clear();
+    }
+    Ok(distance_matrix)
 }
 
 #[pyfunction]
@@ -490,36 +435,15 @@ pub fn ddtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_job
 /// result = tsdistances.wdtw(x1, x2, band=1.0, cached=False, n_jobs=4)
 /// print(result)  # Output: [[51.9759, 116.9458], [12.6126, 51.9759]]
 /// ```
-pub fn wdtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs: i32) -> Vec<Vec<f64>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
-    } else {
-        n_jobs.max(1) as usize
-    };
-
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
-
-    x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            
-            let result = a.iter().map(|a| {
-                x2.iter()
-                .map(|b| elastic_distances::wdtw(a, b, band, cached))
-                .collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        }).flatten().collect::<Vec<_>>()
-    
+pub fn wdtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    if band < 0.0 && band > 1.0{
+        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba Band must be between 0 and 1"));
+    }
+    let distance_matrix = compute_distance(|a, b| elastic_distances::wdtw(a, b, band, cached), x1, x2, n_jobs);
+    if cached {
+        elastic_distances::WDTW_CACHE.clear();
+    }
+    Ok(distance_matrix)
 }
 
 #[pyfunction]
@@ -563,36 +487,15 @@ pub fn wdtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_job
 /// result = tsdistances.wddtw(x1, x2, band=1.0, cached=False, n_jobs=4)
 /// print(result)  # Output: [[0.0, 0.0], [0.0, 0.0]]
 /// ```
-pub fn wddtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs: i32) -> Vec<Vec<f64>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
-    } else {
-        n_jobs.max(1) as usize
-    };
-
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
-
-    x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            
-            let result = a.iter().map(|a| {
-                x2.iter()
-                .map(|b| elastic_distances::wddtw(a, b, band, cached))
-                .collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        }).flatten().collect::<Vec<_>>()
-    
+pub fn wddtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    if band < 0.0 && band > 1.0{
+        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba Band must be between 0 and 1"));
+    }
+    let distance_matrix = compute_distance(|a, b| elastic_distances::wddtw(a, b, band, cached), x1, x2, n_jobs);
+    if cached {
+        elastic_distances::WDDTW_CACHE.clear();
+    }
+    Ok(distance_matrix)
 }
 
 #[pyfunction]
@@ -636,35 +539,15 @@ pub fn wddtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jo
 /// result = tsdistances.msm(x1, x2, band=1.0, cached=False, n_jobs=4)
 /// print(result)  # Output: [[12.0, 15.0], [8.0, 12.0]]
 /// ```
-pub fn msm(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs: i32) -> Vec<Vec<f64>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
-    } else {
-        n_jobs.max(1) as usize
-    };
-
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
-
-    x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            
-            let result = a.iter().map(|a| {
-                x2.iter()
-                .map(|b| elastic_distances::msm(a, b, band, cached))
-                .collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        }).flatten().collect::<Vec<_>>()
+pub fn msm(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    if band < 0.0 && band > 1.0{
+        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba Band must be between 0 and 1"));
+    }
+    let distance_matrix = compute_distance(|a, b| elastic_distances::msm(a, b, band, cached), x1, x2, n_jobs);
+    if cached {
+        elastic_distances::MSM_CACHE.clear();
+    }
+    Ok(distance_matrix)
 }
 
 #[pyfunction]
@@ -709,33 +592,16 @@ pub fn msm(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, band: f64, cached: bool, n_jobs
 /// result = tsdistances.adtw(x1, x2, w=0.5, band=1.0, cached=False, n_jobs=4)
 /// print(result)  # Output: [[108.0, 243.0], [27.0, 108.0]]
 /// ```
-pub fn adtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, w:f64, band: f64, cached: bool, n_jobs: i32) -> Vec<Vec<f64>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
-    } else {
-        n_jobs.max(1) as usize
-    };
-
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
-
-    x1.par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            
-            let result = a.iter().map(|a| {
-                x2.iter()
-                .map(|b| elastic_distances::adtw(a, b, w, band, cached))
-                .collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        }).flatten().collect::<Vec<_>>()
+pub fn adtw(x1: Vec<Vec<f64>>, x2: Vec<Vec<f64>>, w:f64, band: f64, cached: bool, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    if w < 0.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err("Weight must be non-negative"));
+    }
+    if band < 0.0 && band > 1.0{
+        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba Band must be between 0 and 1"));
+    }
+    let distance_matrix = compute_distance(|a, b| elastic_distances::adtw(a, b, w, band, cached), x1, x2, n_jobs);
+    if cached {
+        elastic_distances::ADTW_CACHE.clear();
+    }
+    Ok(distance_matrix)
 }

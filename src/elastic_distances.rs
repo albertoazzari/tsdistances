@@ -5,7 +5,7 @@ use crate::utils::FloatVecEq;
 
 
 lazy_static! {
-    static ref EUCLIDEAN_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+    pub static ref EUCLIDEAN_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
 pub fn euclidean(x1: &[f64], x2: &[f64], cached: bool) -> f64 {
     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
@@ -39,7 +39,7 @@ pub fn euclidean(x1: &[f64], x2: &[f64], cached: bool) -> f64 {
 }
 
 lazy_static! {
-    static ref ERP_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+    pub static ref ERP_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
 
 pub fn erp(x1: &[f64], x2: &[f64], gap_penalty: f64, band: f64, cached: bool) -> f64 {
@@ -104,7 +104,7 @@ pub fn erp(x1: &[f64], x2: &[f64], gap_penalty: f64, band: f64, cached: bool) ->
 }
 
 lazy_static! {
-    static ref LCSS_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+    pub static ref LCSS_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
 pub fn lcss(x1: &[f64], x2: &[f64], epsilon: f64, band: f64, cached: bool) -> f64 {
     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
@@ -169,7 +169,7 @@ pub fn lcss(x1: &[f64], x2: &[f64], epsilon: f64, band: f64, cached: bool) -> f6
 }
 
 lazy_static! {
-    static ref TWE_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+    pub static ref TWE_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
 pub fn twe(x1: &[f64], x2: &[f64], nu: f64, lambda: f64, band: f64, cached: bool) -> f64 {
     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
@@ -246,7 +246,7 @@ pub fn twe(x1: &[f64], x2: &[f64], nu: f64, lambda: f64, band: f64, cached: bool
 
 
 lazy_static! {
-    static ref DTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+    pub static ref DTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
 pub fn dtw(x1: &[f64], x2: &[f64], band: f64, cached: bool) -> f64 {
     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
@@ -306,7 +306,7 @@ pub fn dtw(x1: &[f64], x2: &[f64], band: f64, cached: bool) -> f64 {
 }
 
 lazy_static! {
-    static ref DDTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+    pub static ref DDTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
 pub fn ddtw(x1: &[f64], x2: &[f64], band: f64, cached: bool) -> f64 {
     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
@@ -380,7 +380,7 @@ fn derivate(x: &[f64]) -> Vec<f64> {
 
 
 lazy_static! {
-    static ref WDTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+    pub static ref WDTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
 pub fn wdtw(x1: &[f64], x2: &[f64], band: f64, cached: bool) -> f64 {
     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
@@ -451,7 +451,7 @@ fn init_weights(len: usize, g: f64) -> Vec<f64> {
 }
 
 lazy_static! {
-    static ref WDDTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+    pub static ref WDDTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
 pub fn wddtw(x1: &[f64], x2: &[f64], band: f64, cached: bool) -> f64 {
     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
@@ -483,7 +483,7 @@ pub fn wddtw(x1: &[f64], x2: &[f64], band: f64, cached: bool) -> f64 {
 }
 
 lazy_static! {
-    static ref MSM_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+    pub static ref MSM_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
 pub fn msm(x1: &[f64], x2: &[f64], band: f64, cached: bool) -> f64 {
     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
@@ -553,7 +553,7 @@ fn msm_cost_function(x_i: f64, x_i_1: f64, y_j: f64) -> f64 {
 
 
 lazy_static! {
-    static ref ADTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+    pub static ref ADTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
 pub fn adtw(x1: &[f64], x2: &[f64], w: f64, band: f64, cached: bool) -> f64 {
     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
