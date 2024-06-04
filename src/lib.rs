@@ -3,11 +3,15 @@ mod elastic_distances;
 mod utils;
 
 use pyo3::prelude::*;
-
+use ctrlc;
 
 #[pymodule]
 #[pyo3(name = "tsdistances")]
 fn py_module(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+    let _ = ctrlc::set_handler(move || {
+        println!("\nraise KeyboardInterrupt (Ctrl+C pressed)");
+        std::process::exit(1);
+    });
     m.add_function(wrap_pyfunction!(distances::euclidean, m)?)?;
     m.add_function(wrap_pyfunction!(distances::erp, m)?)?;
     m.add_function(wrap_pyfunction!(distances::lcss, m)?)?;

@@ -54,3 +54,11 @@ impl std::cmp::Ord for FloatEq {
         self.0.partial_cmp(&other.0).unwrap()
     }
 }
+
+pub fn check_sakoe_chiba_band(band: f64) -> Result<(), pyo3::PyErr> {
+    if band < 0.0 || band > 1.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba band radius must be less than the length of the timeseries"));
+    }
+
+    Ok(())
+}

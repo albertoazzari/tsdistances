@@ -36,23 +36,23 @@ if __name__ == '__main__':
             start_time = time.time()
             print(f'\tProcessing {dist}...')
             if dist == 'euclidean':
-                X = tsdistances.euclidean(X, X, cached=True, n_jobs=-1)
+                X = tsdistances.euclidean(X, cached=False, n_jobs=-1)
             elif dist == 'erp':
-                X = tsdistances.erp(X, X, gap_penalty=0.0, band=1.0, cached=True, n_jobs=-1)
+                X = tsdistances.erp(X, gap_penalty=0.0, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'lcss':
-                X = tsdistances.lcss(X, X, epsilon=1.0, band=1.0, cached=True, n_jobs=-1)
+                X = tsdistances.lcss(X, epsilon=1.0, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'dtw':
-                X = tsdistances.dtw(X, X, band=1.0, cached=True, n_jobs=-1)
+                X = tsdistances.dtw(X, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'ddtw':
-                X = tsdistances.ddtw(X, X, band=1.0, cached=True, n_jobs=-1)
+                X = tsdistances.ddtw(X, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'wdtw':
-                X = tsdistances.wdtw(X, X, band=1.0, cached=True, n_jobs=-1)
+                X = tsdistances.wdtw(X, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'wddtw':
-                X = tsdistances.wddtw(X, X, band=1.0, cached=True, n_jobs=-1)
+                X = tsdistances.wddtw(X, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'msm':
-                X = tsdistances.msm(X, X, band=1.0, cached=True, n_jobs=-1)
+                X = tsdistances.msm(X, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'twe':
-                X = tsdistances.twe(X, X, stiffness=0.001, penalty=1.0, band=1.0, cached=True, n_jobs=-1)
+                X = tsdistances.twe(X, stiffness=0.001, penalty=1.0, band=1.0, cached=False, n_jobs=-1)
             end_time = time.time()
             print(f'\tTime: {end_time - start_time}')
             model = AgglomerativeClustering(n_clusters=n_clusters, metric='precomputed', linkage='complete')
