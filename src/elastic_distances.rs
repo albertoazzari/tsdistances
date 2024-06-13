@@ -2,6 +2,8 @@ use dashmap::DashMap;
 use lazy_static::lazy_static;
 use std::{cmp::{max, min}, mem::swap};
 use crate::utils::FloatVecEq;
+//use rustfft::{FftPlanner, num_complex::Complex};
+
 
 
 lazy_static! {
@@ -591,6 +593,7 @@ pub fn adtw(x1: &[f64], x2: &[f64], w: f64, band: f64, cached: bool) -> f64 {
         let x1 = |i| if i == 0 { 0.0 } else { x1[i - 1] };
         let x2 = |i| if i == 0 { 0.0 } else { x2[i - 1] };
 
+
         for j in lower..=upper {
             let dist = (x1(i) - x2(j)).powi(2);
             current[j] = dist + (previous[j] + w).min((current[j - 1] + w).min(previous[j - 1]));
@@ -611,3 +614,56 @@ pub fn adtw(x1: &[f64], x2: &[f64], w: f64, band: f64, cached: bool) -> f64 {
 
     distance
 }
+
+// lazy_static! {
+//     pub static ref SBD_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
+// }
+
+// pub fn sbd(x1: &[f64], x2: &[f64], cached: bool) -> f64 {
+//     let mut key_cache = (FloatVecEq(vec![]), FloatVecEq(vec![]));
+//     if cached {
+//         let x1_cache = FloatVecEq(x1.to_vec());
+//         let x2_cache = FloatVecEq(x2.to_vec());
+//         key_cache = (x1_cache, x2_cache);
+
+//         if let Some(value) = SBD_CACHE.get(&key_cache) {
+//             return *value.value();
+//         }
+//     }
+
+//     let n = x1.len();
+
+//     let mut planner = FftPlanner::new();
+//     let fft = planner.plan_fft_forward(n);
+
+
+//     let mut x1_complex = x1.iter().map(|x| Complex::new(*x, 0.0)).collect::<Vec<_>>();
+//     let mut x2_complex = x2.iter().map(|x| Complex::new(*x, 0.0)).collect::<Vec<_>>();
+
+//     fft.process(&mut x1_complex);
+//     fft.process(&mut x2_complex);
+
+//     let cc = x1_complex.iter()
+//         .zip(x2_complex.iter())
+//         .map(|(a, b)| a * b.conj())
+//         .collect::<Vec<_>>();
+
+//     let mut ifft = planner.plan_fft_inverse(n);
+//     let mut cc_ifft = cc.clone();
+//     ifft.process(&mut cc_ifft);
+
+//     let norm = norm(x1, x2);
+//     let ncc = cc_ifft.iter()
+//         .map(|x| x.re / norm)
+//         .collect::<Vec<_>>();
+
+//     1.0 - ncc.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap()
+    
+// }
+
+// fn norm(x: &[f64], y: &[f64]) -> f64 {
+//     let x_ = x.iter().map(|x| x.powi(2)).sum::<f64>();
+//     let y_ = y.iter().map(|y| y.powi(2)).sum::<f64>();
+
+//     (x_ * y_).sqrt()
+// }

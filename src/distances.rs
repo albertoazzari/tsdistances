@@ -14,7 +14,7 @@ const CHUNKS_PER_THREAD: usize = 8;
 /// provided distance function. The computation is parallelized across multiple threads to improve
 /// performance. The number of threads used can be controlled via the `n_jobs` parameter.
 /// 
-fn compute_distance(distance: impl (Fn(&[f64], &[f64]) -> f64) + Sync + Send, x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> Vec<Vec<f64>> {
+pub fn compute_distance(distance: impl (Fn(&[f64], &[f64]) -> f64) + Sync + Send, x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> Vec<Vec<f64>> {
     let n_jobs = if n_jobs == -1 {
         rayon::current_num_threads() as usize
     } else {

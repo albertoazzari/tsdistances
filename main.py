@@ -36,27 +36,27 @@ if __name__ == '__main__':
             start_time = time.time()
             print(f'\tProcessing {dist}...')
             if dist == 'euclidean':
-                X = tsdistances.euclidean(X, cached=False, n_jobs=-1)
+                dm = tsdistances.euclidean(X, cached=False, n_jobs=-1)
             elif dist == 'erp':
-                X = tsdistances.erp(X, gap_penalty=0.0, band=1.0, cached=False, n_jobs=-1)
+                dm = tsdistances.erp(X, gap_penalty=0.0, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'lcss':
-                X = tsdistances.lcss(X, epsilon=1.0, band=1.0, cached=False, n_jobs=-1)
+                dm = tsdistances.lcss(X, epsilon=1.0, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'dtw':
-                X = tsdistances.dtw(X, band=1.0, cached=False, n_jobs=-1)
+                dm = tsdistances.dtw(X, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'ddtw':
-                X = tsdistances.ddtw(X, band=1.0, cached=False, n_jobs=-1)
+                dm = tsdistances.ddtw(X, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'wdtw':
-                X = tsdistances.wdtw(X, band=1.0, cached=False, n_jobs=-1)
+                dm = tsdistances.wdtw(X, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'wddtw':
-                X = tsdistances.wddtw(X, band=1.0, cached=False, n_jobs=-1)
+                dm = tsdistances.wddtw(X, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'msm':
-                X = tsdistances.msm(X, band=1.0, cached=False, n_jobs=-1)
+                dm = tsdistances.msm(X, band=1.0, cached=False, n_jobs=-1)
             elif dist == 'twe':
-                X = tsdistances.twe(X, stiffness=0.001, penalty=1.0, band=1.0, cached=False, n_jobs=-1)
+                dm = tsdistances.twe(X, stiffness=0.001, penalty=1.0, band=1.0, cached=False, n_jobs=-1)
             end_time = time.time()
             print(f'\tTime: {end_time - start_time}')
             model = AgglomerativeClustering(n_clusters=n_clusters, metric='precomputed', linkage='complete')
-            y_pred = model.fit_predict(X)
+            y_pred = model.fit_predict(dm)
             ari = adjusted_rand_score(y, y_pred)
             clustering[i, j] = ari
             times[i, j] = end_time - start_time

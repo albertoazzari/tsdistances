@@ -1,6 +1,7 @@
 mod distances;
 mod elastic_distances;
 mod utils;
+pub mod diagonal;
 
 use pyo3::prelude::*;
 use ctrlc;
@@ -12,6 +13,7 @@ fn py_module(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
         println!("\nraise KeyboardInterrupt (Ctrl+C pressed)");
         std::process::exit(1);
     });
+    m.add_function(wrap_pyfunction!(diagonal::dtw_diag, m)?)?;
     m.add_function(wrap_pyfunction!(distances::euclidean, m)?)?;
     m.add_function(wrap_pyfunction!(distances::erp, m)?)?;
     m.add_function(wrap_pyfunction!(distances::lcss, m)?)?;
