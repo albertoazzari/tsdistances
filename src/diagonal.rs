@@ -1,4 +1,8 @@
-use crate::distances::compute_distance;
+use crate::distances;
+
+// previous[j] = z
+// current[j-1] = x
+// previous[j-1] = y
 
 fn diagonal_distance(
     a: &[f64],
@@ -49,14 +53,13 @@ fn diagonal_distance(
 }
 
 #[pyo3::pyfunction]
-#[pyo3(signature = (x1, x2=None, cached=false, n_jobs=-1))]
+#[pyo3(signature = (x1, x2=None, n_jobs=-1))]
 pub fn dtw_diag(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    cached: bool,
     n_jobs: i32,
 ) -> pyo3::PyResult<Vec<Vec<f64>>> {
-    let distance_matrix = compute_distance(
+    let distance_matrix = distances::compute_distance(
         |a, b| {
             diagonal_distance(a, b, f64::INFINITY, |a, b, x, y, z| {
                 let dist = (a - b).powi(2);
@@ -72,19 +75,45 @@ pub fn dtw_diag(
 }
 
 #[pyo3::pyfunction]
-#[pyo3(signature = (x1, x2=None, gap_penalty = 1.0, cached=false, n_jobs=-1))]
+#[pyo3(signature = (x1, x2=None, gap_penalty = 1.0, n_jobs=-1))]
 pub fn erp_diag(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
     gap_penalty: f64,
-    cached: bool,
     n_jobs: i32,
 ) -> pyo3::PyResult<Vec<Vec<f64>>> {
-    let distance_matrix = compute_distance(
+    let distance_matrix = distances::compute_distance(
         |a, b| {
             diagonal_distance(a, b, f64::INFINITY, |a, b, x, y, z| {
                 (y + (a - b).abs())
-                    .min((x + (b - gap_penalty).abs()).min(z + (a - gap_penalty).abs()))
+                    .min((z + (a - gap_penalty).abs()).min(x + (b - gap_penalty).abs()))
+            })
+        },
+        x1,
+        x2,
+        n_jobs,
+    );
+
+    Ok(distance_matrix)
+}
+
+#[pyo3::pyfunction]
+#[pyo3(signature = (x1, x2=None, epsilon = 1.0, n_jobs=-1))]
+pub fn lcss_diag(
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    epsilon: f64,
+    n_jobs: i32,
+) -> pyo3::PyResult<Vec<Vec<f64>>> {
+    let distance_matrix = distances::compute_distance(
+        |a, b| {
+            diagonal_distance(a, b, 0.0, |a, b, x, y, z| {
+                let dist = (a - b).abs();
+                if dist <= epsilon {
+                    y + 1.0
+                } else {
+                    x.max(z)
+                }
             })
         },
         x1,
@@ -96,14 +125,23 @@ pub fn erp_diag(
 }
 
 #[test]
-fn test_diag() {
-    let a = [1.0, 2.0, 3.0, 4.0, 5.0];
-    let b = [1.0, 2.0, 3.0, 4.0, 5.0];
+fn test_lcss() {
+    // Generate 100 random float vector
+    let a: Vec<f64> = (0..100).map(|_| rand::random::<f64>()).collect();
+    let b: Vec<f64> = (0..100).map(|_| rand::random::<f64>()).collect();
 
-    let result = diagonal_distance(&a, &b, f64::INFINITY, |a, b, x, y, z| {
-        let dist = (a - b).powi(2);
-        dist + z.min(x.min(y))
-    });
+    let result_diag = lcss_diag(vec![a.to_vec()], Some(vec![b.to_vec()]), 1.0, 1).unwrap();
+    let result = distances::lcss(vec![a.to_vec()], Some(vec![b.to_vec()]), 1.0, 1.0, false, 1).unwrap();
+    assert_eq!(result_diag[0][0], result[0][0])
+}
 
-    println!("{}", result);
+#[test]
+fn test_erp() {
+    // Generate 100 random float vector
+    let a: Vec<f64> = (0..100).map(|_| rand::random::<f64>()).collect();
+    let b: Vec<f64> = (0..100).map(|_| rand::random::<f64>()).collect();
+
+    let result_diag = erp_diag(vec![a.to_vec()], Some(vec![b.to_vec()]), 1.0, 1).unwrap();
+    let result = distances::erp(vec![a.to_vec()], Some(vec![b.to_vec()]), 1.0, 1.0, false, 1).unwrap();
+    assert_eq!(result_diag[0][0], result[0][0])
 }

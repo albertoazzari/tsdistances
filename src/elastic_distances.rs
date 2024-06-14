@@ -79,7 +79,6 @@ pub fn erp(x1: &[f64], x2: &[f64], gap_penalty: f64, band: f64, cached: bool) ->
 
         current[..].fill(f64::INFINITY);
 
-        // closure to handle the insertion of g_x_sum as padding in the first element of the timeseries
         let x1 = |i| if i == 0 {g_x1[i]} else { x1[i - 1] };
         let x2 = |i| if i == 0 {g_x2[i]} else { x2[i - 1] };
 
