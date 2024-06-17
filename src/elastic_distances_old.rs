@@ -1,10 +1,11 @@
+use crate::utils::FloatVecEq;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
-use std::{cmp::{max, min}, mem::swap};
-use crate::utils::FloatVecEq;
+use std::{
+    cmp::{max, min},
+    mem::swap,
+};
 //use rustfft::{FftPlanner, num_complex::Complex};
-
-
 
 lazy_static! {
     pub static ref EUCLIDEAN_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
@@ -22,7 +23,8 @@ pub fn euclidean(x1: &[f64], x2: &[f64], cached: bool) -> f64 {
         }
     }
 
-    let distance = x1.iter()
+    let distance = x1
+        .iter()
         .zip(x2.iter())
         .map(|(a, b)| (a - b).powi(2))
         .sum::<f64>()
@@ -67,8 +69,14 @@ pub fn erp(x1: &[f64], x2: &[f64], gap_penalty: f64, band: f64, cached: bool) ->
     let mut previous = vec![f64::INFINITY; m + 1];
     previous[0] = 0.0;
 
-    let g_x1 = x1.iter().map(|x| (x - gap_penalty).abs()).collect::<Vec<_>>();
-    let g_x2 = x2.iter().map(|x| (x - gap_penalty).abs()).collect::<Vec<_>>();
+    let g_x1 = x1
+        .iter()
+        .map(|x| (x - gap_penalty).abs())
+        .collect::<Vec<_>>();
+    let g_x2 = x2
+        .iter()
+        .map(|x| (x - gap_penalty).abs())
+        .collect::<Vec<_>>();
 
     for i in 1..=n {
         let lower = alpha * (i as f64) - sakoe_chiba_window_radius;
@@ -79,12 +87,14 @@ pub fn erp(x1: &[f64], x2: &[f64], gap_penalty: f64, band: f64, cached: bool) ->
 
         current[..].fill(f64::INFINITY);
 
-        let x1 = |i| if i == 0 {g_x1[i]} else { x1[i - 1] };
-        let x2 = |i| if i == 0 {g_x2[i]} else { x2[i - 1] };
+        let x1 = |i| if i == 0 { g_x1[i] } else { x1[i - 1] };
+        let x2 = |i| if i == 0 { g_x2[i] } else { x2[i - 1] };
 
         for j in lower..=upper {
             let cost = (x1(i - 1) - x2(j - 1)).abs();
-            current[j] = (previous[j - 1] + cost).min(previous[j] + g_x1[i - 1]).min(current[j - 1] + g_x2[j - 1]);
+            current[j] = (previous[j - 1] + cost)
+                .min(previous[j] + g_x1[i - 1])
+                .min(current[j - 1] + g_x2[j - 1]);
         }
         swap(&mut previous, &mut current);
     }
@@ -101,7 +111,6 @@ pub fn erp(x1: &[f64], x2: &[f64], gap_penalty: f64, band: f64, cached: bool) ->
     }
 
     distance
-
 }
 
 lazy_static! {
@@ -140,8 +149,8 @@ pub fn lcss(x1: &[f64], x2: &[f64], epsilon: f64, band: f64, cached: bool) -> f6
         current[..].fill(0.0);
 
         // closure to handle the insertion of g_x_sum as padding in the first element of the timeseries
-        let x1 = |i| if i == 0 {0.0} else { x1[i - 1] };
-        let x2 = |i| if i == 0 {0.0} else { x2[i - 1] };
+        let x1 = |i| if i == 0 { 0.0 } else { x1[i - 1] };
+        let x2 = |i| if i == 0 { 0.0 } else { x2[i - 1] };
 
         for j in lower..=upper {
             let cost = (x1(i - 1) - x2(j - 1)).abs();
@@ -166,7 +175,6 @@ pub fn lcss(x1: &[f64], x2: &[f64], epsilon: f64, band: f64, cached: bool) -> f6
     }
 
     return distance;
-
 }
 
 lazy_static! {
@@ -244,7 +252,6 @@ pub fn twe(x1: &[f64], x2: &[f64], nu: f64, lambda: f64, band: f64, cached: bool
 
     distance
 }
-
 
 lazy_static! {
     pub static ref DTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
@@ -371,14 +378,13 @@ pub fn ddtw(x1: &[f64], x2: &[f64], band: f64, cached: bool) -> f64 {
 
 fn derivate(x: &[f64]) -> Vec<f64> {
     let mut x_d = vec![0.0; x.len()];
-    for i in 1..x.len()-1 {
-        x_d[i] = ((x[i] - x[i-1]) + (x[i+1] - x[i-1]) / 2.0) / 2.0;
+    for i in 1..x.len() - 1 {
+        x_d[i] = ((x[i] - x[i - 1]) + (x[i + 1] - x[i - 1]) / 2.0) / 2.0;
     }
     x_d[0] = x_d[1];
-    x_d[x.len()-1] = x_d[x.len()-2];
+    x_d[x.len() - 1] = x_d[x.len() - 2];
     x_d
 }
-
 
 lazy_static! {
     pub static ref WDTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
@@ -552,7 +558,6 @@ fn msm_cost_function(x_i: f64, x_i_1: f64, y_j: f64) -> f64 {
     }
 }
 
-
 lazy_static! {
     pub static ref ADTW_CACHE: DashMap<(FloatVecEq, FloatVecEq), f64> = DashMap::new();
 }
@@ -591,7 +596,6 @@ pub fn adtw(x1: &[f64], x2: &[f64], w: f64, band: f64, cached: bool) -> f64 {
         // closure to handle the insertion of zeros as padding in the first element of the timeseries
         let x1 = |i| if i == 0 { 0.0 } else { x1[i - 1] };
         let x2 = |i| if i == 0 { 0.0 } else { x2[i - 1] };
-
 
         for j in lower..=upper {
             let dist = (x1(i) - x2(j)).powi(2);
@@ -635,7 +639,6 @@ pub fn adtw(x1: &[f64], x2: &[f64], w: f64, band: f64, cached: bool) -> f64 {
 //     let mut planner = FftPlanner::new();
 //     let fft = planner.plan_fft_forward(n);
 
-
 //     let mut x1_complex = x1.iter().map(|x| Complex::new(*x, 0.0)).collect::<Vec<_>>();
 //     let mut x2_complex = x2.iter().map(|x| Complex::new(*x, 0.0)).collect::<Vec<_>>();
 
@@ -657,7 +660,7 @@ pub fn adtw(x1: &[f64], x2: &[f64], w: f64, band: f64, cached: bool) -> f64 {
 //         .collect::<Vec<_>>();
 
 //     1.0 - ncc.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap()
-    
+
 // }
 
 // fn norm(x: &[f64], y: &[f64]) -> f64 {

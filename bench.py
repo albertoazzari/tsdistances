@@ -1,6 +1,5 @@
 import tsdistances
-from sktime.distances import dtw_distance
-from dtaidistance import dtw
+from sktime.distances import euclidean_distance
 import pathlib
 import pandas as pd
 import time
@@ -16,52 +15,33 @@ if __name__ == "__main__":
         train = pd.read_csv(UCRARCHIVE_PATH.joinpath(dir.name)/ f'{dir.name}_TRAIN.tsv', header=None, sep='\t').values
         test = pd.read_csv(UCRARCHIVE_PATH.joinpath(dir.name)/ f'{dir.name}_TEST.tsv', header=None, sep='\t').values
 
-
-        ts1 = np.hstack(train[:10, 1:])
-        ts2 = np.hstack(test[:10, 1:])
-
         tsdistances_time = []
-        tsdistances_time2 = []
         sktime_time = []
-        dtai_time = []
 
-        for i in range(10):
-            print(f'Iteration {i}')
+        tsdistances_v = []
+        sktime_v = []
+
+        for i in range(100):
+            print(f'Iteration {i + 1}')
+            idx_train = np.random.randint(0, train.shape[0])
+            idx_test = np.random.randint(0, test.shape[0])
+            ts1 = train[idx_train, 1:]
+            ts2 = test[idx_test, 1:]
+
             start_tsdistances = time.time()
-            a = tsdistances.dtw([ts1], [ts2], cached=False, n_jobs=1)
+            tsdistances_v.append(tsdistances.euclidean([ts1], [ts2], n_jobs=1)[0][0])
             end_tsdistances = time.time()
             tsdistances_time.append(end_tsdistances - start_tsdistances)
 
-            start_tsdistances2 = time.time()
-            b = tsdistances.dtw_diag([ts1], [ts2], cached=False, n_jobs=1)
-            end_tsdistances2 = time.time()
-            tsdistances_time2.append(end_tsdistances2 - start_tsdistances2)
+            start_sktime = time.time()
+            sktime_v.append(euclidean_distance(ts1, ts2))
+            end_sktime = time.time()
+            sktime_time.append(end_sktime - start_sktime)
 
-            # start_sktime = time.time()
-            # b = dtw_distance(ts1, ts2)
-            # end_sktime = time.time()
-            # sktime_time.append(end_sktime - start_sktime)
+            # assert tsdistances_v[-1] == sktime_v[-1], f'Results are not the same\n{tsdistances_v[-1]}\n{sktime_v[-1]}'
 
-            start_dtai = time.time()
-            c = dtw.distance_fast(ts1, ts2)
-            end_dtai = time.time()
-            dtai_time.append(end_dtai - start_dtai)
+        print(f'Average time for tsdistances: {np.mean(tsdistances_time)}')
+        print(f'Average time for sktime: {np.mean(sktime_time)}')
+        assert np.allclose(tsdistances_v, sktime_v), 'Results are not the same'
 
-        time1 = sum(tsdistances_time) / len(tsdistances_time)
-        #time2 = sum(sktime_time) / len(sktime_time)
-        time3 = sum(dtai_time) / len(dtai_time)
-        time4 = sum(tsdistances_time2) / len(tsdistances_time2)
-        print(f'Tsdistances: {time1}')
-        #print(f'Sktime: {time2}')
-        print(f'Dtai: {time3}')
-        print(f'Tsdistances2: {time4}')
-        
-        #print(f'\tSktime: {time1 / time2}')
-        print(f'\tDtai: {time1 / time3}')
-        print(f'\tTsdistances2: {time1 / time4}')
-
-        assert a == b == c, f"{a}, {b}, {c}"
-        
-
-
-        exit(1)
+        exit(0)

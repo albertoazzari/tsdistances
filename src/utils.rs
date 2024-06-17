@@ -1,64 +1,33 @@
-use std::mem::transmute;
-
-#[derive(Clone)]
-pub struct FloatVecEq(pub Vec<f64>);
-
-impl PartialEq for FloatVecEq {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe {
-            let self_: &Vec<FloatEq> = transmute(&self.0);
-            let other_: &Vec<FloatEq> = transmute(&other.0);
-
-            self_.eq(other_)
+pub fn derivate(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+    let mut x_d = Vec::with_capacity(x.len());
+    for i in 0..x.len() {
+        x_d.push(vec![0.0; x[i].len()]);
+    }
+    for i in 0..x.len() {
+        for j in 1..x[i].len() - 1 {
+            x_d[i][j] = ((x[i][j] - x[i][j - 1]) + (x[i][j + 1] - x[i][j - 1]) / 2.0) / 2.0;
         }
+        x_d[i][0] = x_d[i][1];
+        x_d[i][x[i].len() - 1] = x_d[i][x[i].len() - 2];
     }
+    x_d
 }
 
-impl Eq for FloatVecEq {}
-
-impl std::hash::Hash for FloatVecEq {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        unsafe {
-            let self_: &Vec<FloatEq> = transmute(&self.0);
-            self_.hash(state);
-        }
+const WEIGHT_MAX: f64 = 1.0;
+pub fn dtw_weights(len: usize, g: f64) -> Vec<f64> {
+    let mut weights = vec![0.0; len];
+    let half_len = len as f64 / 2.0;
+    for i in 0..len {
+        weights[i] = WEIGHT_MAX / (1.0 + std::f64::consts::E.powf(-g * (i as f64 - half_len)));
     }
+    weights
 }
 
-#[derive(Clone, Copy)]
-#[repr(transparent)]
-pub struct FloatEq(pub f64);
-
-impl PartialEq for FloatEq {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
+const MSM_C: f64 = 1.0;
+pub fn msm_cost_function(x_i: f64, x_i_1: f64, y_j: f64) -> f64 {
+    if (x_i >= x_i_1 && x_i <= y_j) || (x_i_1 >= x_i && x_i >= y_j) {
+        MSM_C
+    } else {
+        MSM_C + (x_i - x_i_1).abs().min((x_i - y_j).abs())
     }
-}
-
-impl Eq for FloatEq {}
-
-impl std::hash::Hash for FloatEq {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.to_bits().hash(state);
-    }
-}
-
-impl std::cmp::PartialOrd for FloatEq {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.partial_cmp(&other.0)
-    }
-}
-
-impl std::cmp::Ord for FloatEq {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.partial_cmp(&other.0).unwrap()
-    }
-}
-
-pub fn check_sakoe_chiba_band(band: f64) -> Result<(), pyo3::PyErr> {
-    if band < 0.0 || band > 1.0 {
-        return Err(pyo3::exceptions::PyValueError::new_err("Sakoe-Chiba band radius must be less than the length of the timeseries"));
-    }
-
-    Ok(())
 }
