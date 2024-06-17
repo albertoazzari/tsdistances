@@ -1,10 +1,11 @@
+pub mod diagonal;
+pub mod diagonalv2;
 mod distances;
 mod elastic_distances;
 mod utils;
-pub mod diagonal;
 
-use pyo3::prelude::*;
 use ctrlc;
+use pyo3::prelude::*;
 
 #[pymodule]
 #[pyo3(name = "tsdistances")]
