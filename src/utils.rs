@@ -1,3 +1,5 @@
+use rustfft::{Fft, FftDirection, num_complex::Complex, algorithm::Radix4};
+
 pub fn derivate(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let mut x_d = Vec::with_capacity(x.len());
     for i in 0..x.len() {
@@ -30,4 +32,45 @@ pub fn msm_cost_function(x_i: f64, x_i_1: f64, y_j: f64) -> f64 {
     } else {
         MSM_C + (x_i - x_i_1).abs().min((x_i - y_j).abs())
     }
+}
+
+pub fn cross_correlation(a: &[f64], b: &[f64]) -> Vec<f64> {
+    // zero-pad the input signals a and b (add zeros to the end of each. The zero padding should fill the vectors until they reach a size of at least N = size(a)+size(b)-1
+    let fft_len = (a.len() + b.len() -1).next_power_of_two();
+    let fft = Radix4::new(fft_len, FftDirection::Forward);
+
+    let mut a_fft = vec![Complex::new(0.0, 0.0); fft_len];
+    let mut b_fft = vec![Complex::new(0.0, 0.0); fft_len];
+    for (i, val) in a.iter().enumerate() {
+        a_fft[i] = Complex::new(*val, 0.0);
+    }
+    for (i, val) in b.iter().enumerate() {
+        b_fft[i] = Complex::new(*val, 0.0);
+    }
+
+    fft.process(&mut a_fft);
+    fft.process(&mut b_fft);
+
+    let mut c_fft = vec![Complex::new(0.0, 0.0); fft_len];
+    for i in 0..fft_len {
+        c_fft[i] = a_fft[i].conj() * b_fft[i];
+    }
+
+    let mut c = vec![0.0; fft_len];
+    let ifft = Radix4::new(fft_len, FftDirection::Inverse);
+    ifft.process(&mut c_fft);
+    for i in 0..fft_len {
+        c[i] = c_fft[i].re / fft_len as f64;
+    }
+    c
+}
+
+pub fn zscore(x: &[f64]) -> Vec<f64> {
+    let mean = x.iter().sum::<f64>() / x.len() as f64;
+    let std = x.iter().map(|val| (val - mean).powi(2)).sum::<f64>().sqrt();
+    x.iter().map(|val| (val - mean) / std).collect()
+}
+
+pub fn l2_norm(x: &[f64]) -> f64 {
+    x.iter().map(|val| val.powi(2)).sum::<f64>().sqrt()
 }

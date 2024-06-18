@@ -43,5 +43,3 @@ if __name__ == "__main__":
         print(f'Average time for tsdistances: {np.mean(tsdistances_time)}')
         print(f'Average time for sktime: {np.mean(sktime_time)}')
         assert np.allclose(tsdistances_v, sktime_v), 'Results are not the same'
-
-        exit(0)

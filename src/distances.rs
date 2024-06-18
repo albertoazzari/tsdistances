@@ -2,8 +2,7 @@
 use std::cmp::max;
 use pyo3::prelude::*;
 use rayon::prelude::*;
-
-use crate::{diagonal, utils::{derivate, dtw_weights, msm_cost_function}};
+use crate::{diagonal, utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore}};
 
 const MIN_CHUNK_SIZE: usize = 16;
 const CHUNKS_PER_THREAD: usize = 8;
@@ -730,6 +729,29 @@ pub fn adtw(
                 let dist = (a[i] - b[j]).powi(2);
                 dist + (z + w).min((x + w).min(y))
             })
+        },
+        x1,
+        x2,
+        n_jobs,
+    );
+    Ok(distance_matrix)
+}
+
+// k-Shape: Efficient and Accurate Clustering of Time Series - Paparrizos J. et al., 2015
+#[pyfunction]
+#[pyo3(signature = (x1, x2=None, n_jobs=-1))]
+pub fn sbd( 
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    n_jobs: i32,
+) -> PyResult<Vec<Vec<f64>>> {
+
+    let distance_matrix = compute_distance(
+        |a, b| {
+            let a = zscore(&a);
+            let b = zscore(&b);
+            let cc = cross_correlation(&a, &b);
+            1.0 - cc.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap() / (l2_norm(&a) * l2_norm(&b))
         },
         x1,
         x2,

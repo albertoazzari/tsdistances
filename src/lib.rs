@@ -22,5 +22,6 @@ fn py_module(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(distances::adtw, m)?)?;
     m.add_function(wrap_pyfunction!(distances::msm, m)?)?;
     m.add_function(wrap_pyfunction!(distances::twe, m)?)?;
+    m.add_function(wrap_pyfunction!(distances::sbd, m)?)?;
     Ok(())
 }
