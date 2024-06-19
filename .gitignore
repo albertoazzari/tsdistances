@@ -2,3 +2,4 @@ target/
 .venv/
 .vscode/
 *.csv
+*.py

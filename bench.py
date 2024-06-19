@@ -22,26 +22,27 @@ if __name__ == "__main__":
         tsdistances_v = []
         sktime_v = []
 
-        for i in range(100):
+        for i in range(10):
             print(f'Iteration {i + 1}')
-            idx_train = np.random.randint(0, train.shape[0])
-            idx_test = np.random.randint(0, test.shape[0])
-            ts1 = train[idx_train, 1:]
-            ts2 = test[idx_test, 1:]
+            data = np.vstack((train, test))
+            # idx_train = np.random.randint(0, train.shape[0])
+            # idx_test = np.random.randint(0, test.shape[0])
+            # ts1 = train[idx_train, 1:]
+            # ts2 = test[idx_test, 1:]
 
             start_tsdistances = time.time()
-            tsdistances_v.append(tsdistances.dtw([ts1], [ts2], n_jobs=1)[0][0])
+            tsdistances_v.append(tsdistances.dtw(data, n_jobs=-1))
             end_tsdistances = time.time()
             tsdistances_time.append(end_tsdistances - start_tsdistances)
 
             start_sktime = time.time()
-            sktime_v.append(dtw.distance_fast(ts1, ts2))
+            sktime_v.append(dtw.distance_matrix_fast(data))
             end_sktime = time.time()
             sktime_time.append(end_sktime - start_sktime)
             # assert tsdistances_v[-1] == sktime_v[-1], f'Results are not the same\n{tsdistances_v[-1]}\n{sktime_v[-1]}'
 
         print(f'Average time for tsdistances: {np.mean(tsdistances_time)}')
         print(f'Average time for sktime: {np.mean(sktime_time)}')
-        assert np.allclose(tsdistances_v, [x**2 for x in sktime_v]), 'Results are not the same'
+        assert np.allclose(tsdistances_v[0], [x**2 for x in sktime_v[0]]), 'Results are not the same'
         
         exit(1)

@@ -31,7 +31,7 @@ x2 = [
 ]
 
 # Compute DTW distance
-result = tsdistances.dtw(x1, x2, band=1.0, cached=False, n_jobs=4)
+result = tsdistances.dtw(x1, x2, n_jobs=4)
 print(result)
 ```
 
