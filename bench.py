@@ -1,5 +1,6 @@
 import tsdistances
 from sktime.distances import euclidean_distance
+from dtaidistance import dtw
 import pathlib
 import pandas as pd
 import time
@@ -29,17 +30,18 @@ if __name__ == "__main__":
             ts2 = test[idx_test, 1:]
 
             start_tsdistances = time.time()
-            tsdistances_v.append(tsdistances.euclidean([ts1], [ts2], n_jobs=1)[0][0])
+            tsdistances_v.append(tsdistances.dtw([ts1], [ts2], n_jobs=1)[0][0])
             end_tsdistances = time.time()
             tsdistances_time.append(end_tsdistances - start_tsdistances)
 
             start_sktime = time.time()
-            sktime_v.append(euclidean_distance(ts1, ts2))
+            sktime_v.append(dtw.distance_fast(ts1, ts2))
             end_sktime = time.time()
             sktime_time.append(end_sktime - start_sktime)
-
             # assert tsdistances_v[-1] == sktime_v[-1], f'Results are not the same\n{tsdistances_v[-1]}\n{sktime_v[-1]}'
 
         print(f'Average time for tsdistances: {np.mean(tsdistances_time)}')
         print(f'Average time for sktime: {np.mean(sktime_time)}')
-        assert np.allclose(tsdistances_v, sktime_v), 'Results are not the same'
+        assert np.allclose(tsdistances_v, [x**2 for x in sktime_v]), 'Results are not the same'
+        
+        exit(1)
