@@ -3,6 +3,7 @@ name = "tsdistances"
 version = "0.1.0"
 edition = "2021"
 
+
 [dependencies]
 ctrlc = "3.4.4"
 dashmap = "5.5.3"
@@ -13,5 +14,12 @@ rand = "0.8.5"
 rayon = "1.10.0"
 rustfft = "6.2.0"
 
-[profile.release]
+[lib]
+crate-type = ["cdylib"]
+path = "tsdistances/core/lib.rs"
+
+[profile.dev]
 debug = true
+
+[profile.release]
+debug = false
