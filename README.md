@@ -19,7 +19,7 @@ $ maturin develop --release
 
 
 ### PIP
-If you use pip, you can install tsdistances with:
+If you use pip, you can install `tsdistances` with:
 ```
 pip install tsdistances
 ```
