@@ -4,6 +4,8 @@
 
 ## Installation
 
+### Source
+
 You can install `tsdistances` from source:
 
 ```bash
@@ -14,6 +16,14 @@ $ source .venv/bin/activate
 $ pip install maturin
 $ maturin develop --release
 ```
+
+
+### PIP
+If you use pip, you can install tsdistances with:
+```
+pip install tsdistances
+```
+
 
 ## Usage
 ```python
