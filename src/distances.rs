@@ -175,46 +175,6 @@ pub fn dtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-/// Computes the pairwise Derivative Dynamic Time Warping (DDTW) distance between two sets of timeseries.
-///
-/// Given two sets of timeseries `x1` and `x2`, this function computes the DDTW distance
-/// between each pair of timeseries (one from each set). The computation is parallelized across
-/// multiple threads to improve performance. The number of threads used can be controlled
-/// via the `n_jobs` parameter.
-///
-/// # Parameters
-/// - `x1` (Vec<Vec<f64>>): The first set of timeseries with shape (n, m) where `n` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `x2` (Vec<Vec<f64>>): The second set of timeseries with shape (k, m) where `k` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `band` (f64): The Sakoe-Chiba band width, used to constrain the warping window.
-/// - `cached` (bool): Whether to use cached computations if available. This can be used to speed up
-///   repeated distance calculations with the same input data.
-/// - `n_jobs` (i32): The number of threads to use for parallel computation. If set to `-1`,
-///   all available CPU cores will be used.
-///
-/// # Returns
-/// Vec<Vec<f64>>: A matrix of shape (n, k) where each element [i][j] represents the DDTW distance
-/// between the i-th timeseries of `x1` and the j-th timeseries of `x2`.
-///
-/// # Examples
-/// ```python
-/// import tsdistances
-///
-/// x1 = [
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0]
-/// ]
-///
-/// x2 = [
-///     [7.0, 8.0, 9.0],
-///     [10.0, 11.0, 12.0]
-/// ]
-///
-/// # Calculate the distances using a band of 0.5 and 4 threads
-/// result = tsdistances.ddtw(x1, x2, band=0.5, cached=False, n_jobs=4)
-/// print(result)  # Output: [[0.0, 0.0], [0.0, 0.0]]
-/// ```
 pub fn ddtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -231,46 +191,6 @@ pub fn ddtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, g=0.0, n_jobs=-1))]
-/// Computes the pairwise Weighted Dynamic Time Warping (WDTW) distance between two sets of timeseries.
-///
-/// Given two sets of timeseries `x1` and `x2`, this function computes the WDTW distance
-/// between each pair of timeseries (one from each set). The computation is parallelized across
-/// multiple threads to improve performance. The number of threads used can be controlled
-/// via the `n_jobs` parameter.
-///
-/// # Parameters
-/// - `x1` (Vec<Vec<f64>>): The first set of timeseries with shape (n, m) where `n` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `x2` (Vec<Vec<f64>>): The second set of timeseries with shape (k, m) where `k` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `band` (f64): The Sakoe-Chiba band width, used to constrain the warping window.
-/// - `cached` (bool): Whether to use cached computations if available. This can be used to speed up
-///   repeated distance calculations with the same input data.
-/// - `n_jobs` (i32): The number of threads to use for parallel computation. If set to `-1`,
-///   all available CPU cores will be used.
-///
-/// # Returns
-/// Vec<Vec<f64>>: A matrix of shape (n, k) where each element [i][j] represents the WDTW distance
-/// between the i-th timeseries of `x1` and the j-th timeseries of `x2`.
-///
-/// # Examples
-/// ```python
-/// import tsdistances
-///
-/// x1 = [
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0]
-/// ]
-///
-/// x2 = [
-///     [7.0, 8.0, 9.0],
-///     [10.0, 11.0, 12.0]
-/// ]
-///
-/// # Calculate the distances using a band of 1.0 and 4 threads
-/// result = tsdistances.wdtw(x1, x2, band=1.0, cached=False, n_jobs=4)
-/// print(result)  # Output: [[51.9759, 116.9458], [12.6126, 51.9759]]
-/// ```
 pub fn wdtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -294,46 +214,6 @@ pub fn wdtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, g=0.0, n_jobs=-1))]
-/// Computes the pairwise Weighted Derivative Dynamic Time Warping (WDDTW) distance between two sets of timeseries.
-///
-/// Given two sets of timeseries `x1` and `x2`, this function computes the WDDTW distance
-/// between each pair of timeseries (one from each set). The computation is parallelized across
-/// multiple threads to improve performance. The number of threads used can be controlled
-/// via the `n_jobs` parameter.
-///
-/// # Parameters
-/// - `x1` (Vec<Vec<f64>>): The first set of timeseries with shape (n, m) where `n` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `x2` (Vec<Vec<f64>>): The second set of timeseries with shape (k, m) where `k` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `band` (f64): The Sakoe-Chiba band width, used to constrain the warping window.
-/// - `cached` (bool): Whether to use cached computations if available. This can be used to speed up
-///   repeated distance calculations with the same input data.
-/// - `n_jobs` (i32): The number of threads to use for parallel computation. If set to `-1`,
-///   all available CPU cores will be used.
-///
-/// # Returns
-/// Vec<Vec<f64>>: A matrix of shape (n, k) where each element [i][j] represents the WDDTW distance
-/// between the i-th timeseries of `x1` and the j-th timeseries of `x2`.
-///
-/// # Examples
-/// ```python
-/// import tsdistances
-///
-/// x1 = [
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0]
-/// ]
-///
-/// x2 = [
-///     [7.0, 8.0, 9.0],
-///     [10.0, 11.0, 12.0]
-/// ]
-///
-/// # Calculate the distances using a band of 0.5 and 4 threads
-/// result = tsdistances.wddtw(x1, x2, band=1.0, cached=False, n_jobs=4)
-/// print(result)  # Output: [[0.0, 0.0], [0.0, 0.0]]
-/// ```
 pub fn wddtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -351,46 +231,6 @@ pub fn wddtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-/// Computes the pairwise Move-Split-Merge (MSM) distance between two sets of timeseries.
-///
-/// Given two sets of timeseries `x1` and `x2`, this function computes the MSM distance
-/// between each pair of timeseries (one from each set). The computation is parallelized across
-/// multiple threads to improve performance. The number of threads used can be controlled
-/// via the `n_jobs` parameter.
-///
-/// # Parameters
-/// - `x1` (Vec<Vec<f64>>): The first set of timeseries with shape (n, m) where `n` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `x2` (Vec<Vec<f64>>): The second set of timeseries with shape (k, m) where `k` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `band` (f64): The Sakoe-Chiba band width, used to constrain the warping window.
-/// - `cached` (bool): Whether to use cached computations if available. This can be used to speed up
-///   repeated distance calculations with the same input data.
-/// - `n_jobs` (i32): The number of threads to use for parallel computation. If set to `-1`,
-///   all available CPU cores will be used.
-///
-/// # Returns
-/// Vec<Vec<f64>>: A matrix of shape (n, k) where each element [i][j] represents the MSM distance
-/// between the i-th timeseries of `x1` and the j-th timeseries of `x2`.
-///
-/// # Examples
-/// ```python
-/// import tsdistances
-///
-/// x1 = [
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0]
-/// ]
-///
-/// x2 = [
-///     [7.0, 8.0, 9.0],
-///     [10.0, 11.0, 12.0]
-/// ]
-///
-/// # Calculate the distances using a band of 1.0 and 4 threads
-/// result = tsdistances.msm(x1, x2, band=1.0, cached=False, n_jobs=4)
-/// print(result)  # Output: [[12.0, 15.0], [8.0, 12.0]]
-/// ```
 pub fn msm(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -413,48 +253,6 @@ pub fn msm(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, stiffness=0.001, penalty=1.0, n_jobs=-1))]
-/// Computes the pairwise Time Warp Edit (TWE) distance between two sets of timeseries.
-///
-/// Given two sets of timeseries `x1` and `x2`, this function computes the TWE distance
-/// between each pair of timeseries (one from each set). The computation is parallelized across
-/// multiple threads to improve performance. The number of threads used can be controlled
-/// via the `n_jobs` parameter.
-///
-/// # Parameters
-/// - `x1` (Vec<Vec<f64>>): The first set of timeseries with shape (n, m) where `n` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `x2` (Vec<Vec<f64>>): The second set of timeseries with shape (k, m) where `k` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `stiffness` (f64): The stiffness parameter for TWE.
-/// - `penalty` (f64): The penalty for time gaps.
-/// - `band` (f64): The Sakoe-Chiba band width, used to constrain the warping window.
-/// - `cached` (bool): Whether to use cached computations if available. This can be used to speed up
-///   repeated distance calculations with the same input data.
-/// - `n_jobs` (i32): The number of threads to use for parallel computation. If set to `-1`,
-///   all available CPU cores will be used.
-///
-/// # Returns
-/// Vec<Vec<f64>>: A matrix of shape (n, k) where each element [i][j] represents the TWE distance
-/// between the i-th timeseries of `x1` and the j-th timeseries of `x2`.
-///
-/// # Examples
-/// ```python
-/// import tsdistances
-///
-/// x1 = [
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0]
-/// ]
-///
-/// x2 = [
-///     [7.0, 8.0, 9.0],
-///     [10.0, 11.0, 12.0]
-/// ]
-///
-/// # Calculate the distances using stiffness of 1.0, penalty of 0.5, and 4 threads
-/// result = tsdistances.twe(x1, x2, stiffness=1.0, penalty=0.5, band=1.0, cached=False, n_jobs=4)
-/// print(result)  # Output: [[30.0, 45.0], [15.0, 30.0]]
-/// ```
 pub fn twe(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -506,47 +304,6 @@ pub fn twe(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, w=0.1, n_jobs=-1))]
-/// Computes the pairwise Amercing Dynamic Time Warping (ADTW) distance between two sets of timeseries.
-///
-/// Given two sets of timeseries `x1` and `x2`, this function computes the ADTW distance
-/// between each pair of timeseries (one from each set). The computation is parallelized across
-/// multiple threads to improve performance. The number of threads used can be controlled
-/// via the `n_jobs` parameter.
-///
-/// # Parameters
-/// - `x1` (Vec<Vec<f64>>): The first set of timeseries with shape (n, m) where `n` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `x2` (Vec<Vec<f64>>): The second set of timeseries with shape (k, m) where `k` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `w` (f64): The weight used in the ADTW computation.
-/// - `band` (f64): The Sakoe-Chiba band width, used to constrain the warping window.
-/// - `cached` (bool): Whether to use cached computations if available. This can be used to speed up
-///   repeated distance calculations with the same input data.
-/// - `n_jobs` (i32): The number of threads to use for parallel computation. If set to `-1`,
-///   all available CPU cores will be used.
-///
-/// # Returns
-/// Vec<Vec<f64>>: A matrix of shape (n, k) where each element [i][j] represents the ADTW distance
-/// between the i-th timeseries of `x1` and the j-th timeseries of `x2`.
-///
-/// # Examples
-/// ```python
-/// import tsdistances
-///
-/// x1 = [
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0]
-/// ]
-///
-/// x2 = [
-///     [7.0, 8.0, 9.0],
-///     [10.0, 11.0, 12.0]
-/// ]
-///
-/// # Calculate the distances using a weight of 0.5, a band of 1.0, and 4 threads
-/// result = tsdistances.adtw(x1, x2, w=0.5, band=1.0, cached=False, n_jobs=4)
-/// print(result)  # Output: [[108.0, 243.0], [27.0, 108.0]]
-/// ```
 pub fn adtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -572,7 +329,6 @@ pub fn adtw(
     Ok(distance_matrix)
 }
 
-// k-Shape: Efficient and Accurate Clustering of Time Series - Paparrizos J. et al., 2015
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
 pub fn sbd( 
