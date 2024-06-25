@@ -16,7 +16,7 @@ rustfft = "6.2.0"
 
 [lib]
 crate-type = ["cdylib"]
-path = "tsdistances/core/lib.rs"
+name = "tsdistances"
 
 [profile.dev]
 debug = true

@@ -74,49 +74,6 @@ fn compute_distance(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-/// Computes the pairwise Euclidean distances between two sets of timeseries.
-///
-/// Given two sets of timeseries `x1` and `x2`, this function computes the Euclidean distance
-/// between each pair of timeseries (one from each set). The computation is parallelized across
-/// multiple threads to improve performance. The number of threads used can be controlled
-/// via the `n_jobs` parameter.
-///
-/// # Parameters
-/// - `x1` (Vec<Vec<f64>>): The first set of timeseries with shape (n, m) where `n` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `x2` (Vec<Vec<f64>>): The second set of timeseries with shape (k, m) where `k` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `cached` (bool): Whether to use cached computations if available. This can be used to speed up
-///   repeated distance calculations with the same input data.
-/// - `n_jobs` (i32): The number of threads to use for parallel computation. If set to `-1`,
-///   all available CPU cores will be used.
-///
-/// # Returns
-/// Vec<Vec<f64>>: A matrix of shape (n, k) where each element [i][j] represents the Euclidean
-/// distance between the i-th timeseries of `x1` and the j-th timeseries of `x2`.
-///
-/// # Examples
-/// ```python
-/// import tsdistances
-///
-/// x1 = [
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0]
-/// ]
-///
-/// x2 = [
-///     [7.0, 8.0, 9.0],
-///     [10.0, 11.0, 12.0]
-/// ]
-///
-/// # Calculate the distances using 4 threads
-/// result = tsdistances.euclidean(x1, x2, cached=False, n_jobs=4)
-/// print(result)  # Output: [[10.392304845413264, 15.588457268119896], [5.196152422706632, 10.392304845413264]]
-/// ```
-///
-/// # Notes
-/// - The function uses a mutex and condition variable to manage thread synchronization.
-/// - The computation splits the input data into chunks to balance the load across the available threads.
 pub fn euclidean(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -137,47 +94,6 @@ pub fn euclidean(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, gap_penalty=0.0, n_jobs=-1))]
-/// Computes the pairwise Edit Distance with Real Penalty (ERP) between two sets of timeseries.
-///
-/// Given two sets of timeseries `x1` and `x2`, this function computes the ERP distance
-/// between each pair of timeseries (one from each set). The computation is parallelized across
-/// multiple threads to improve performance. The number of threads used can be controlled
-/// via the `n_jobs` parameter.
-///
-/// # Parameters
-/// - `x1` (Vec<Vec<f64>>): The first set of timeseries with shape (n, m) where `n` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `x2` (Vec<Vec<f64>>): The second set of timeseries with shape (k, m) where `k` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `gap_penalty` (f64): The gap penalty to use in the ERP calculation.
-/// - `band` (f64): The Sakoe-Chiba band width, used to constrain the warping window.
-/// - `cached` (bool): Whether to use cached computations if available. This can be used to speed up
-///   repeated distance calculations with the same input data.
-/// - `n_jobs` (i32): The number of threads to use for parallel computation. If set to `-1`,
-///   all available CPU cores will be used.
-///
-/// # Returns
-/// Vec<Vec<f64>>: A matrix of shape (n, k) where each element [i][j] represents the ERP distance
-/// between the i-th timeseries of `x1` and the j-th timeseries of `x2`.
-///
-/// # Examples
-/// ```python
-/// import tsdistances
-///
-/// x1 = [
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0]
-/// ]
-///
-/// x2 = [
-///     [7.0, 8.0, 9.0],
-///     [10.0, 11.0, 12.0]
-/// ]
-///
-/// # Calculate the distances using a gap penalty of 1.0 and 4 threads
-/// result = tsdistances.erp(x1, x2, gap_penalty=1.0, band=1.0, cached=False, n_jobs=4)
-/// print(result)  # Output: [[18.0, 27.0], [9.0, 18.0]]
-/// ```
 pub fn erp(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -205,47 +121,6 @@ pub fn erp(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, epsilon=1.0, n_jobs=-1))]
-/// Computes the pairwise Longest Common Subsequence (LCSS) distance between two sets of timeseries.
-///
-/// Given two sets of timeseries `x1` and `x2`, this function computes the LCSS distance
-/// between each pair of timeseries (one from each set). The computation is parallelized across
-/// multiple threads to improve performance. The number of threads used can be controlled
-/// via the `n_jobs` parameter.
-///
-/// # Parameters
-/// - `x1` (Vec<Vec<f64>>): The first set of timeseries with shape (n, m) where `n` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `x2` (Vec<Vec<f64>>): The second set of timeseries with shape (k, m) where `k` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `epsilon` (f64): The maximum distance between matching points in the LCSS calculation.
-/// - `band` (f64): The Sakoe-Chiba band width, used to constrain the warping window.
-/// - `cached` (bool): Whether to use cached computations if available. This can be used to speed up
-///   repeated distance calculations with the same input data.
-/// - `n_jobs` (i32): The number of threads to use for parallel computation. If set to `-1`,
-///   all available CPU cores will be used.
-///
-/// # Returns
-/// Vec<Vec<f64>>: A matrix of shape (n, k) where each element [i][j] represents the LCSS distance
-/// between the i-th timeseries of `x1` and the j-th timeseries of `x2`.
-///
-/// # Examples
-/// ```python
-/// import tsdistances
-///
-/// x1 = [
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0]
-/// ]
-///
-/// x2 = [
-///     [7.0, 8.0, 9.0],
-///     [10.0, 11.0, 12.0]
-/// ]
-///
-/// # Calculate the distances using epsilon of 0.5 and 4 threads
-/// result = tsdistances.lcss(x1, x2, epsilon=2.5, band=1.0, cached=False, n_jobs=4)
-/// print(result)  # Output: [[0.6666, 0.6666], [0.3333, 0.6666]]
-/// ```
 pub fn lcss(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -279,46 +154,6 @@ pub fn lcss(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-/// Computes the pairwise Dynamic Time Warping (DTW) distance between two sets of timeseries.
-///
-/// Given two sets of timeseries `x1` and `x2`, this function computes the DTW distance
-/// between each pair of timeseries (one from each set). The computation is parallelized across
-/// multiple threads to improve performance. The number of threads used can be controlled
-/// via the `n_jobs` parameter.
-///
-/// # Parameters
-/// - `x1` (Vec<Vec<f64>>): The first set of timeseries with shape (n, m) where `n` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `x2` (Vec<Vec<f64>>): The second set of timeseries with shape (k, m) where `k` is the number
-///   of timeseries and `m` is the length of each timeseries.
-/// - `band` (f64): The Sakoe-Chiba band width, used to constrain the warping window.
-/// - `cached` (bool): Whether to use cached computations if available. This can be used to speed up
-///   repeated distance calculations with the same input data.
-/// - `n_jobs` (i32): The number of threads to use for parallel computation. If set to `-1`,
-///   all available CPU cores will be used.
-///
-/// # Returns
-/// Vec<Vec<f64>>: A matrix of shape (n, k) where each element [i][j] represents the DTW distance
-/// between the i-th timeseries of `x1` and the j-th timeseries of `x2`.
-///
-/// # Examples
-/// ```python
-/// import tsdistances
-///
-/// x1 = [
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0]
-/// ]
-///
-/// x2 = [
-///     [7.0, 8.0, 9.0],
-///     [10.0, 11.0, 12.0]
-/// ]
-///
-/// # Calculate the distances using a band of 1.0 and 4 threads
-/// result = tsdistances.dtw(x1, x2, band=0.5, cached=False, n_jobs=4)
-/// print(result)  # Output: [[108.0, 243.0], [26.0, 108.0]]
-/// ```
 pub fn dtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
