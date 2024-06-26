@@ -1,4 +1,4 @@
-from .tsdistances import *
+from tsdistances import tsdistances as tsd
 import numpy as np
 
 def euclidean_distance(u, v=None, n_jobs=1):
@@ -41,7 +41,7 @@ def euclidean_distance(u, v=None, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return euclidean(u, None, n_jobs)
+        return tsd.euclidean(u, None, n_jobs)
 
     v = np.asarray(v)
 
@@ -51,11 +51,11 @@ def euclidean_distance(u, v=None, n_jobs=1):
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return euclidean([u], [v], n_jobs)[0][0]
+        return tsd.euclidean([u], [v], n_jobs)[0][0]
 
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return euclidean(u, v, n_jobs)
+        return tsd.euclidean(u, v, n_jobs)
 
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
@@ -103,17 +103,17 @@ def erp_distance(u, v=None, gap_penalty=0.0, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return erp(u, None, gap_penalty, n_jobs)
+        return tsd.erp(u, None, gap_penalty, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return erp([u], [v], gap_penalty, n_jobs)[0][0]
+        return tsd.erp([u], [v], gap_penalty, n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return erp(u, v, gap_penalty, n_jobs)
+        return tsd.erp(u, v, gap_penalty, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
@@ -157,17 +157,17 @@ def lcss_distance(u, v=None, epsilon=1.0, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return lcss(u, None, epsilon, n_jobs)
+        return tsd.lcss(u, None, epsilon, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return lcss([u], [v], epsilon, n_jobs)[0][0]
+        return tsd.lcss([u], [v], epsilon, n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return lcss(u, v, epsilon, n_jobs)
+        return tsd.lcss(u, v, epsilon, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
@@ -211,17 +211,17 @@ def dtw_distance(u, v=None, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return dtw(u, None, n_jobs)
+        return tsd.dtw(u, None, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return dtw([u], [v], n_jobs)[0][0]
+        return tsd.dtw([u], [v], n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return dtw(u, v, n_jobs)
+        return tsd.dtw(u, v, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
@@ -266,17 +266,17 @@ def ddtw_distance(u, v=None, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return ddtw(u, None, n_jobs)
+        return tsd.ddtw(u, None, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return ddtw([u], [v], n_jobs)[0][0]
+        return tsd.ddtw([u], [v], n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return ddtw(u, v, n_jobs)
+        return tsd.ddtw(u, v, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
@@ -321,17 +321,17 @@ def wdtw_distance(u, v=None, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return wdtw(u, None, n_jobs)
+        return tsd.wdtw(u, None, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return wdtw([u], [v], n_jobs)[0][0]
+        return tsd.wdtw([u], [v], n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return wdtw(u, v, n_jobs)
+        return tsd.wdtw(u, v, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
@@ -374,17 +374,17 @@ def wddtw_distance(u, v=None, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return wddtw(u, None, n_jobs)
+        return tsd.wddtw(u, None, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return wddtw([u], [v], n_jobs)[0][0]
+        return tsd.wddtw([u], [v], n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return wddtw(u, v, n_jobs)
+        return tsd.wddtw(u, v, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
@@ -431,17 +431,17 @@ def adtw_distance(u, v=None, w=0.1, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return adtw(u, None, w, n_jobs)
+        return tsd.adtw(u, None, w, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return adtw([u], [v], w, n_jobs)[0][0]
+        return tsd.adtw([u], [v], w, n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return adtw(u, v, w, n_jobs)
+        return tsd.adtw(u, v, w, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
@@ -485,17 +485,17 @@ def msm_distance(u, v=None, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return msm(u, None, n_jobs)
+        return tsd.msm(u, None, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return msm([u], [v], n_jobs)[0][0]
+        return tsd.msm([u], [v], n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return msm(u, v, n_jobs)
+        return tsd.msm(u, v, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
@@ -515,6 +515,10 @@ def twe_distance(u, v=None, stifness=0.001, penalty=1.0, n_jobs=1):
     v : (N,) array_like or (M, N), optional
     Input array. If provided, `v` should have the same shape as `u`.
     If `v` is None, pairwise distances within `u` are computed.
+    stifness : double, optional
+    Elasticity parameter (default is 0.001).
+    penalty : double, optional
+    Penalty for gap insertion/deletion (default is 1.0).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
     
@@ -539,17 +543,17 @@ def twe_distance(u, v=None, stifness=0.001, penalty=1.0, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return twe(u, None, stifness, penalty, n_jobs)
+        return tsd.twe(u, None, stifness, penalty, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return twe([u], [v], stifness, penalty, n_jobs)[0][0]
+        return tsd.twe([u], [v], stifness, penalty, n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return twe(u, v, stifness, penalty, n_jobs)
+        return tsd.twe(u, v, stifness, penalty, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
@@ -593,17 +597,17 @@ def sb_distance(u, v=None, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return sbd(u, None, n_jobs)
+        return tsd.sbd(u, None, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return sbd([u], [v], n_jobs)[0][0]
+        return tsd.sbd([u], [v], n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return sbd(u, v, n_jobs)
+        return tsd.sbd(u, v, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")

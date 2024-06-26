@@ -135,7 +135,7 @@ pub fn lcss(
     let distance_matrix = compute_distance(
         |a, b| {
             let similarity = diagonal::diagonal_distance(a, b, 0.0, |i, j, x, y, z| {
-                let dist = (a.get(i - 1).copied().unwrap_or(0.0) - b.get(j - 1).copied().unwrap_or(0.0)).abs();
+                let dist = (a[i] - b[j]).abs();
                 if dist <= epsilon {
                     y + 1.0
                 } else {
@@ -143,7 +143,7 @@ pub fn lcss(
                 }
             });
             let min_len = a.len().min(b.len()) as f64;
-            (min_len - similarity) / min_len
+            1.0 - similarity / min_len
         },
         x1,
         x2,
@@ -190,7 +190,7 @@ pub fn ddtw(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, g=0.0, n_jobs=-1))]
+#[pyo3(signature = (x1, x2=None, g=0.05, n_jobs=-1))]
 pub fn wdtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -213,7 +213,7 @@ pub fn wdtw(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, g=0.0, n_jobs=-1))]
+#[pyo3(signature = (x1, x2=None, g=0.05, n_jobs=-1))]
 pub fn wddtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
@@ -275,24 +275,21 @@ pub fn twe(
     let distance_matrix = compute_distance(
         |a, b| {
             diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
-                // deletion in x1
-                let deletion_x1_euclidean_dist = (a.get(i - 1).copied().unwrap_or(0.0) - b[i]).abs();
-                let del_x1: f64 = z + deletion_x1_euclidean_dist + delete_addition;
+                // deletion in a
+                let del_a: f64 = z + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs() + delete_addition;
 
-                // deletion in x2
-                let deletion_x2_euclidean_dist = (a.get(j - 1).copied().unwrap_or(0.0) - b[j]).abs();
-                let del_x2 = x + deletion_x2_euclidean_dist + delete_addition;
+                // deletion in b
+                let del_b = x + (b.get(j - 1).copied().unwrap_or(0.0) - b[j]).abs() + delete_addition;
 
                 // match
-                let match_same_euclid_dist = (a[i] - b[j]).abs();
-                let match_previous_euclid_dist = (a.get(i - 1).copied().unwrap_or(0.0) - b.get(j - 1).copied().unwrap_or(0.0)).abs();
+                let match_current = (a[i] - b[j]).abs();
+                let match_previous = (a.get(i - 1).copied().unwrap_or(0.0) - b.get(j - 1).copied().unwrap_or(0.0)).abs();
+                let match_a_b = y
+                    + match_current
+                    + match_previous
+                    + stiffness*2.0;//(stiffness * (2.0 * (i as isize - j as isize).abs() as f64));
 
-                let match_x1_x2 = y
-                    + match_same_euclid_dist
-                    + match_previous_euclid_dist
-                    + (stiffness * (2.0 * (i as isize - j as isize).abs() as f64));
-
-                del_x1.min(del_x2.min(match_x1_x2))
+                del_a.min(del_b.min(match_a_b))
             })
         },
         x1,
