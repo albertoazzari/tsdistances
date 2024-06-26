@@ -3,14 +3,14 @@ use rustfft::{Fft, FftDirection, num_complex::Complex, algorithm::Radix4};
 pub fn derivate(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let mut x_d = Vec::with_capacity(x.len());
     for i in 0..x.len() {
-        x_d.push(vec![0.0; x[i].len()]);
+        x_d.push(vec![0.0; x[i].len()-2]);
     }
     for i in 0..x.len() {
-        for j in 1..x[i].len() - 1 {
-            x_d[i][j] = ((x[i][j] - x[i][j - 1]) + (x[i][j + 1] - x[i][j - 1]) / 2.0) / 2.0;
+        for j in 1..x[i].len()-1 {
+            x_d[i][j-1] = ((x[i][j] - x[i][j - 1]) + (x[i][j + 1] - x[i][j - 1]) / 2.0) / 2.0;
         }
-        x_d[i][0] = x_d[i][1];
-        x_d[i][x[i].len() - 1] = x_d[i][x[i].len() - 2];
+        // x_d[i][0] = x_d[i][1];
+        // x_d[i][x[i].len() - 1] = x_d[i][x[i].len() - 2];
     }
     x_d
 }

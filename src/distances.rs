@@ -287,7 +287,7 @@ pub fn twe(
                 let match_a_b = y
                     + match_current
                     + match_previous
-                    + stiffness*2.0;//(stiffness * (2.0 * (i as isize - j as isize).abs() as f64));
+                    + stiffness*(2.0 * (i as isize - j as isize).abs() as f64);
 
                 del_a.min(del_b.min(match_a_b))
             })
@@ -300,14 +300,14 @@ pub fn twe(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, w=0.1, n_jobs=-1))]
+#[pyo3(signature = (x1, x2=None, warp_penalty=0.1, n_jobs=-1))]
 pub fn adtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    w: f64,
+    warp_penalty: f64,
     n_jobs: i32,
 ) -> PyResult<Vec<Vec<f64>>> {
-    if w < 0.0 {
+    if warp_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Weight must be non-negative",
         ));
@@ -316,7 +316,7 @@ pub fn adtw(
         |a, b| {
             diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
                 let dist = (a[i] - b[j]).powi(2);
-                dist + (z + w).min((x + w).min(y))
+                dist + (z + warp_penalty).min((x + warp_penalty).min(y))
             })
         },
         x1,

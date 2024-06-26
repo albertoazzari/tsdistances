@@ -281,7 +281,7 @@ def ddtw_distance(u, v=None, n_jobs=1):
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
 
-def wdtw_distance(u, v=None, n_jobs=1):
+def wdtw_distance(u, v=None, g=0.05, n_jobs=1):
     """
     Computes the Weighted Dynamic Time Warping (WDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise WDTW distances within `u`.
@@ -321,22 +321,22 @@ def wdtw_distance(u, v=None, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.wdtw(u, None, n_jobs)
+        return tsd.wdtw(u, None, g, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return tsd.wdtw([u], [v], n_jobs)[0][0]
+        return tsd.wdtw([u], [v], g, n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return tsd.wdtw(u, v, n_jobs)
+        return tsd.wdtw(u, v, g, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
 
-def wddtw_distance(u, v=None, n_jobs=1):
+def wddtw_distance(u, v=None, g=0.05, n_jobs=1):
     """
     Computes the Weighted Derivative Dynamic Time Warping (WDDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise WDDTW distances within `u`.
@@ -374,22 +374,22 @@ def wddtw_distance(u, v=None, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.wddtw(u, None, n_jobs)
+        return tsd.wddtw(u, None, g, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return tsd.wddtw([u], [v], n_jobs)[0][0]
+        return tsd.wddtw([u], [v], g, n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return tsd.wddtw(u, v, n_jobs)
+        return tsd.wddtw(u, v, g, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
 
-def adtw_distance(u, v=None, w=0.1, n_jobs=1):
+def adtw_distance(u, v=None, warp_penalty=0.1, n_jobs=1):
     """
     Computes the Amercing Dynamic Time Warping (ADTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise ADTW distances within `u`.
@@ -431,17 +431,17 @@ def adtw_distance(u, v=None, w=0.1, n_jobs=1):
     if v is None:
         if u.ndim != 2:
             raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.adtw(u, None, w, n_jobs)
+        return tsd.adtw(u, None, warp_penalty, n_jobs)
     
     v = np.asarray(v)
 
     # If inputs are 1-D arrays, compute the distance directly
     if u.ndim == 1:
-        return tsd.adtw([u], [v], w, n_jobs)[0][0]
+        return tsd.adtw([u], [v], warp_penalty, n_jobs)[0][0]
     
     # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return tsd.adtw(u, v, w, n_jobs)
+        return tsd.adtw(u, v, warp_penalty, n_jobs)
     
     # Raise an error if inputs are neither 1-D nor 2-D
     raise ValueError("Inputs must be either 1-D or 2-D arrays.")
