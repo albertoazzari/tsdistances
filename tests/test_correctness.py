@@ -20,13 +20,13 @@ def load_random_ucr_dataset():
 
     return np.vstack((X_train, X_test)), np.hstack((y_train, y_test))
 
-class TestAllDistances(unittest.TestCase):
+class TestCorrectnessAllDistances(unittest.TestCase):
 
     X, y = load_random_ucr_dataset()
 
     def test_euclidean_distance(self):
         # Compute the pairwise distances
-        D = euclidean_distance(self.X, None, n_jobs=-1)
+        D = euclidean_distance(self.X, None, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
@@ -54,7 +54,7 @@ class TestAllDistances(unittest.TestCase):
 
     def test_erp_distance(self):
         # Compute the pairwise distances
-        D = erp_distance(self.X, None, gap_penalty=0.0, n_jobs=-1)
+        D = erp_distance(self.X, None, gap_penalty=0.0, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
@@ -82,7 +82,7 @@ class TestAllDistances(unittest.TestCase):
     
     def test_lcss_distance(self):
         # Compute the pairwise distances
-        D = lcss_distance(self.X, None, epsilon=0.1, n_jobs=-1)
+        D = lcss_distance(self.X, None, epsilon=0.1, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
@@ -110,7 +110,7 @@ class TestAllDistances(unittest.TestCase):
 
     def test_dtw_distance(self):
         # Compute the pairwise distances
-        D = dtw_distance(self.X, None, n_jobs=-1)
+        D = dtw_distance(self.X, None, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
@@ -138,7 +138,7 @@ class TestAllDistances(unittest.TestCase):
 
     def test_ddtw_distance(self):
         # Compute the pairwise distances
-        D = ddtw_distance(self.X, None, n_jobs=-1)
+        D = ddtw_distance(self.X, None, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
@@ -166,7 +166,7 @@ class TestAllDistances(unittest.TestCase):
 
     def test_wdtw_distance(self):
         # Compute the pairwise distances
-        D = wdtw_distance(self.X, None, g=0.05, n_jobs=-1)
+        D = wdtw_distance(self.X, None, g=0.05, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
@@ -194,7 +194,7 @@ class TestAllDistances(unittest.TestCase):
 
     def test_wddtw_distance(self):
         # Compute the pairwise distances
-        D = wddtw_distance(self.X, None, g=0.05, n_jobs=-1)
+        D = wddtw_distance(self.X, None, g=0.05, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
@@ -222,7 +222,7 @@ class TestAllDistances(unittest.TestCase):
 
     def test_adtw_distance(self):
         # Compute the pairwise distances
-        D = adtw_distance(self.X, None, warp_penalty=1.0, n_jobs=-1)
+        D = adtw_distance(self.X, None, warp_penalty=1.0, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
@@ -250,7 +250,7 @@ class TestAllDistances(unittest.TestCase):
 
     def test_msm_distance(self):
         # Compute the pairwise distances
-        D = msm_distance(self.X, None, n_jobs=-1)
+        D = msm_distance(self.X, None, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
@@ -279,7 +279,7 @@ class TestAllDistances(unittest.TestCase):
 
     def test_twe_distance(self):
         # Compute the pairwise distances
-        D = twe_distance(self.X, None, stifness=0.1, penalty=0.1, n_jobs=-1)
+        D = twe_distance(self.X, None, stifness=0.1, penalty=0.1, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
@@ -307,7 +307,7 @@ class TestAllDistances(unittest.TestCase):
 
     def test_sbd_distance(self):
         # Compute the pairwise distances
-        D = sb_distance(self.X, None, n_jobs=-1)
+        D = sb_distance(self.X, None, n_jobs=1)
 
         # Convert to numpy array
         D = np.array(D)
