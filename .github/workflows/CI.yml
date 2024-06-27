@@ -164,6 +164,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          MATURIN_USERNAME: __token__
         with:
           command: upload
-          args: -u __token__ --non-interactive --skip-existing wheels-*/*
+          args: --non-interactive --skip-existing wheels-*/*
