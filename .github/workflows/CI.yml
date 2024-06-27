@@ -165,6 +165,8 @@ jobs:
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
           MATURIN_USERNAME: __token__
+          MATURIN_REPOSITORY: testpypi
+          MATURIN_REPOSITORY_URL: https://test.pypi.org/legacy/
         with:
           command: upload
           args: --non-interactive --skip-existing wheels-*/*
