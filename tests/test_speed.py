@@ -10,7 +10,8 @@ UCR_ARCHIVE_PATH = "/media/aazzari/UCRArchive_2018/"
 
 def load_random_ucr_dataset():
     # Load the UCR dataset
-    dataset_name = np.random.choice(os.listdir(UCR_ARCHIVE_PATH))
+    # dataset_name = np.random.choice(os.listdir(UCR_ARCHIVE_PATH))
+    dataset_name = "TwoLeadECG"
     print(f"Using: {dataset_name}")
     dataset_path = os.path.join(UCR_ARCHIVE_PATH, dataset_name, dataset_name)
 
@@ -35,7 +36,7 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.euclidean_pairwise_distance(self.X)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
 
     def test_erp_distance(self):
         start_D = time.time()
@@ -46,7 +47,7 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.erp_pairwise_distance(self.X, g=0.05)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
     
     def test_lcss_distance(self):
         start_D = time.time()
@@ -57,7 +58,7 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.lcss_pairwise_distance(self.X, epsilon=0.1)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
 
     def test_dtw_distance(self):
         start_D = time.time()
@@ -68,7 +69,7 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.dtw_pairwise_distance(self.X)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
 
     def test_ddtw_distance(self):
         start_D = time.time()
@@ -79,7 +80,7 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.ddtw_pairwise_distance(self.X)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
 
     def test_wdtw_distance(self):
         start_D = time.time()
@@ -90,7 +91,7 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.wdtw_pairwise_distance(self.X, g=0.05)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
 
     def test_wddtw_distance(self):
         start_D = time.time()
@@ -101,7 +102,7 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.wddtw_pairwise_distance(self.X, g=0.05)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
 
     def test_adtw_distance(self):
         start_D = time.time()
@@ -112,7 +113,7 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.adtw_pairwise_distance(self.X, warp_penalty=1.0)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
 
     def test_msm_distance(self):
         start_D = time.time()
@@ -123,7 +124,7 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.msm_pairwise_distance(self.X)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
 
 
     def test_twe_distance(self):
@@ -135,7 +136,7 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.twe_pairwise_distance(self.X, nu=0.1, lmbda=0.1)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
 
     def test_sbd_distance(self):
         start_D = time.time()
@@ -146,4 +147,4 @@ class TestSpeedAllDistances(unittest.TestCase):
         aeon.sbd_pairwise_distance(self.X)
         end_aeon = time.time()
         print(end_aeon - start_aeon, end_D - start_D)
-        self.assertGreaterEqual(end_aeon - start_aeon, end_D - start_D)
+        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)

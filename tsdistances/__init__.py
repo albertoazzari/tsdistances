@@ -1,7 +1,14 @@
+from typing import List, Optional, Union
+from typeguard import TypeCheckError, typechecked, check_type, warn_on_error
+
 from tsdistances import tsdistances as tsd
 import numpy as np
 
-def euclidean_distance(u, v=None, n_jobs=1):
+@typechecked
+def euclidean_distance(
+        u: np.ndarray, 
+        v: Optional[np.ndarray]=None,
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Euclidean distance between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise Euclidean distances within `u`.
@@ -33,35 +40,25 @@ def euclidean_distance(u, v=None, n_jobs=1):
            [1.        , 0.        ]])
 
     """
-
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
-
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.euclidean(u, None, n_jobs)
-
-    v = np.asarray(v)
-
-    # Check if shapes are compatible
-    if u.shape != v.shape:
-        raise ValueError("u and v must have the same shape.")
-
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.euclidean([u], [v], n_jobs)[0][0]
-
-    # If inputs are 2-D arrays, compute pairwise distances
-    if u.ndim == 2:
-        return tsd.euclidean(u, v, n_jobs)
-
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
+    if u.ndim == 2:
+        _u = u
+        if v is None:
+            return np.array(tsd.euclidean(_u, None, n_jobs))
+        if v.ndim == 2:
+            _v = v
 
-def erp_distance(u, v=None, gap_penalty=0.0, n_jobs=1):
+    return np.array(tsd.euclidean(_u, _v, n_jobs))
+    
+@typechecked
+def erp_distance(
+        u: Union[np.ndarray, List[np.ndarray]], 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        gap_penalty: Optional[float]=1.0, 
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Edit Distance with Real Penalty (ERP) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise ERP distances within `u`.
@@ -95,30 +92,31 @@ def erp_distance(u, v=None, gap_penalty=0.0, n_jobs=1):
     >>> erp_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 1.0], [1.0, 0.0]])
     """
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.erp(u, v, gap_penalty, n_jobs))
+    except TypeCheckError as e:
+        pass        
 
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
-
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.erp(u, None, gap_penalty, n_jobs)
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
-    v = np.asarray(v)
-
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.erp([u], [v], gap_penalty, n_jobs)[0][0]
-    
-    # If inputs are 2-D arrays, compute pairwise distances
     if u.ndim == 2:
-        return tsd.erp(u, v, gap_penalty, n_jobs)
-    
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+        _u = u
+        if v is None:
+            return np.array(tsd.erp(_u, None, gap_penalty, n_jobs))
+        if v.ndim == 2:
+            _v = v
+            
+    return np.array(tsd.erp(_u, _v, gap_penalty, n_jobs))
 
-def lcss_distance(u, v=None, epsilon=1.0, n_jobs=1):
+@typechecked
+def lcss_distance(
+        u: Union[np.ndarray, List[np.ndarray]], 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        epsilon: Optional[float]=1.0, 
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Longest Common Subsequence (LCSS) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise LCSS distances within `u`.
@@ -150,29 +148,27 @@ def lcss_distance(u, v=None, epsilon=1.0, n_jobs=1):
     >>> lcss_distance([[1, 1, 1], [0, 1, 1]], epsilon=0.5)
     array([[0.0, 0.3333333333333333], [0.3333333333333333, 0.0]])
     """
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.lcss(u, v, epsilon, n_jobs))
+    except TypeCheckError as e:
+        pass  
 
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.lcss(u, None, epsilon, n_jobs)
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
-    v = np.asarray(v)
+    if u.ndim == 2 and v.ndim == 2:
+        _u = u
+        _v = v
 
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.lcss([u], [v], epsilon, n_jobs)[0][0]
-    
-    # If inputs are 2-D arrays, compute pairwise distances
-    if u.ndim == 2:
-        return tsd.lcss(u, v, epsilon, n_jobs)
-    
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+    return np.array(tsd.lcss(_u, _v, epsilon, n_jobs))
 
-def dtw_distance(u, v=None, n_jobs=1):
+@typechecked
+def dtw_distance(
+        u: Union[np.ndarray, List[np.ndarray]], 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Dynamic Time Warping (DTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise DTW distances within `u`.
@@ -204,30 +200,27 @@ def dtw_distance(u, v=None, n_jobs=1):
     >>> dtw_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.        , 1.        ], [1.        , 0.        ]])
     """
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.dtw(u, v, n_jobs))
+    except TypeCheckError as e:
+        pass  
 
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.dtw(u, None, n_jobs)
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
-    v = np.asarray(v)
+    if u.ndim == 2 and v.ndim == 2:
+        _u = u
+        _v = v
 
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.dtw([u], [v], n_jobs)[0][0]
-    
-    # If inputs are 2-D arrays, compute pairwise distances
-    if u.ndim == 2:
-        return tsd.dtw(u, v, n_jobs)
-    
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+    return np.array(tsd.dtw(_u, _v, n_jobs))
 
-
-def ddtw_distance(u, v=None, n_jobs=1):
+@typechecked
+def ddtw_distance(
+        u: Union[np.ndarray, List[np.ndarray]], 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Derivative Dynamic Time Warping (DDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise DDTW distances within `u`.
@@ -259,29 +252,28 @@ def ddtw_distance(u, v=None, n_jobs=1):
     >>> ddtw_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 1.6875], [1.6875, 0.0]])
     """
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.ddtw(u, v, n_jobs))
+    except TypeCheckError as e:
+        pass  
 
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.ddtw(u, None, n_jobs)
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
-    v = np.asarray(v)
+    if u.ndim == 2 and v.ndim == 2:
+        _u = u
+        _v = v
 
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.ddtw([u], [v], n_jobs)[0][0]
-    
-    # If inputs are 2-D arrays, compute pairwise distances
-    if u.ndim == 2:
-        return tsd.ddtw(u, v, n_jobs)
-    
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+    return np.array(tsd.ddtw(_u, _v, n_jobs))
 
-def wdtw_distance(u, v=None, g=0.05, n_jobs=1):
+@typechecked
+def wdtw_distance(
+        u: Union[np.ndarray, List[np.ndarray]], 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        g: Optional[float]=0.05, 
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Weighted Dynamic Time Warping (WDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise WDTW distances within `u`.
@@ -313,30 +305,28 @@ def wdtw_distance(u, v=None, g=0.05, n_jobs=1):
     >>> wdtw_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 0.18242552380635635], [0.18242552380635635, 0.0]])
     """
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.wdtw(u, v, g, n_jobs))
+    except TypeCheckError as e:
+        pass  
 
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
-
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.wdtw(u, None, g, n_jobs)
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
-    v = np.asarray(v)
+    if u.ndim == 2 and v.ndim == 2:
+        _u = u
+        _v = v
 
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.wdtw([u], [v], g, n_jobs)[0][0]
-    
-    # If inputs are 2-D arrays, compute pairwise distances
-    if u.ndim == 2:
-        return tsd.wdtw(u, v, g, n_jobs)
-    
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+    return np.array(tsd.wdtw(_u, _v, g, n_jobs))
 
-def wddtw_distance(u, v=None, g=0.05, n_jobs=1):
+@typechecked
+def wddtw_distance(
+        u: Union[np.ndarray, List[np.ndarray]], 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        g: Optional[float]=0.05, 
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Weighted Derivative Dynamic Time Warping (WDDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise WDDTW distances within `u`.
@@ -367,29 +357,28 @@ def wddtw_distance(u, v=None, g=0.05, n_jobs=1):
     >>> wddtw_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 0.3078430714232263], [0.3078430714232263, 0.0]])
     """
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.wddtw(u, v, g, n_jobs))
+    except TypeCheckError as e:
+        pass  
 
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.wddtw(u, None, g, n_jobs)
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
-    v = np.asarray(v)
+    if u.ndim == 2 and v.ndim == 2:
+        _u = u
+        _v = v
 
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.wddtw([u], [v], g, n_jobs)[0][0]
-    
-    # If inputs are 2-D arrays, compute pairwise distances
-    if u.ndim == 2:
-        return tsd.wddtw(u, v, g, n_jobs)
-    
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+    return np.array(tsd.wddtw(_u, _v, g, n_jobs))
 
-def adtw_distance(u, v=None, warp_penalty=0.1, n_jobs=1):
+@typechecked
+def adtw_distance(
+        u: Union[np.ndarray, List[np.ndarray]], 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        warp_penalty: Optional[float]=0.1, 
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Amercing Dynamic Time Warping (ADTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise ADTW distances within `u`.
@@ -423,30 +412,27 @@ def adtw_distance(u, v=None, warp_penalty=0.1, n_jobs=1):
     >>> adtw_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 0.0], [0.0, 0.0]])
     """
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.adtw(u, v, warp_penalty, n_jobs))
+    except TypeCheckError as e:
+        pass  
 
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
-
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.adtw(u, None, warp_penalty, n_jobs)
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
-    v = np.asarray(v)
+    if u.ndim == 2 and v.ndim == 2:
+        _u = u
+        _v = v
 
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.adtw([u], [v], warp_penalty, n_jobs)[0][0]
-    
-    # If inputs are 2-D arrays, compute pairwise distances
-    if u.ndim == 2:
-        return tsd.adtw(u, v, warp_penalty, n_jobs)
-    
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+    return np.array(tsd.adtw(_u, _v, warp_penalty, n_jobs))
 
-def msm_distance(u, v=None, n_jobs=1):
+@typechecked
+def msm_distance(
+        u: Union[np.ndarray, List[np.ndarray]], 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None, 
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Move-Split-Merge (MSM) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise MSM distances within `u`.
@@ -478,29 +464,29 @@ def msm_distance(u, v=None, n_jobs=1):
     >>> msm_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 1.0], [1.0, 0.0]])
     """
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.msm(u, v, n_jobs))
+    except TypeCheckError as e:
+        pass  
 
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.msm(u, None, n_jobs)
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
-    v = np.asarray(v)
+    if u.ndim == 2 and v.ndim == 2:
+        _u = u
+        _v = v
 
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.msm([u], [v], n_jobs)[0][0]
-    
-    # If inputs are 2-D arrays, compute pairwise distances
-    if u.ndim == 2:
-        return tsd.msm(u, v, n_jobs)
-    
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+    return np.array(tsd.msm(_u, _v, n_jobs))
 
-def twe_distance(u, v=None, stifness=0.001, penalty=1.0, n_jobs=1):
+@typechecked
+def twe_distance(
+        u: Union[np.ndarray, List[np.ndarray]], 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None, 
+        stifness: Optional[float]=0.001, 
+        penalty: Optional[float]=1.0, 
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Time Warp Edit (TWE) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise TWE distances within `u`.
@@ -536,29 +522,27 @@ def twe_distance(u, v=None, stifness=0.001, penalty=1.0, n_jobs=1):
     >>> twe_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 2.0], [2.0, 0.0]])
     """
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.twe(u, v, stifness, penalty, n_jobs))
+    except TypeCheckError as e:
+        pass  
 
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.twe(u, None, stifness, penalty, n_jobs)
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
-    v = np.asarray(v)
+    if u.ndim == 2 and v.ndim == 2:
+        _u = u
+        _v = v
 
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.twe([u], [v], stifness, penalty, n_jobs)[0][0]
-    
-    # If inputs are 2-D arrays, compute pairwise distances
-    if u.ndim == 2:
-        return tsd.twe(u, v, stifness, penalty, n_jobs)
-    
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+    return np.array(tsd.twe(_u, _v, stifness, penalty, n_jobs))
 
-def sb_distance(u, v=None, n_jobs=1):
+@typechecked
+def sb_distance(
+        u: Union[np.ndarray, List[np.ndarray]],
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None, 
+        n_jobs: Optional[int]=1) -> np.ndarray:
     """
     Computes the Shape-Based Distance (SBD) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise SBD distances within `u`.
@@ -590,26 +574,20 @@ def sb_distance(u, v=None, n_jobs=1):
     >>> sb_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.        , 1.        ], [1.        , 0.        ]])
     """
-    # Convert inputs to NumPy arrays for consistency and efficiency
-    u = np.asarray(u)
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.sbd(u, v, n_jobs))
+    except TypeCheckError as e:
+        pass  
 
-    # If v is not provided, compute pairwise distances within u
-    if v is None:
-        if u.ndim != 2:
-            raise ValueError("u must be a 2-D array when v is None.")
-        return tsd.sbd(u, None, n_jobs)
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
     
-    v = np.asarray(v)
+    if u.ndim == 2 and v.ndim == 2:
+        _u = u
+        _v = v
 
-    # If inputs are 1-D arrays, compute the distance directly
-    if u.ndim == 1:
-        return tsd.sbd([u], [v], n_jobs)[0][0]
-    
-    # If inputs are 2-D arrays, compute pairwise distances
-    if u.ndim == 2:
-        return tsd.sbd(u, v, n_jobs)
-    
-    # Raise an error if inputs are neither 1-D nor 2-D
-    raise ValueError("Inputs must be either 1-D or 2-D arrays.")
+    return np.array(tsd.sbd(_u, _v, n_jobs))
 
 __all__ = ['euclidean', 'erp', 'lcss', 'dtw', 'ddtw', 'wdtw', 'wddtw', 'adtw', 'msm', 'twe', 'sbd']
