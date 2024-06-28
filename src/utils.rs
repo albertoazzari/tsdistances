@@ -24,15 +24,9 @@ pub fn dtw_weights(len: usize, g: f64) -> Vec<f64> {
 }
 
 const MSM_C: f64 = 1.0;
+#[inline(always)]
 pub fn msm_cost_function(x: f64, y: f64, z: f64) -> f64 {
-    // let a = (z - x).max(0.0);
-    let a = MSM_C + (y.min(z) - x).min(x - y.max(z)).max(0.0);
-
-    if (x >= y && x <= z) || (y >= x && x >= z) {
-        MSM_C
-    } else {
-        MSM_C + (x - y).abs().min((x - z).abs())
-    }
+    MSM_C + (y.min(z) - x).max(x - y.max(z)).max(0.0)
 }
 
 pub fn cross_correlation(a: &[f64], b: &[f64]) -> Vec<f64> {
