@@ -9,8 +9,6 @@ pub fn derivate(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
         for j in 1..x[i].len()-1 {
             x_d[i][j-1] = ((x[i][j] - x[i][j - 1]) + (x[i][j + 1] - x[i][j - 1]) / 2.0) / 2.0;
         }
-        // x_d[i][0] = x_d[i][1];
-        // x_d[i][x[i].len() - 1] = x_d[i][x[i].len() - 2];
     }
     x_d
 }
@@ -26,11 +24,14 @@ pub fn dtw_weights(len: usize, g: f64) -> Vec<f64> {
 }
 
 const MSM_C: f64 = 1.0;
-pub fn msm_cost_function(x_i: f64, x_i_1: f64, y_j: f64) -> f64 {
-    if (x_i >= x_i_1 && x_i <= y_j) || (x_i_1 >= x_i && x_i >= y_j) {
+pub fn msm_cost_function(x: f64, y: f64, z: f64) -> f64 {
+    // let a = (z - x).max(0.0);
+    let a = MSM_C + (y.min(z) - x).min(x - y.max(z)).max(0.0);
+
+    if (x >= y && x <= z) || (y >= x && x >= z) {
         MSM_C
     } else {
-        MSM_C + (x_i - x_i_1).abs().min((x_i - y_j).abs())
+        MSM_C + (x - y).abs().min((x - z).abs())
     }
 }
 
