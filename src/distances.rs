@@ -1,8 +1,11 @@
 #![allow(dead_code)]
-use std::cmp::max;
+use crate::{
+    diagonal,
+    utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore},
+};
 use pyo3::prelude::*;
 use rayon::prelude::*;
-use crate::{diagonal, utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore}};
+use std::cmp::max;
 
 const MIN_CHUNK_SIZE: usize = 16;
 const CHUNKS_PER_THREAD: usize = 8;
@@ -81,9 +84,11 @@ pub fn euclidean(
 ) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, _x, y, _z| {
-                y + (a[i] - b[j]).powi(2)
-            }).sqrt()
+            a.iter()
+                .zip(b.iter())
+                .map(|(x, y)| (x - y).powi(2))
+                .sum::<f64>()
+                .sqrt()
         },
         x1,
         x2,
@@ -154,11 +159,7 @@ pub fn lcss(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-pub fn dtw(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    n_jobs: i32,
-) -> PyResult<Vec<Vec<f64>>> {
+pub fn dtw(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
             diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
@@ -175,11 +176,7 @@ pub fn dtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-pub fn ddtw(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    n_jobs: i32,
-) -> PyResult<Vec<Vec<f64>>> {
+pub fn ddtw(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
     let x1_d = derivate(&x1);
     let x2_d = if let Some(x2) = &x2 {
         Some(derivate(&x2))
@@ -231,17 +228,13 @@ pub fn wddtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-pub fn msm(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    n_jobs: i32,
-) -> PyResult<Vec<Vec<f64>>> {
+pub fn msm(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
             diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
                 (y + (a[i] - b[j]).abs())
-                .min(z + msm_cost_function(a[i], a.get(i - 1).copied().unwrap_or(0.0), b[j]))
-                .min(x + msm_cost_function(b[j], a[i], b.get(j - 1).copied().unwrap_or(0.0)))
+                    .min(z + msm_cost_function(a[i], a.get(i - 1).copied().unwrap_or(0.0), b[j]))
+                    .min(x + msm_cost_function(b[j], a[i], b.get(j - 1).copied().unwrap_or(0.0)))
             })
         },
         x1,
@@ -276,18 +269,22 @@ pub fn twe(
         |a, b| {
             diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
                 // deletion in a
-                let del_a: f64 = z + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs() + delete_addition;
+                let del_a: f64 =
+                    z + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs() + delete_addition;
 
                 // deletion in b
-                let del_b = x + (b.get(j - 1).copied().unwrap_or(0.0) - b[j]).abs() + delete_addition;
+                let del_b =
+                    x + (b.get(j - 1).copied().unwrap_or(0.0) - b[j]).abs() + delete_addition;
 
                 // match
                 let match_current = (a[i] - b[j]).abs();
-                let match_previous = (a.get(i - 1).copied().unwrap_or(0.0) - b.get(j - 1).copied().unwrap_or(0.0)).abs();
+                let match_previous = (a.get(i - 1).copied().unwrap_or(0.0)
+                    - b.get(j - 1).copied().unwrap_or(0.0))
+                .abs();
                 let match_a_b = y
                     + match_current
                     + match_previous
-                    + stiffness*(2.0 * (i as isize - j as isize).abs() as f64);
+                    + stiffness * (2.0 * (i as isize - j as isize).abs() as f64);
 
                 del_a.min(del_b.min(match_a_b))
             })
@@ -328,18 +325,14 @@ pub fn adtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-pub fn sbd( 
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    n_jobs: i32,
-) -> PyResult<Vec<Vec<f64>>> {
-
+pub fn sbd(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
             let a = zscore(&a);
             let b = zscore(&b);
             let cc = cross_correlation(&a, &b);
-            1.0 - cc.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap() / (l2_norm(&a) * l2_norm(&b))
+            1.0 - cc.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap()
+                / (l2_norm(&a) * l2_norm(&b))
         },
         x1,
         x2,
