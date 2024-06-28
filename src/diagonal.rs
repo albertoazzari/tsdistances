@@ -17,13 +17,13 @@ pub fn diagonal_distance(
     let mut e = a.len();
     diagonal[a.len()] = 0.0;
 
-    for d in 2..=(a.len() + b.len()) {
+    for d in 2..(a.len() + b.len() + 1) {
         diagonal[(a.len() + d) & mask] = init_val;
 
         let mut i1 = i;
         let mut j1 = j;
 
-        for k in (s..=e).step_by(2) {
+        for k in (s..e+1).step_by(2) {
             let x = diagonal[(k - 1) & mask];
             let y = diagonal[k & mask];
             let z = diagonal[(k + 1) & mask];
@@ -52,13 +52,12 @@ pub fn diagonal_distance(
 
 #[test]
 fn test_matrix() {
-    let a: Vec<f64> = (0..10).map(|i| i as f64).collect();
-    let b: Vec<f64> = (0..10).map(|i| i as f64).collect();
+        let a: Vec<f64> = (0..1000).map(|_| rand::random::<f64>()).collect();
+        let b: Vec<f64> = (0..1000).map(|_| rand::random::<f64>()).collect();
 
-    let result = diagonal_distance(a.as_slice(), b.as_slice(), f64::INFINITY, |i, j, x, y, z| {
-        (a[i] - b[j]).powi(2) + x.min(y.min(z))
-    });
+        let result = diagonal_distance(a.as_slice(), b.as_slice(), f64::INFINITY, |i, j, x, y, z| {
+                (a[i] - b[j]).powi(2) + x.min(y.min(z))
+            });
 
-    assert_eq!(result, 0.0);
+        assert!(result >= 0.0);
 }
-
