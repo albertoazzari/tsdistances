@@ -6,7 +6,7 @@ pub fn diagonal_distance(
 ) -> f64 {
     let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
 
-    let next_power_of_two = 2*a.len().next_power_of_two();
+    let next_power_of_two = 2 * a.len().next_power_of_two();
 
     let mut diagonal = vec![init_val; next_power_of_two];
     let mask = next_power_of_two - 1;
@@ -23,7 +23,7 @@ pub fn diagonal_distance(
         let mut i1 = i;
         let mut j1 = j;
 
-        for k in (s..e+1).step_by(2) {
+        for k in (s..e + 1).step_by(2) {
             let x = diagonal[(k - 1) & mask];
             let y = diagonal[k & mask];
             let z = diagonal[(k + 1) & mask];
@@ -52,12 +52,15 @@ pub fn diagonal_distance(
 
 #[test]
 fn test_matrix() {
-        let a: Vec<f64> = (0..1000).map(|_| rand::random::<f64>()).collect();
-        let b: Vec<f64> = (0..1000).map(|_| rand::random::<f64>()).collect();
+    let a: Vec<f64> = (0..1000).map(|_| rand::random::<f64>()).collect();
+    let b: Vec<f64> = (0..1000).map(|_| rand::random::<f64>()).collect();
 
-        let result = diagonal_distance(a.as_slice(), b.as_slice(), f64::INFINITY, |i, j, x, y, z| {
-                (a[i] - b[j]).powi(2) + x.min(y.min(z))
-            });
+    let result = diagonal_distance(
+        a.as_slice(),
+        b.as_slice(),
+        f64::INFINITY,
+        |i, j, x, y, z| (a[i] - b[j]).powi(2) + x.min(y.min(z)),
+    );
 
-        assert!(result >= 0.0);
+    assert!(result >= 0.0);
 }

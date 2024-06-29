@@ -1,13 +1,13 @@
-use rustfft::{Fft, FftDirection, num_complex::Complex, algorithm::Radix4};
+use rustfft::{algorithm::Radix4, num_complex::Complex, Fft, FftDirection};
 
 pub fn derivate(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let mut x_d = Vec::with_capacity(x.len());
     for i in 0..x.len() {
-        x_d.push(vec![0.0; x[i].len()-2]);
+        x_d.push(vec![0.0; x[i].len() - 2]);
     }
     for i in 0..x.len() {
-        for j in 1..x[i].len()-1 {
-            x_d[i][j-1] = ((x[i][j] - x[i][j - 1]) + (x[i][j + 1] - x[i][j - 1]) / 2.0) / 2.0;
+        for j in 1..x[i].len() - 1 {
+            x_d[i][j - 1] = ((x[i][j] - x[i][j - 1]) + (x[i][j + 1] - x[i][j - 1]) / 2.0) / 2.0;
         }
     }
     x_d
@@ -18,7 +18,8 @@ pub fn dtw_weights(len: usize, g: f64) -> Vec<f64> {
     let mut weights = vec![0.0; len];
     let half_len = len / 2;
     for i in 0..len {
-        weights[i] = WEIGHT_MAX / (1.0 + std::f64::consts::E.powf(-g * (i as f64 - half_len as f64)));
+        weights[i] =
+            WEIGHT_MAX / (1.0 + std::f64::consts::E.powf(-g * (i as f64 - half_len as f64)));
     }
     weights
 }
@@ -31,7 +32,7 @@ pub fn msm_cost_function(x: f64, y: f64, z: f64) -> f64 {
 
 pub fn cross_correlation(a: &[f64], b: &[f64]) -> Vec<f64> {
     // zero-pad the input signals a and b (add zeros to the end of each. The zero padding should fill the vectors until they reach a size of at least N = size(a)+size(b)-1
-    let fft_len = (a.len() + b.len() -1).next_power_of_two();
+    let fft_len = (a.len() + b.len() - 1).next_power_of_two();
     let fft = Radix4::new(fft_len, FftDirection::Forward);
 
     let mut a_fft = vec![Complex::new(0.0, 0.0); fft_len];
