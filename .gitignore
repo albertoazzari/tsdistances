@@ -4,3 +4,4 @@ target/
 *.csv
 *.so
 __pycache__/
+compute_ee.py

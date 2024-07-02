@@ -47,7 +47,7 @@ pub fn diagonal_distance(
             e -= 1;
         }
     }
-    diagonal[s - 1]
+    diagonal[(s - 1) & mask]
 }
 
 #[test]
