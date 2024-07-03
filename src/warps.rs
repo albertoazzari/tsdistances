@@ -4,28 +4,39 @@ const DIAMOND_SIZE: usize = 64;
 
 #[test]
 fn test_diamond_partitioning() {
-    let a: Vec<f64> = (0..31).map(|_| rand::random::<f64>()).collect();
-    let b: Vec<f64> = (0..63).map(|_| rand::random::<f64>()).collect();
 
-    // let start = std::time::Instant::now();
-    let res = diamond_partitioning(
-        a.as_slice(),
-        b.as_slice(),
-        f64::INFINITY,
-        |i, j, x, y, z| {
-            let dist = (a.get(i).copied().unwrap_or(0.0) - b.get(j).copied().unwrap_or(0.0)).powi(2);
-            dist + x.min(y.min(z))
-        },
-    );
-    // println!("Time: {:?}", start.elapsed());
-    println!("\n");
-    // let start = std::time::Instant::now();
-    let r2 = diagonal::diagonal_distance(&a, &b, f64::INFINITY, |i, j, x, y, z| {
-        let dist = (a[i] - b[j]).powi(2);
-        dist + z.min(x.min(y))
-    });
-    // println!("Time: {:?}", start.elapsed());
-    assert_eq!(res, r2);
+    for i in 0..1 {
+        println!("{i}");
+        let a: Vec<f64> = (0..63).map(|_| rand::random::<f64>()).collect();
+        let b: Vec<f64> = (0..131).map(|_| rand::random::<f64>()).collect();
+
+        // // let start = std::time::Instant::now();
+        let res = diamond_partitioning(
+            a.as_slice(),
+            b.as_slice(),
+            f64::INFINITY,
+            |i, j, x, y, z| {
+                let dist = (a[i] - b[j]).powi(2);
+                dist + z.min(x.min(y))
+
+                // let dist = (a.get(i).copied().unwrap_or(0.0) - b.get(j).copied().unwrap_or(0.0)).powi(2);
+                // dist + x.min(y.min(z))
+            },
+        );
+        // println!("Time: {:?}", start.elapsed());
+        println!("\n");
+        // let start = std::time::Instant::now();
+        let r2 = diagonal::diagonal_distance(&a, &b, f64::INFINITY, |i, j, x, y, z| {
+            // let dist = (a.get(i).copied().unwrap_or(0.0) - b.get(j).copied().unwrap_or(0.0)).powi(2);
+            //     dist + x.min(y.min(z))
+
+            let dist = (a[i] - b[j]).powi(2);
+            dist + z.min(x.min(y))
+        });
+        // println!("Time: {:?}", start.elapsed());
+        assert_eq!(res, r2);
+    }
+
 }
 
 pub fn diamond_partitioning(
@@ -62,12 +73,14 @@ pub fn diamond_partitioning(
     //     (b, mask)
     // };
 
-    let next_power_of_two = (2 * a.len().next_power_of_two());//.min(DIAMOND_SIZE * 2);
+    let next_power_of_two = (2 * (a.len() + b.len()).next_power_of_two()).max(DIAMOND_SIZE * 2);
     let mask = next_power_of_two - 1;
 
     let mut diagonal = vec![init_val; next_power_of_two];
 
-    let offset: usize = (a.len().div_ceil(DIAMOND_SIZE) + 2) * DIAMOND_SIZE;
+    let offset: usize = (a.len().div_ceil(DIAMOND_SIZE)) * DIAMOND_SIZE;
+
+    println!("{offset}");
 
     diagonal[offset & mask] = 0.0;
 
@@ -82,19 +95,31 @@ pub fn diamond_partitioning(
     let mut s = 0;
 
     for i in 0..rows_count {
-        // for d in 1..DIAMOND_SIZE {
-        //     diagonal[(i * DIAMOND_SIZE + offset + d) & mask] = init_val;
-        // }
+
         // if a_start==0 {
         //     diagonal[(diag_mid + d) & mask] = f64::INFINITY;
         // } else if b_start==0 {
         //     diagonal[(diag_mid - d) & mask] = f64::INFINITY;
         // }
         // println!("Row: {} {}", i, diamonds_count);
+
         for j in 0..diamonds_count {
             let diag_start = first_coord + j * DIAMOND_SIZE * 2;
             let d_a_start = a_start - j * DIAMOND_SIZE;
             let d_b_start = b_start + j * DIAMOND_SIZE;
+
+            // if d_b_start > a.len() && d_a_start == 0 {
+            //     for d in (2..DIAMOND_SIZE).step_by(2) {
+            //         diagonal[(diag_start + DIAMOND_SIZE + d) & mask] = init_val;
+            //     }
+            // }
+
+            // if d_b_start == 0 {
+            //     for d in 1..DIAMOND_SIZE {
+            //         diagonal[(diag_start + DIAMOND_SIZE - d) & mask] = init_val;
+            //     }
+            // }
+
             s = diagonal_distance_v2(
                 &mut diagonal,
                 d_a_start,
@@ -106,12 +131,6 @@ pub fn diamond_partitioning(
                 dist_lambda,
             );
 
-            // println!(
-            //     "Diamond: {} {} {}",
-            //     diag_start as isize - offset as isize + DIAMOND_SIZE as isize,
-            //     d_a_start,
-            //     d_b_start
-            // );
         }
 
         if i < a_diamonds {
@@ -127,8 +146,11 @@ pub fn diamond_partitioning(
             b_start += DIAMOND_SIZE;
         }
     }
+    // println!("{:?}", diagonal);
+
     // diagonal[offset & mask]
     diagonal[s]
+
 }
 
 pub fn diagonal_distance_v2(
@@ -147,9 +169,11 @@ pub fn diagonal_distance_v2(
     let mut e = diag_mid;
 
     for d in 2..(DIAMOND_SIZE * 2 + 1).min(a_len + b_len + 1 - (a_start + b_start)) {
+
         let mut i1 = i;
         let mut j1 = j;
 
+        println!("d: {d}, a_start: {a_start}, b_start: {b_start}");
         for k in (s..e + 1).step_by(2) {
             let x = diagonal[(k - 1) & mask];
             let y = diagonal[k & mask];
@@ -173,6 +197,9 @@ pub fn diagonal_distance_v2(
             s += 1;
             e -= 1;
         }
+
     }
+
     (s-1)&mask
+
 }

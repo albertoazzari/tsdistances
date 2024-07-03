@@ -1,3 +1,5 @@
+use std::mem;
+
 pub fn diagonal_distance(
     a: &[f64],
     b: &[f64],
@@ -5,6 +7,10 @@ pub fn diagonal_distance(
     dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
 ) -> f64 {
     let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+
+    println!("a.len {}, b.len {}", a.len(), b.len());
+    // assert_eq!(a.as_ptr(), c.as_ptr());
+    // assert_eq!(a.as_ptr(), d.as_ptr());
 
     let next_power_of_two = 2 * a.len().next_power_of_two();
 
@@ -23,7 +29,7 @@ pub fn diagonal_distance(
 
         let mut i1 = i;
         let mut j1 = j;
-        
+
         for k in (s..e + 1).step_by(2) {
             let x = diagonal[(k - 1) & mask];
             let y = diagonal[k & mask];
@@ -33,7 +39,7 @@ pub fn diagonal_distance(
             i1 = i1.wrapping_sub(1);
             j1 += 1;
         }
-        
+
         if d <= a.len() {
             i += 1;
             s -= 1;
@@ -48,6 +54,8 @@ pub fn diagonal_distance(
             e -= 1;
         }
     }
+
+    // println!("{:?}", diagonal);
     diagonal[(s - 1) & mask]
 }
 
