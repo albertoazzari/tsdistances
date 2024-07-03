@@ -8,21 +8,22 @@ pub fn diagonal_distance(
 
     let next_power_of_two = 2 * a.len().next_power_of_two();
 
+    let offset = a.len();
+
     let mut diagonal = vec![init_val; next_power_of_two];
     let mask = next_power_of_two - 1;
 
     let mut i = 0;
     let mut j = 0;
-    let mut s = a.len();
-    let mut e = a.len();
-    diagonal[a.len()] = 0.0;
-
+    let mut s = offset;
+    let mut e = offset;
+    diagonal[offset & mask] = 0.0;
     for d in 2..(a.len() + b.len() + 1) {
-        diagonal[(a.len() + d) & mask] = init_val;
+        diagonal[(offset + d) & mask] = init_val;
 
         let mut i1 = i;
         let mut j1 = j;
-
+        
         for k in (s..e + 1).step_by(2) {
             let x = diagonal[(k - 1) & mask];
             let y = diagonal[k & mask];
@@ -32,7 +33,7 @@ pub fn diagonal_distance(
             i1 = i1.wrapping_sub(1);
             j1 += 1;
         }
-
+        
         if d <= a.len() {
             i += 1;
             s -= 1;
