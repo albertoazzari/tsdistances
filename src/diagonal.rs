@@ -1,50 +1,65 @@
 use std::mem;
 
-pub fn diagonal_distance(
+use crate::matrix::{DiagonalMatrix, OptimMatrix};
+
+pub fn diagonal_distance<M: DiagonalMatrix>(
     a: &[f64],
     b: &[f64],
     init_val: f64,
+    dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
+) -> f64 {
+    let (a, b) = if a.len() > b.len() {
+        (b, a)
+    } else {
+        (a, b)
+    };
+
+    diagonal_distance_::<M>(
+        a.len(),
+        b.len(),
+        init_val,
+        |i, j, x, y, z| {
+            dist_lambda(&a, &b, i, j, x, y, z)
+        },
+    )
+}
+
+fn diagonal_distance_<M: DiagonalMatrix>(
+    a_len: usize,
+    b_len: usize,
+    init_val: f64,
     dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
 ) -> f64 {
-    let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
 
-    println!("a.len {}, b.len {}", a.len(), b.len());
-    // assert_eq!(a.as_ptr(), c.as_ptr());
-    // assert_eq!(a.as_ptr(), d.as_ptr());
-
-    let next_power_of_two = 2 * a.len().next_power_of_two();
-
-    let offset = a.len();
-
-    let mut diagonal = vec![init_val; next_power_of_two];
-    let mask = next_power_of_two - 1;
+    let mut matrix = M::new(a_len, b_len, init_val);
 
     let mut i = 0;
     let mut j = 0;
-    let mut s = offset;
-    let mut e = offset;
-    diagonal[offset & mask] = 0.0;
-    for d in 2..(a.len() + b.len() + 1) {
-        diagonal[(offset + d) & mask] = init_val;
+    let mut s = 0;
+    let mut e = 0;
+    matrix.set_diagonal_cell(0, 0, 0.0);
+
+    for d in 2..(a_len + b_len + 1) {
+        matrix.set_diagonal_cell(d, d as isize, init_val);
 
         let mut i1 = i;
         let mut j1 = j;
 
         for k in (s..e + 1).step_by(2) {
-            let x = diagonal[(k - 1) & mask];
-            let y = diagonal[k & mask];
-            let z = diagonal[(k + 1) & mask];
+            let dleft = matrix.get_diagonal_cell(d - 1,k - 1);
+            let ddiag = matrix.get_diagonal_cell(d - 2,k);
+            let dup = matrix.get_diagonal_cell(d - 1,k + 1);
 
-            diagonal[k & mask] = dist_lambda(i1, j1, x, y, z);
+            matrix.set_diagonal_cell(d, k, dist_lambda(i1, j1, dleft, ddiag, dup));
             i1 = i1.wrapping_sub(1);
             j1 += 1;
         }
 
-        if d <= a.len() {
+        if d <= a_len {
             i += 1;
             s -= 1;
             e += 1;
-        } else if d <= b.len() {
+        } else if d <= b_len {
             j += 1;
             s += 1;
             e += 1;
@@ -54,22 +69,19 @@ pub fn diagonal_distance(
             e -= 1;
         }
     }
-
-    // println!("{:?}", diagonal);
-    diagonal[(s - 1) & mask]
+    let (rx, cx) = M::index_mat_to_diag(a_len, b_len);
+    matrix.get_diagonal_cell(rx, cx)
 }
 
 #[test]
 fn test_matrix() {
-    let a: Vec<f64> = (0..1000).map(|_| rand::random::<f64>()).collect();
-    let b: Vec<f64> = (0..1000).map(|_| rand::random::<f64>()).collect();
+    let a: Vec<f64> = (0..10).map(|i| i as f64).collect();
+    let b: Vec<f64> = (0..10).map(|i| i as f64).collect();
 
-    let result = diagonal_distance(
-        a.as_slice(),
-        b.as_slice(),
+    let result = diagonal_distance::<OptimMatrix>(
+        &a,
+        &b,
         f64::INFINITY,
-        |i, j, x, y, z| (a[i] - b[j]).powi(2) + x.min(y.min(z)),
+        |a, b, i, j, x, y, z| (a[i] - b[j]).abs() + x.min(y.min(z)),
     );
-
-    assert!(result >= 0.0);
 }

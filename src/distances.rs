@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 use crate::{
-    diagonal,
-    utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore},
+    diagonal, matrix::OptimMatrix, utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore}
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
@@ -112,7 +111,7 @@ pub fn erp(
     }
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
+            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
                 (y + (a[i] - b[j]).abs())
                     .min((z + (a[i] - gap_penalty).abs()).min(x + (b[j] - gap_penalty).abs()))
             })
@@ -139,7 +138,7 @@ pub fn lcss(
     }
     let distance_matrix = compute_distance(
         |a, b| {
-            let similarity = diagonal::diagonal_distance(a, b, 0.0, |i, j, x, y, z| {
+            let similarity = diagonal::diagonal_distance::<OptimMatrix>(a, b, 0.0, |a, b, i, j, x, y, z| {
                 let dist = (a[i] - b[j]).abs();
                 if dist <= epsilon {
                     y + 1.0
@@ -162,7 +161,7 @@ pub fn lcss(
 pub fn dtw(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
+            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
                 let dist = (a[i] - b[j]).powi(2);
                 dist + z.min(x.min(y))
             })
@@ -197,7 +196,7 @@ pub fn wdtw(
     let distance_matrix = compute_distance(
         |a, b| {
             let weights = dtw_weights(a.len().max(b.len()), g);
-            diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
+            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
                 let dist = (a[i] - b[j]).powi(2) * weights[(i as i32 - j as i32).abs() as usize];
                 dist + x.min(y.min(z))
             })
@@ -231,7 +230,7 @@ pub fn wddtw(
 pub fn msm(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
+            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
                 (y + (a[i] - b[j]).abs())
                     .min(z + msm_cost_function(a[i], a.get(i - 1).copied().unwrap_or(0.0), b[j]))
                     .min(x + msm_cost_function(b[j], a[i], b.get(j - 1).copied().unwrap_or(0.0)))
@@ -267,7 +266,7 @@ pub fn twe(
 
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
+            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
                 // deletion in a
                 let del_a: f64 =
                     z + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs() + delete_addition;
@@ -311,7 +310,7 @@ pub fn adtw(
     }
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance(a, b, f64::INFINITY, |i, j, x, y, z| {
+            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
                 let dist = (a[i] - b[j]).powi(2);
                 dist + (z + warp_penalty).min((x + warp_penalty).min(y))
             })

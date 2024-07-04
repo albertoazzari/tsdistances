@@ -1,5 +1,10 @@
 use rustfft::{algorithm::Radix4, num_complex::Complex, Fft, FftDirection};
 
+
+pub fn next_multiple_of_n(x: usize, n: usize) -> usize {
+    (x + n - 1) / n * n
+}
+
 pub fn derivate(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let mut x_d = Vec::with_capacity(x.len());
     for i in 0..x.len() {
