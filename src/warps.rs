@@ -55,6 +55,7 @@ fn test_diamond_partitioning() {
     }
     println!("OptimMatrix: v2 outspeed v1 {}", count as f64 / 10.0);
     // println!("OptimMatrix: v2 outspeed gpu {}", count as f64 / 10.0);
+
 }
 
 pub fn diamond_partitioning<M: DiagonalMatrix>(
