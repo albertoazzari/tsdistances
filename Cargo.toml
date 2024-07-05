@@ -13,6 +13,7 @@ pyo3 = { version = "0.21.2", features = ["extension-module"] }
 rand = "0.8.5"
 rayon = "1.10.0"
 rustfft = "6.2.0"
+tsdistances_gpu = { version = "0.1.0", path = "tsdistances_gpu" }
 
 [lib]
 crate-type = ["cdylib"]

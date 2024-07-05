@@ -1,21 +1,34 @@
+use rustfft::num_complex::ComplexFloat;
 
 use crate::{matrix::DiagonalMatrix, utils::next_multiple_of_n};
 const DIAMOND_SIZE: usize = 64;
 
 #[test]
 fn test_diamond_partitioning() {
-    use rand::{thread_rng, Rng};
     use crate::{diagonal, matrix::OptimMatrix};
+    use rand::{thread_rng, Rng};
 
     let mut count = 0;
     for _ in 0..10 {
-        let a: Vec<f64> = (0..thread_rng().gen_range(1000..1024)).map(|_| rand::random::<f64>()).collect();
-        let b: Vec<f64> = (0..thread_rng().gen_range(a.len()..1024)).map(|_| rand::random::<f64>()).collect();
+        let a: Vec<f64> = (0..thread_rng().gen_range(1000..2024))
+            .map(|_| rand::random::<f64>())
+            .collect();
+        let b: Vec<f64> = (0..thread_rng().gen_range(a.len()..2024))
+            .map(|_| rand::random::<f64>())
+            .collect();
 
-        // let a: Vec<f64> = (0..16).map(|i| i as f64).collect();
-        // let b: Vec<f64> = (0..23).map(|i| (i +1) as f64).collect();
+        // let a: Vec<f64> = (0..827).map(|i| i as f64).collect();
+        // let b: Vec<f64> = (0..1888).map(|i| (i + 1) as f64).collect();
         let start1 = std::time::Instant::now();
-        let res = diamond_partitioning::<OptimMatrix>(
+        let res =
+            diamond_partitioning::<OptimMatrix>(&a, &b, f64::INFINITY, |a, b, i, j, x, y, z| {
+                let dist = (a[i] - b[j]).abs();
+                dist + z.min(x.min(y))
+            });
+        let end1 = start1.elapsed();
+
+        let start2 = std::time::Instant::now();
+        let r2 = diagonal::diagonal_distance::<OptimMatrix>(
             &a,
             &b,
             f64::INFINITY,
@@ -24,23 +37,25 @@ fn test_diamond_partitioning() {
                 dist + z.min(x.min(y))
             },
         );
-        let end1 = start1.elapsed();
-
-        let start2 = std::time::Instant::now();
-        let r2 = diagonal::diagonal_distance::<OptimMatrix>(&a, &b, f64::INFINITY, |a, b, i, j, x, y, z| {
-            let dist = (a[i] - b[j]).abs();
-            dist + z.min(x.min(y))
-        });
         let end2 = start2.elapsed();
-        count += if end1 < end2 {
-            1
-        } else {
-            0
-        };
+        count += if end1 < end2 { 1 } else { 0 };
         assert_eq!(res, r2);
+
+        let start3 = std::time::Instant::now();
+
+        let r3 = tsdistances_gpu::compute_test(&a, &b);
+        let end3 = start3.elapsed();
+
+        assert!((res - r3).abs() < 1e-2);
+        println!("Res {} r2 {} r3 {}", res, r2, r3);
+        println!(
+            "GPU TIME: {:.4} CPU TIME: {:.4}",
+            end3.as_secs_f64(),
+            end1.as_secs_f64()
+        );
     }
     println!("OptimMatrix: v2 outspeed v1 {}", count as f64 / 10.0);
-
+    // println!("OptimMatrix: v2 outspeed gpu {}", count as f64 / 10.0);
 }
 
 pub fn diamond_partitioning<M: DiagonalMatrix>(
@@ -49,11 +64,7 @@ pub fn diamond_partitioning<M: DiagonalMatrix>(
     init_val: f64,
     dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
 ) -> f64 {
-    let (a, b) = if a.len() > b.len() {
-        (b, a)
-    } else {
-        (a, b)
-    };
+    let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
 
     let new_a_len = next_multiple_of_n(a.len(), DIAMOND_SIZE);
     let new_b_len = next_multiple_of_n(b.len(), DIAMOND_SIZE);
@@ -64,16 +75,10 @@ pub fn diamond_partitioning<M: DiagonalMatrix>(
     a_padded[..a.len()].copy_from_slice(a);
     b_padded[..b.len()].copy_from_slice(b);
 
-    diamond_partitioning_::<M>(
-        a.len(),
-        b.len(),
-        init_val,
-        |i, j, x, y, z| {
-            dist_lambda(&a_padded, &b_padded, i, j, x, y, z)
-        },
-    )
+    diamond_partitioning_::<M>(a.len(), b.len(), init_val, |i, j, x, y, z| {
+        dist_lambda(&a_padded, &b_padded, i, j, x, y, z)
+    })
 }
-
 
 pub fn diamond_partitioning_<M: DiagonalMatrix>(
     a_len: usize,
@@ -81,8 +86,7 @@ pub fn diamond_partitioning_<M: DiagonalMatrix>(
     init_val: f64,
     dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64 + Copy,
 ) -> f64 {
-
-    let padded_a_len= next_multiple_of_n(a_len, DIAMOND_SIZE);
+    let padded_a_len = next_multiple_of_n(a_len, DIAMOND_SIZE);
     let padded_b_len = next_multiple_of_n(b_len, DIAMOND_SIZE);
 
     let mut matrix = M::new(padded_a_len, padded_b_len, init_val);
@@ -99,7 +103,6 @@ pub fn diamond_partitioning_<M: DiagonalMatrix>(
     let mut b_start = 0;
 
     for i in 0..rows_count {
-
         for j in 0..diamonds_count {
             let diag_start = first_coord + ((j * DIAMOND_SIZE) as isize) * 2;
             let d_a_start = a_start - j * DIAMOND_SIZE;
@@ -109,7 +112,7 @@ pub fn diamond_partitioning_<M: DiagonalMatrix>(
             let blen = b_len - d_b_start;
 
             diagonal_distance_v2(
-                &mut matrix, 
+                &mut matrix,
                 i * DIAMOND_SIZE,
                 d_a_start,
                 d_b_start,
@@ -117,7 +120,6 @@ pub fn diamond_partitioning_<M: DiagonalMatrix>(
                 (DIAMOND_SIZE * 2 + 1).min(alen + blen + 1),
                 dist_lambda,
             );
-
         }
 
         if i < (a_diamonds - 1) {
@@ -137,7 +139,6 @@ pub fn diamond_partitioning_<M: DiagonalMatrix>(
     let (rx, cx) = M::index_mat_to_diag(a_len, b_len);
 
     matrix.get_diagonal_cell(rx, cx)
-
 }
 
 pub fn diagonal_distance_v2<M: DiagonalMatrix>(
@@ -155,15 +156,13 @@ pub fn diagonal_distance_v2<M: DiagonalMatrix>(
     let mut e = diag_mid;
 
     for d in 2..diag_count {
-
         let mut i1 = i;
         let mut j1 = j;
 
         for k in (s..e + 1).step_by(2) {
-
-            let dleft = matrix.get_diagonal_cell(d_offset + d - 1,k - 1);
-            let ddiag = matrix.get_diagonal_cell(d_offset + d - 2,k);
-            let dup = matrix.get_diagonal_cell(d_offset + d - 1,k + 1);
+            let dleft = matrix.get_diagonal_cell(d_offset + d - 1, k - 1);
+            let ddiag = matrix.get_diagonal_cell(d_offset + d - 2, k);
+            let dup = matrix.get_diagonal_cell(d_offset + d - 1, k + 1);
 
             matrix.set_diagonal_cell(d_offset + d, k, dist_lambda(i1, j1, dleft, ddiag, dup));
             i1 = i1.wrapping_sub(1);
@@ -174,11 +173,10 @@ pub fn diagonal_distance_v2<M: DiagonalMatrix>(
             i += 1;
             s -= 1;
             e += 1;
-        } else{
+        } else {
             j += 1;
             s += 1;
             e -= 1;
         }
-
     }
 }
