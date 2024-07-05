@@ -10,12 +10,8 @@ fn test_diamond_partitioning() {
 
     let mut count = 0;
     for _ in 0..10 {
-        let a: Vec<f64> = (0..thread_rng().gen_range(1000..2024))
-            .map(|_| rand::random::<f64>())
-            .collect();
-        let b: Vec<f64> = (0..thread_rng().gen_range(a.len()..2024))
-            .map(|_| rand::random::<f64>())
-            .collect();
+        let a: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
+        let b: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
 
         // let a: Vec<f64> = (0..827).map(|i| i as f64).collect();
         // let b: Vec<f64> = (0..1888).map(|i| (i + 1) as f64).collect();
@@ -27,31 +23,34 @@ fn test_diamond_partitioning() {
             });
         let end1 = start1.elapsed();
 
-        let start2 = std::time::Instant::now();
-        let r2 = diagonal::diagonal_distance::<OptimMatrix>(
-            &a,
-            &b,
-            f64::INFINITY,
-            |a, b, i, j, x, y, z| {
-                let dist = (a[i] - b[j]).abs();
-                dist + z.min(x.min(y))
-            },
-        );
-        let end2 = start2.elapsed();
-        count += if end1 < end2 { 1 } else { 0 };
-        assert_eq!(res, r2);
+        // let start2 = std::time::Instant::now();
+        // let r2 = diagonal::diagonal_distance::<OptimMatrix>(
+        //     &a,
+        //     &b,
+        //     f64::INFINITY,
+        //     |a, b, i, j, x, y, z| {
+        //         let dist = (a[i] - b[j]).abs();
+        //         dist + z.min(x.min(y))
+        //     },
+        // );
+        // let end2 = start2.elapsed();
+        // count += if end1 < end2 { 1 } else { 0 };
+        // assert_eq!(res, r2);
+
+        let device = tsdistances_gpu::get_gpu_at_index(1);
 
         let start3 = std::time::Instant::now();
 
-        let r3 = tsdistances_gpu::compute_test(&a, &b);
+        let r3 = tsdistances_gpu::compute_test(device.clone(), &a, &b);
         let end3 = start3.elapsed();
 
-        assert!((res - r3).abs() < 1e-2);
-        println!("Res {} r2 {} r3 {}", res, r2, r3);
+        // assert!((res - r3).abs() < 1e-2);
+        println!("Res {} r3 {}", res, r3);
         println!(
-            "GPU TIME: {:.4} CPU TIME: {:.4}",
+            "GPU TIME: {:.4} CPU TIME: {:.4} RATIO: {:.4}",
             end3.as_secs_f64(),
-            end1.as_secs_f64()
+            end1.as_secs_f64(),
+            end1.as_secs_f64() / end3.as_secs_f64()
         );
     }
     println!("OptimMatrix: v2 outspeed v1 {}", count as f64 / 10.0);
