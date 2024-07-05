@@ -1,0 +1,4 @@
+[submodule "tsdistances_gpu"]
+	path = tsdistances_gpu
+	url = git@github.com:fmasillo/tsdistances_gpu.git
+	branch = master
