@@ -1,4 +1,4 @@
-use rustfft::num_complex::ComplexFloat;
+use tsdistances_gpu::device::{get_best_gpu, get_gpu_at_index};
 
 use crate::{matrix::DiagonalMatrix, utils::next_multiple_of_n};
 const DIAMOND_SIZE: usize = 64;
@@ -7,7 +7,9 @@ const DIAMOND_SIZE: usize = 64;
 fn test_diamond_partitioning() {
     use crate::matrix::OptimMatrix;
 
-    let mut count = 0;
+    let device = get_best_gpu();
+    println!("Device: {:#?}", device.info());
+
     for _ in 0..10 {
         let a: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
         let b: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
@@ -36,8 +38,6 @@ fn test_diamond_partitioning() {
         // count += if end1 < end2 { 1 } else { 0 };
         // assert_eq!(res, r2);
 
-        let device = tsdistances_gpu::get_gpu_at_index(1);
-
         let start3 = std::time::Instant::now();
 
         let r3 = tsdistances_gpu::compute_test(device.clone(), &a, &b);
@@ -52,8 +52,6 @@ fn test_diamond_partitioning() {
             end1.as_secs_f64() / end3.as_secs_f64()
         );
     }
-    println!("OptimMatrix: v2 outspeed v1 {}", count as f64 / 10.0);
-    // println!("OptimMatrix: v2 outspeed gpu {}", count as f64 / 10.0);
 }
 
 pub fn diamond_partitioning<M: DiagonalMatrix>(

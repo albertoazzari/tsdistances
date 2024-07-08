@@ -1,5 +1,3 @@
-use std::mem;
-
 use crate::matrix::{DiagonalMatrix, OptimMatrix};
 
 pub fn diagonal_distance<M: DiagonalMatrix>(
@@ -8,20 +6,11 @@ pub fn diagonal_distance<M: DiagonalMatrix>(
     init_val: f64,
     dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
 ) -> f64 {
-    let (a, b) = if a.len() > b.len() {
-        (b, a)
-    } else {
-        (a, b)
-    };
+    let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
 
-    diagonal_distance_::<M>(
-        a.len(),
-        b.len(),
-        init_val,
-        |i, j, x, y, z| {
-            dist_lambda(&a, &b, i, j, x, y, z)
-        },
-    )
+    diagonal_distance_::<M>(a.len(), b.len(), init_val, |i, j, x, y, z| {
+        dist_lambda(&a, &b, i, j, x, y, z)
+    })
 }
 
 fn diagonal_distance_<M: DiagonalMatrix>(
@@ -30,7 +19,6 @@ fn diagonal_distance_<M: DiagonalMatrix>(
     init_val: f64,
     dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
 ) -> f64 {
-
     let mut matrix = M::new(a_len, b_len, init_val);
 
     let mut i = 0;
@@ -46,9 +34,9 @@ fn diagonal_distance_<M: DiagonalMatrix>(
         let mut j1 = j;
 
         for k in (s..e + 1).step_by(2) {
-            let dleft = matrix.get_diagonal_cell(d - 1,k - 1);
-            let ddiag = matrix.get_diagonal_cell(d - 2,k);
-            let dup = matrix.get_diagonal_cell(d - 1,k + 1);
+            let dleft = matrix.get_diagonal_cell(d - 1, k - 1);
+            let ddiag = matrix.get_diagonal_cell(d - 2, k);
+            let dup = matrix.get_diagonal_cell(d - 1, k + 1);
 
             matrix.set_diagonal_cell(d, k, dist_lambda(i1, j1, dleft, ddiag, dup));
             i1 = i1.wrapping_sub(1);
@@ -78,10 +66,7 @@ fn test_matrix() {
     let a: Vec<f64> = (0..10).map(|i| i as f64).collect();
     let b: Vec<f64> = (0..10).map(|i| i as f64).collect();
 
-    let result = diagonal_distance::<OptimMatrix>(
-        &a,
-        &b,
-        f64::INFINITY,
-        |a, b, i, j, x, y, z| (a[i] - b[j]).abs() + x.min(y.min(z)),
-    );
+    let result = diagonal_distance::<OptimMatrix>(&a, &b, f64::INFINITY, |a, b, i, j, x, y, z| {
+        (a[i] - b[j]).abs() + x.min(y.min(z))
+    });
 }

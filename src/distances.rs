@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 use crate::{
-    diagonal, matrix::OptimMatrix, utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore}
+    diagonal,
+    matrix::OptimMatrix,
+    utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore},
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
@@ -111,10 +113,15 @@ pub fn erp(
     }
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
-                (y + (a[i] - b[j]).abs())
-                    .min((z + (a[i] - gap_penalty).abs()).min(x + (b[j] - gap_penalty).abs()))
-            })
+            diagonal::diagonal_distance::<OptimMatrix>(
+                a,
+                b,
+                f64::INFINITY,
+                |a, b, i, j, x, y, z| {
+                    (y + (a[i] - b[j]).abs())
+                        .min((z + (a[i] - gap_penalty).abs()).min(x + (b[j] - gap_penalty).abs()))
+                },
+            )
         },
         x1,
         x2,
@@ -138,14 +145,15 @@ pub fn lcss(
     }
     let distance_matrix = compute_distance(
         |a, b| {
-            let similarity = diagonal::diagonal_distance::<OptimMatrix>(a, b, 0.0, |a, b, i, j, x, y, z| {
-                let dist = (a[i] - b[j]).abs();
-                if dist <= epsilon {
-                    y + 1.0
-                } else {
-                    x.max(z)
-                }
-            });
+            let similarity =
+                diagonal::diagonal_distance::<OptimMatrix>(a, b, 0.0, |a, b, i, j, x, y, z| {
+                    let dist = (a[i] - b[j]).abs();
+                    if dist <= epsilon {
+                        y + 1.0
+                    } else {
+                        x.max(z)
+                    }
+                });
             let min_len = a.len().min(b.len()) as f64;
             1.0 - similarity / min_len
         },
@@ -161,10 +169,15 @@ pub fn lcss(
 pub fn dtw(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
-                let dist = (a[i] - b[j]).powi(2);
-                dist + z.min(x.min(y))
-            })
+            diagonal::diagonal_distance::<OptimMatrix>(
+                a,
+                b,
+                f64::INFINITY,
+                |a, b, i, j, x, y, z| {
+                    let dist = (a[i] - b[j]).powi(2);
+                    dist + z.min(x.min(y))
+                },
+            )
         },
         x1,
         x2,
@@ -196,10 +209,16 @@ pub fn wdtw(
     let distance_matrix = compute_distance(
         |a, b| {
             let weights = dtw_weights(a.len().max(b.len()), g);
-            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
-                let dist = (a[i] - b[j]).powi(2) * weights[(i as i32 - j as i32).abs() as usize];
-                dist + x.min(y.min(z))
-            })
+            diagonal::diagonal_distance::<OptimMatrix>(
+                a,
+                b,
+                f64::INFINITY,
+                |a, b, i, j, x, y, z| {
+                    let dist =
+                        (a[i] - b[j]).powi(2) * weights[(i as i32 - j as i32).abs() as usize];
+                    dist + x.min(y.min(z))
+                },
+            )
         },
         x1,
         x2,
@@ -230,11 +249,20 @@ pub fn wddtw(
 pub fn msm(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
-                (y + (a[i] - b[j]).abs())
-                    .min(z + msm_cost_function(a[i], a.get(i - 1).copied().unwrap_or(0.0), b[j]))
-                    .min(x + msm_cost_function(b[j], a[i], b.get(j - 1).copied().unwrap_or(0.0)))
-            })
+            diagonal::diagonal_distance::<OptimMatrix>(
+                a,
+                b,
+                f64::INFINITY,
+                |a, b, i, j, x, y, z| {
+                    (y + (a[i] - b[j]).abs())
+                        .min(
+                            z + msm_cost_function(a[i], a.get(i - 1).copied().unwrap_or(0.0), b[j]),
+                        )
+                        .min(
+                            x + msm_cost_function(b[j], a[i], b.get(j - 1).copied().unwrap_or(0.0)),
+                        )
+                },
+            )
         },
         x1,
         x2,
@@ -266,27 +294,32 @@ pub fn twe(
 
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
-                // deletion in a
-                let del_a: f64 =
-                    z + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs() + delete_addition;
+            diagonal::diagonal_distance::<OptimMatrix>(
+                a,
+                b,
+                f64::INFINITY,
+                |a, b, i, j, x, y, z| {
+                    // deletion in a
+                    let del_a: f64 =
+                        z + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs() + delete_addition;
 
-                // deletion in b
-                let del_b =
-                    x + (b.get(j - 1).copied().unwrap_or(0.0) - b[j]).abs() + delete_addition;
+                    // deletion in b
+                    let del_b =
+                        x + (b.get(j - 1).copied().unwrap_or(0.0) - b[j]).abs() + delete_addition;
 
-                // match
-                let match_current = (a[i] - b[j]).abs();
-                let match_previous = (a.get(i - 1).copied().unwrap_or(0.0)
-                    - b.get(j - 1).copied().unwrap_or(0.0))
-                .abs();
-                let match_a_b = y
-                    + match_current
-                    + match_previous
-                    + stiffness * (2.0 * (i as isize - j as isize).abs() as f64);
+                    // match
+                    let match_current = (a[i] - b[j]).abs();
+                    let match_previous = (a.get(i - 1).copied().unwrap_or(0.0)
+                        - b.get(j - 1).copied().unwrap_or(0.0))
+                    .abs();
+                    let match_a_b = y
+                        + match_current
+                        + match_previous
+                        + stiffness * (2.0 * (i as isize - j as isize).abs() as f64);
 
-                del_a.min(del_b.min(match_a_b))
-            })
+                    del_a.min(del_b.min(match_a_b))
+                },
+            )
         },
         x1,
         x2,
@@ -310,10 +343,15 @@ pub fn adtw(
     }
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance::<OptimMatrix>(a, b, f64::INFINITY, |a, b, i, j, x, y, z| {
-                let dist = (a[i] - b[j]).powi(2);
-                dist + (z + warp_penalty).min((x + warp_penalty).min(y))
-            })
+            diagonal::diagonal_distance::<OptimMatrix>(
+                a,
+                b,
+                f64::INFINITY,
+                |a, b, i, j, x, y, z| {
+                    let dist = (a[i] - b[j]).powi(2);
+                    dist + (z + warp_penalty).min((x + warp_penalty).min(y))
+                },
+            )
         },
         x1,
         x2,

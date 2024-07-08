@@ -7,6 +7,7 @@ edition = "2021"
 krnl = "0.1.1"
 rand = "0.8.5"
 rustfft = "6.2.0"
+vulkano = "0.33.0"
 
 [profile.dev]
 opt-level = 1
