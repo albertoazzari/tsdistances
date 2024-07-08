@@ -54,7 +54,7 @@ class TestCorrectnessAllDistances(unittest.TestCase):
 
     def test_erp_distance(self):
         # Compute the pairwise distances
-        D = erp_distance(self.X, None, gap_penalty=0.0, n_jobs=1)
+        D = erp_distance(self.X, None, gap_penalty=0.0, n_jobs=1, device='gpu')
 
         # Convert to numpy array
         D = np.array(D)
@@ -82,7 +82,7 @@ class TestCorrectnessAllDistances(unittest.TestCase):
     
     def test_lcss_distance(self):
         # Compute the pairwise distances
-        D = lcss_distance(self.X, None, epsilon=0.1, n_jobs=1)
+        D = lcss_distance(self.X, None, epsilon=0.1, n_jobs=1, device='gpu')
 
         # Convert to numpy array
         D = np.array(D)

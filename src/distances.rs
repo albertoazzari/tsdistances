@@ -1,12 +1,13 @@
 #![allow(dead_code)]
 use crate::{
     diagonal,
-    matrix::OptimMatrix,
+    matrix::DiagonalMatrix,
     utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore},
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use std::cmp::max;
+use tsdistances_gpu::device::get_best_gpu;
 
 const MIN_CHUNK_SIZE: usize = 16;
 const CHUNKS_PER_THREAD: usize = 8;
@@ -99,69 +100,132 @@ pub fn euclidean(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, gap_penalty=0.0, n_jobs=-1))]
+#[pyo3(signature = (x1, x2=None, gap_penalty=0.0, n_jobs=-1, device="cpu"))]
 pub fn erp(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
     gap_penalty: f64,
     n_jobs: i32,
+    device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
     if gap_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Gap penalty must be non-negative",
         ));
     }
-    let distance_matrix = compute_distance(
-        |a, b| {
-            diagonal::diagonal_distance::<OptimMatrix>(
-                a,
-                b,
-                f64::INFINITY,
-                |a, b, i, j, x, y, z| {
-                    (y + (a[i] - b[j]).abs())
-                        .min((z + (a[i] - gap_penalty).abs()).min(x + (b[j] - gap_penalty).abs()))
-                },
-            )
-        },
-        x1,
-        x2,
-        n_jobs,
-    );
-    Ok(distance_matrix)
+    let mut distance_matrix = None;
+    if let Some(device) = device {
+        match device {
+            "cpu" => {
+                distance_matrix = Some(compute_distance(
+                    |a, b| {
+                        diagonal::diagonal_distance::<DiagonalMatrix>(
+                            a,
+                            b,
+                            f64::INFINITY,
+                            |a, b, i, j, x, y, z| {
+                                (y + (a[i] - b[j]).abs())
+                                    .min((z + (a[i] - gap_penalty).abs()).min(x + (b[j] - gap_penalty).abs()))
+                            },
+                        )
+                    },
+                    x1,
+                    x2,
+                    n_jobs,
+                ));
+            }
+            "gpu" => {
+                let device_gpu = get_best_gpu();
+                distance_matrix = Some(compute_distance(
+                    |a, b| {
+                        tsdistances_gpu::erp(device_gpu.clone(), a, b, gap_penalty)
+                    },
+                    x1,
+                    x2,
+                    1,
+                ));
+            }
+            _ => {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "Device must be either 'cpu' or 'gpu'",
+                ));
+            }
+        }
+    }
+    if let Some(distance_matrix) = distance_matrix {
+        return Ok(distance_matrix);
+    } else {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Error computing ERP distance",
+        ));
+    }
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, epsilon=1.0, n_jobs=-1))]
+#[pyo3(signature = (x1, x2=None, epsilon=1.0, n_jobs=-1, device="cpu"))]
 pub fn lcss(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
     epsilon: f64,
     n_jobs: i32,
+    device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
     if epsilon < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Epsilon must be non-negative",
         ));
     }
-    let distance_matrix = compute_distance(
-        |a, b| {
-            let similarity =
-                diagonal::diagonal_distance::<OptimMatrix>(a, b, 0.0, |a, b, i, j, x, y, z| {
-                    let dist = (a[i] - b[j]).abs();
-                    if dist <= epsilon {
-                        y + 1.0
-                    } else {
-                        x.max(z)
-                    }
-                });
-            let min_len = a.len().min(b.len()) as f64;
-            1.0 - similarity / min_len
-        },
-        x1,
-        x2,
-        n_jobs,
-    );
-    Ok(distance_matrix)
+    let mut distance_matrix = None;
+
+    if let Some(device) = device {
+        match device {
+            "cpu" => {
+                distance_matrix = Some(compute_distance(
+                    |a, b| {
+                        let similarity =
+                            diagonal::diagonal_distance::<DiagonalMatrix>(a, b, 0.0, |a, b, i, j, x, y, z| {
+                                let dist = (a[i] - b[j]).abs();
+                                if dist <= epsilon {
+                                    y + 1.0
+                                } else {
+                                    x.max(z)
+                                }
+                            });
+                        let min_len = a.len().min(b.len()) as f64;
+                        1.0 - similarity / min_len
+                    },
+                    x1,
+                    x2,
+                    n_jobs,
+                ));
+            }
+            "gpu" => {
+                let device_gpu = get_best_gpu();
+                distance_matrix = Some(compute_distance(
+                    |a, b| {
+                        let similarity = tsdistances_gpu::lcss(device_gpu.clone(), a, b, epsilon);
+                        let min_len = a.len().min(b.len()) as f64;
+                        1.0 - similarity / min_len
+                    },
+                    x1,
+                    x2,
+                    1,
+                ));
+            }
+            _ => {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "Device must be either 'cpu' or 'gpu'",
+                ));
+            }
+        }
+    }
+    if let Some(distance_matrix) = distance_matrix {
+        return Ok(distance_matrix);
+    } else {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Error computing LCSS distance",
+        ));
+    }
 }
 
 #[pyfunction]
@@ -169,7 +233,7 @@ pub fn lcss(
 pub fn dtw(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance::<OptimMatrix>(
+            diagonal::diagonal_distance::<DiagonalMatrix>(
                 a,
                 b,
                 f64::INFINITY,
@@ -183,6 +247,7 @@ pub fn dtw(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResul
         x2,
         n_jobs,
     );
+
     Ok(distance_matrix)
 }
 
@@ -209,7 +274,7 @@ pub fn wdtw(
     let distance_matrix = compute_distance(
         |a, b| {
             let weights = dtw_weights(a.len().max(b.len()), g);
-            diagonal::diagonal_distance::<OptimMatrix>(
+            diagonal::diagonal_distance::<DiagonalMatrix>(
                 a,
                 b,
                 f64::INFINITY,
@@ -249,7 +314,7 @@ pub fn wddtw(
 pub fn msm(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance::<OptimMatrix>(
+            diagonal::diagonal_distance::<DiagonalMatrix>(
                 a,
                 b,
                 f64::INFINITY,
@@ -294,7 +359,7 @@ pub fn twe(
 
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance::<OptimMatrix>(
+            diagonal::diagonal_distance::<DiagonalMatrix>(
                 a,
                 b,
                 f64::INFINITY,
@@ -343,7 +408,7 @@ pub fn adtw(
     }
     let distance_matrix = compute_distance(
         |a, b| {
-            diagonal::diagonal_distance::<OptimMatrix>(
+            diagonal::diagonal_distance::<DiagonalMatrix>(
                 a,
                 b,
                 f64::INFINITY,

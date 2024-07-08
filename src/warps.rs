@@ -1,60 +1,74 @@
-use tsdistances_gpu::device::{get_best_gpu, get_gpu_at_index};
-
-use crate::{matrix::DiagonalMatrix, utils::next_multiple_of_n};
+use crate::{matrix::Matrix, utils::next_multiple_of_n};
 const DIAMOND_SIZE: usize = 64;
 
 #[test]
 fn test_diamond_partitioning() {
-    use crate::matrix::OptimMatrix;
+    use crate::matrix::DiagonalMatrix;
+    use crate::diagonal::diagonal_distance;
+    use tsdistances_gpu::device::get_best_gpu;
 
+    let rep = 10;
+    let epsilon = 0.1;
+    let (mut time1, mut time2, mut time3) = (0, 0, 0);
+    let (mut r1, mut r2, mut r3) = (0.0, 0.0, 0.0);
     let device = get_best_gpu();
-    println!("Device: {:#?}", device.info());
+    println!("Device: {:#?}", device.info().unwrap());
 
-    for _ in 0..10 {
+    for _ in 0..rep {
         let a: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
         let b: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
 
-        // let a: Vec<f64> = (0..827).map(|i| i as f64).collect();
-        // let b: Vec<f64> = (0..1888).map(|i| (i + 1) as f64).collect();
         let start1 = std::time::Instant::now();
-        let res =
-            diamond_partitioning::<OptimMatrix>(&a, &b, f64::INFINITY, |a, b, i, j, x, y, z| {
+        r1 +=
+            diamond_partitioning::<DiagonalMatrix>(&a, &b, 0.0, |a, b, i, j, x, y, z| {
                 let dist = (a[i] - b[j]).abs();
-                dist + z.min(x.min(y))
+                    if dist <= epsilon {
+                        y + 1.0
+                    } else {
+                        x.max(z)
+                    }
             });
         let end1 = start1.elapsed();
+        time1 += end1.as_micros();
 
-        // let start2 = std::time::Instant::now();
-        // let r2 = diagonal::diagonal_distance::<OptimMatrix>(
-        //     &a,
-        //     &b,
-        //     f64::INFINITY,
-        //     |a, b, i, j, x, y, z| {
-        //         let dist = (a[i] - b[j]).abs();
-        //         dist + z.min(x.min(y))
-        //     },
-        // );
-        // let end2 = start2.elapsed();
-        // count += if end1 < end2 { 1 } else { 0 };
-        // assert_eq!(res, r2);
+        let start2 = std::time::Instant::now();
+        r2 += diagonal_distance::<DiagonalMatrix>(
+            &a,
+            &b,
+            0.0,
+            |a, b, i, j, x, y, z| {
+                let dist = (a[i] - b[j]).abs();
+                    if dist <= epsilon {
+                        y + 1.0
+                    } else {
+                        x.max(z)
+                    }
+            },
+        );
+        let end2 = start2.elapsed();
+        time2 += end2.as_micros();
 
         let start3 = std::time::Instant::now();
-
-        let r3 = tsdistances_gpu::compute_test(device.clone(), &a, &b);
+        r3 += tsdistances_gpu::lcss(device.clone(), &a, &b, epsilon);
         let end3 = start3.elapsed();
-
-        // assert!((res - r3).abs() < 1e-2);
-        println!("Res {} r3 {}", res, r3);
-        println!(
-            "GPU TIME: {:.4} CPU TIME: {:.4} RATIO: {:.4}",
-            end3.as_secs_f64(),
-            end1.as_secs_f64(),
-            end1.as_secs_f64() / end3.as_secs_f64()
-        );
+        time3 += end3.as_micros();
     }
+
+    println!(
+        "TIME:\n\tDiamond Partitioning: {:.4} ms, \n\tDiagonal Distance: {:.4} ms, \n\tGPU: {:.4} ms",
+        time1 as f64 / rep as f64 / 1000.0,
+        time2 as f64 / rep as f64 / 1000.0,
+        time3 as f64 / rep as f64 / 1000.0
+    );
+    println!(
+        "RES:\n\tDiamond Partitioning: {:.4}, \n\tDiagonal Distance: {:.4}, \n\tGPU: {:.4}",
+        r1 / rep as f64,
+        r2 / rep as f64,
+        r3 / rep as f64
+    );
 }
 
-pub fn diamond_partitioning<M: DiagonalMatrix>(
+pub fn diamond_partitioning<M: Matrix>(
     a: &[f64],
     b: &[f64],
     init_val: f64,
@@ -76,7 +90,7 @@ pub fn diamond_partitioning<M: DiagonalMatrix>(
     })
 }
 
-pub fn diamond_partitioning_<M: DiagonalMatrix>(
+pub fn diamond_partitioning_<M: Matrix>(
     a_len: usize,
     b_len: usize,
     init_val: f64,
@@ -137,7 +151,7 @@ pub fn diamond_partitioning_<M: DiagonalMatrix>(
     matrix.get_diagonal_cell(rx, cx)
 }
 
-pub fn diagonal_distance_v2<M: DiagonalMatrix>(
+pub fn diagonal_distance_v2<M: Matrix>(
     matrix: &mut M,
     d_offset: usize,
     a_start: usize,

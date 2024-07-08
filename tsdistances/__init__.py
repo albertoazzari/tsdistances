@@ -58,7 +58,8 @@ def erp_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
         gap_penalty: Optional[float]=1.0, 
-        n_jobs: Optional[int]=1) -> np.ndarray:
+        n_jobs: Optional[int]=1,
+        device: Optional[str]="cpu") -> np.ndarray:
     """
     Computes the Edit Distance with Real Penalty (ERP) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise ERP distances within `u`.
@@ -94,7 +95,7 @@ def erp_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.erp(u, v, gap_penalty, n_jobs))
+        return np.array(tsd.erp(u, v, gap_penalty, n_jobs, device))
     except TypeCheckError as e:
         pass        
 
@@ -105,18 +106,19 @@ def erp_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.erp(_u, None, gap_penalty, n_jobs))
+            return np.array(tsd.erp(_u, None, gap_penalty, n_jobs, device))
         if v.ndim == 2:
             _v = v
             
-    return np.array(tsd.erp(_u, _v, gap_penalty, n_jobs))
+    return np.array(tsd.erp(_u, _v, gap_penalty, n_jobs, device))
 
 @typechecked
 def lcss_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
         epsilon: Optional[float]=1.0, 
-        n_jobs: Optional[int]=1) -> np.ndarray:
+        n_jobs: Optional[int]=1,
+        device: Optional[str]="cpu") -> np.ndarray:
     """
     Computes the Longest Common Subsequence (LCSS) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise LCSS distances within `u`.
@@ -150,7 +152,7 @@ def lcss_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.lcss(u, v, epsilon, n_jobs))
+        return np.array(tsd.lcss(u, v, epsilon, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -158,11 +160,14 @@ def lcss_distance(
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
     
-    if u.ndim == 2 and v.ndim == 2:
+    if u.ndim == 2:
         _u = u
-        _v = v
-
-    return np.array(tsd.lcss(_u, _v, epsilon, n_jobs))
+        if v is None:
+            return np.array(tsd.lcss(_u, None, epsilon, n_jobs, device))
+        if v.ndim == 2:
+            _v = v
+            
+    return np.array(tsd.lcss(_u, _v, epsilon, n_jobs, device))
 
 @typechecked
 def dtw_distance(

@@ -144,7 +144,8 @@ pub mod warp {
                 [$($param1:ident: $ty1:ty)?],
                 [$($param2:ident: $ty2:ty)?],
                 [$($param3:ident: $ty3:ty)?],
-                [$($param4:ident: $ty4:ty)?]
+                [$($param4:ident: $ty4:ty)?],
+                [$($vec5:ident: $ty5:ty)?]
             ) $body:block
         )*) => {
             $(
@@ -154,6 +155,7 @@ pub mod warp {
                     $(pub $param2: $ty2,)?
                     $(pub $param3: $ty3,)?
                     $(pub $param4: $ty4,)?
+                    $(pub $vec5:  krnl::buffer::Buffer<$ty5>,)?
                 }
 
                 #[cfg(not(target_arch = "spirv"))]
@@ -191,6 +193,7 @@ pub mod warp {
                                 $(self.$param2,)?
                                 $(self.$param3,)?
                                 $(self.$param4,)?
+                                $(self.$vec5.as_slice(),)?
                                 a,
                                 b,
                                 diagonal,
@@ -213,6 +216,7 @@ pub mod warp {
                     $(param2: $ty2,)?
                     $(param3: $ty3,)?
                     $(param4: $ty4,)?
+                    $(#[global] vec5: Slice<$ty5>,)?
                     #[global] $a: Slice<f32>,
                     #[global] $b: Slice<f32>,
                     #[global] diagonal: UnsafeSlice<f32>,
@@ -224,6 +228,7 @@ pub mod warp {
                     $(let $param2 = param2;)?
                     $(let $param3 = param3;)?
                     $(let $param4 = param4;)?
+                    $(let $vec5 = vec5;)?
 
                     let global_id = kernel.global_id() as u64;
                     warp_kernel(
@@ -263,15 +268,68 @@ pub mod warp {
         );
     }
 
-    warp_kernel_spec! {
-        fn dtw_distance[DtwImpl](a, b, i, j, x, y, z, [], [], [], []) {
-            let dist = (a[i as usize] - b[j as usize]).abs();
-            dist + z.min(x.min(y))
-        }
+    const MSM_C: f32 = 1.0;
+    #[inline(always)]
+    pub fn msm_cost_function(x: f32, y: f32, z: f32) -> f32 {
+        MSM_C + (y.min(z) - x).max(x - y.max(z)).max(0.0)
+    }
 
-        fn erp_distance[ErpImpl](a, b, i, j, x, y, z, [gap_penalty: f32], [], [], []) {
+    warp_kernel_spec! {
+        fn erp_distance[ERPImpl](a, b, i, j, x, y, z, [gap_penalty: f32], [], [], [], []) {
             (y + (a[i as usize] - b[j as usize]).abs())
             .min((z + (a[i as usize] - gap_penalty).abs()).min(x + (b[j as usize] - gap_penalty).abs()))
         }
+        fn lcss_distance[LCSSImpl](a, b, i, j, x, y, z, [epsilon: f32], [], [], [], []) {
+            let dist = (a[i as usize] - b[j as usize]).abs();
+            if dist <= epsilon {
+                y + 1.0
+            } else {
+                x.max(z)
+            }
+        }
+        fn dtw_distance[DTWImpl](a, b, i, j, x, y, z, [], [], [], [], []) {
+            let dist = (a[i as usize] - b[j as usize]).abs();
+            dist + z.min(x.min(y))
+        }
+        fn wdtw_distance[WDTWImpl](a, b, i, j, x, y, z, [], [], [], [], [weights: f32]) {
+            let dist = (a[i as usize] - b[j as usize]).powi(2) * weights[(i as i32 - j as i32).abs() as usize];
+            dist + x.min(y.min(z))
+        }
+        fn msm_distance[MSMImpl](a, b, i, j, x, y, z, [], [], [], [], []) {
+            (y + (a[i as usize] - b[j as usize]).abs())
+            .min(
+                z + msm_cost_function(a[i as usize], if i == 0 {0.0} else {a[i as usize - 1]}, b[j as usize]),
+            )
+            .min(
+                x + msm_cost_function(b[j as usize], a[i as usize], if j == 0 {0.0} else {b[j as usize - 1]}),
+            )
+        }
+        fn twe_distance[TWEImpl](a, b, i, j, x, y, z, [stiffness: f32], [penalty: f32], [], [], []) {
+            let delete_addition = penalty + stiffness;
+            // deletion in a
+            let del_a =
+            z + (if i == 0 {0.0} else {a[i as usize - 1]} - a[i as usize]).abs() + delete_addition;
+
+            // deletion in b
+            let del_b =
+                x + (if j == 0 {0.0} else {b[j as usize - 1]} - b[j as usize]).abs() + delete_addition;
+
+            // match
+            let match_current = (a[i as usize] - b[j as usize]).abs();
+            let match_previous = (if i == 0 {0.0} else {a[i as usize - 1]}
+                - if j == 0 {0.0} else {b[j as usize - 1]})
+            .abs();
+            let match_a_b = y
+                + match_current
+                + match_previous
+                + stiffness * (2.0 * (i as isize - j as isize).abs() as f32);
+
+            del_a.min(del_b.min(match_a_b))
+        }
+        fn adtw_distance[ADTWImpl](a, b, i, j, x, y, z, [w: f32], [], [], [], []) {
+            let dist = (a[i as usize] - b[j as usize]).powi(2);
+                    dist + (z + w).min((x + w).min(y))
+        }
+
     }
 }

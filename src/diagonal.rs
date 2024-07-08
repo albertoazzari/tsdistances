@@ -1,6 +1,6 @@
-use crate::matrix::{DiagonalMatrix, OptimMatrix};
+use crate::matrix::Matrix;
 
-pub fn diagonal_distance<M: DiagonalMatrix>(
+pub fn diagonal_distance<M: Matrix>(
     a: &[f64],
     b: &[f64],
     init_val: f64,
@@ -13,7 +13,7 @@ pub fn diagonal_distance<M: DiagonalMatrix>(
     })
 }
 
-fn diagonal_distance_<M: DiagonalMatrix>(
+fn diagonal_distance_<M: Matrix>(
     a_len: usize,
     b_len: usize,
     init_val: f64,
@@ -59,14 +59,4 @@ fn diagonal_distance_<M: DiagonalMatrix>(
     }
     let (rx, cx) = M::index_mat_to_diag(a_len, b_len);
     matrix.get_diagonal_cell(rx, cx)
-}
-
-#[test]
-fn test_matrix() {
-    let a: Vec<f64> = (0..10).map(|i| i as f64).collect();
-    let b: Vec<f64> = (0..10).map(|i| i as f64).collect();
-
-    let result = diagonal_distance::<OptimMatrix>(&a, &b, f64::INFINITY, |a, b, i, j, x, y, z| {
-        (a[i] - b[j]).abs() + x.min(y.min(z))
-    });
 }

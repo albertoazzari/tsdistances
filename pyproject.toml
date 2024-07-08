@@ -12,7 +12,11 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-
+dependencies = [
+    "numpy",
+    "maturin",
+    "typeguard",
+]
 [build-system]
 requires = ["maturin>=1.6.0"]
 build-backend = "maturin"

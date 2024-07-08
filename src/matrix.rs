@@ -1,4 +1,4 @@
-pub trait DiagonalMatrix: Sync + Send {
+pub trait Matrix: Sync + Send {
     fn new(a_len: usize, b_len: usize, init_val: f64) -> Self;
     fn set_diagonal_cell(&mut self, diag_row: usize, diag_offset: isize, value: f64);
     fn get_diagonal_cell(&self, diag_row: usize, diag_offset: isize) -> f64;
@@ -20,7 +20,7 @@ pub struct FullMatrix {
     b_len: usize,
 }
 
-impl DiagonalMatrix for FullMatrix {
+impl Matrix for FullMatrix {
     fn new(a_len: usize, b_len: usize, init_val: f64) -> Self {
         let rowcount = a_len + b_len + 1;
         let diag_len = a_len + b_len + 1;
@@ -68,12 +68,12 @@ impl DiagonalMatrix for FullMatrix {
 
 }
 
-pub struct OptimMatrix {
+pub struct DiagonalMatrix {
     diagonal: Vec<f64>,
     mask: usize,
 }
 
-impl DiagonalMatrix for OptimMatrix {
+impl Matrix for DiagonalMatrix {
     fn new(a_len: usize, _b_len: usize, init_val: f64) -> Self {
         let diag_len = 2 * (a_len + 1).next_power_of_two();
 
@@ -100,14 +100,14 @@ impl DiagonalMatrix for OptimMatrix {
 
 pub struct CheckMatrix {
     full: FullMatrix,
-    optim: OptimMatrix,
+    optim: DiagonalMatrix,
 }
 
-impl DiagonalMatrix for CheckMatrix {
+impl Matrix for CheckMatrix {
     fn new(a_len: usize, b_len: usize, init_val: f64) -> Self {
         Self {
             full: FullMatrix::new(a_len, b_len, init_val),
-            optim: OptimMatrix::new(a_len, b_len, init_val),
+            optim: DiagonalMatrix::new(a_len, b_len, init_val),
         }
     }
 
