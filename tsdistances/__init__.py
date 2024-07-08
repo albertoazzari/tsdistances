@@ -173,7 +173,8 @@ def lcss_distance(
 def dtw_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        n_jobs: Optional[int]=1) -> np.ndarray:
+        n_jobs: Optional[int]=1,
+        device: Optional[str]="cpu") -> np.ndarray:
     """
     Computes the Dynamic Time Warping (DTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise DTW distances within `u`.
@@ -207,25 +208,25 @@ def dtw_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.dtw(u, v, n_jobs))
+        return np.array(tsd.dtw(u, v, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
-    if u.ndim == 1 and v.ndim == 1:
-        _u = u.reshape((1, u.shape[0]))
-        _v = v.reshape((1, v.shape[0]))
-    
-    if u.ndim == 2 and v.ndim == 2:
+    if u.ndim == 2:
         _u = u
-        _v = v
+        if v is None:
+            return np.array(tsd.dtw(_u, None, n_jobs, device))
+        if v.ndim == 2:
+            _v = v
 
-    return np.array(tsd.dtw(_u, _v, n_jobs))
+    return np.array(tsd.dtw(_u, _v, n_jobs, device))
 
 @typechecked
 def ddtw_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        n_jobs: Optional[int]=1) -> np.ndarray:
+        n_jobs: Optional[int]=1,
+        device: Optional[str]="cpu") -> np.ndarray:
     """
     Computes the Derivative Dynamic Time Warping (DDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise DDTW distances within `u`.
@@ -259,7 +260,7 @@ def ddtw_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.ddtw(u, v, n_jobs))
+        return np.array(tsd.ddtw(u, v, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -267,18 +268,22 @@ def ddtw_distance(
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
     
-    if u.ndim == 2 and v.ndim == 2:
+    if u.ndim == 2:
         _u = u
-        _v = v
+        if v is None:
+            return np.array(tsd.ddtw(_u, None, n_jobs, device))
+        if v.ndim == 2:
+            _v = v
 
-    return np.array(tsd.ddtw(_u, _v, n_jobs))
+    return np.array(tsd.ddtw(_u, _v, n_jobs, device))
 
 @typechecked
 def wdtw_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
         g: Optional[float]=0.05, 
-        n_jobs: Optional[int]=1) -> np.ndarray:
+        n_jobs: Optional[int]=1,
+        device: Optional[str]="cpu") -> np.ndarray:
     """
     Computes the Weighted Dynamic Time Warping (WDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise WDTW distances within `u`.
@@ -312,7 +317,7 @@ def wdtw_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.wdtw(u, v, g, n_jobs))
+        return np.array(tsd.wdtw(u, v, g, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -320,18 +325,22 @@ def wdtw_distance(
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
     
-    if u.ndim == 2 and v.ndim == 2:
+    if u.ndim == 2:
         _u = u
-        _v = v
+        if v is None:
+            return np.array(tsd.wdtw(_u, None, g, n_jobs, device))
+        if v.ndim == 2:
+            _v = v
 
-    return np.array(tsd.wdtw(_u, _v, g, n_jobs))
+    return np.array(tsd.wdtw(_u, _v, g, n_jobs, device))
 
 @typechecked
 def wddtw_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
         g: Optional[float]=0.05, 
-        n_jobs: Optional[int]=1) -> np.ndarray:
+        n_jobs: Optional[int]=1,
+        device: Optional[str]="cpu") -> np.ndarray:
     """
     Computes the Weighted Derivative Dynamic Time Warping (WDDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise WDDTW distances within `u`.
@@ -364,7 +373,7 @@ def wddtw_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.wddtw(u, v, g, n_jobs))
+        return np.array(tsd.wddtw(u, v, g, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -372,18 +381,22 @@ def wddtw_distance(
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
     
-    if u.ndim == 2 and v.ndim == 2:
+    if u.ndim == 2:
         _u = u
-        _v = v
+        if v is None:
+            return np.array(tsd.wddtw(_u, None, n_jobs, device))
+        if v.ndim == 2:
+            _v = v
 
-    return np.array(tsd.wddtw(_u, _v, g, n_jobs))
+    return np.array(tsd.wddtw(_u, _v, g, n_jobs, device))
 
 @typechecked
 def adtw_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
         warp_penalty: Optional[float]=0.1, 
-        n_jobs: Optional[int]=1) -> np.ndarray:
+        n_jobs: Optional[int]=1,
+        device: Optional[str]="cpu") -> np.ndarray:
     """
     Computes the Amercing Dynamic Time Warping (ADTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise ADTW distances within `u`.
@@ -419,7 +432,7 @@ def adtw_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.adtw(u, v, warp_penalty, n_jobs))
+        return np.array(tsd.adtw(u, v, warp_penalty, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -427,17 +440,21 @@ def adtw_distance(
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
     
-    if u.ndim == 2 and v.ndim == 2:
+    if u.ndim == 2:
         _u = u
-        _v = v
+        if v is None:
+            return np.array(tsd.adtw(_u, None, warp_penalty, n_jobs, device))
+        if v.ndim == 2:
+            _v = v
 
-    return np.array(tsd.adtw(_u, _v, warp_penalty, n_jobs))
+    return np.array(tsd.adtw(_u, _v, warp_penalty, n_jobs, device))
 
 @typechecked
 def msm_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None, 
-        n_jobs: Optional[int]=1) -> np.ndarray:
+        n_jobs: Optional[int]=1,
+        device: Optional[str]="cpu") -> np.ndarray:
     """
     Computes the Move-Split-Merge (MSM) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise MSM distances within `u`.
@@ -471,7 +488,7 @@ def msm_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.msm(u, v, n_jobs))
+        return np.array(tsd.msm(u, v, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -479,11 +496,14 @@ def msm_distance(
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
     
-    if u.ndim == 2 and v.ndim == 2:
+    if u.ndim == 2:
         _u = u
-        _v = v
+        if v is None:
+            return np.array(tsd.adtw(_u, None, n_jobs, device))
+        if v.ndim == 2:
+            _v = v
 
-    return np.array(tsd.msm(_u, _v, n_jobs))
+    return np.array(tsd.msm(_u, _v, n_jobs, device))
 
 @typechecked
 def twe_distance(
@@ -491,7 +511,8 @@ def twe_distance(
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None, 
         stifness: Optional[float]=0.001, 
         penalty: Optional[float]=1.0, 
-        n_jobs: Optional[int]=1) -> np.ndarray:
+        n_jobs: Optional[int]=1,
+        device: Optional[str]="cpu") -> np.ndarray:
     """
     Computes the Time Warp Edit (TWE) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise TWE distances within `u`.
@@ -529,7 +550,7 @@ def twe_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.twe(u, v, stifness, penalty, n_jobs))
+        return np.array(tsd.twe(u, v, stifness, penalty, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -537,11 +558,14 @@ def twe_distance(
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
     
-    if u.ndim == 2 and v.ndim == 2:
+    if u.ndim == 2:
         _u = u
-        _v = v
+        if v is None:
+            return np.array(tsd.twe(_u, None, stifness, penalty, n_jobs, device))
+        if v.ndim == 2:
+            _v = v
 
-    return np.array(tsd.twe(_u, _v, stifness, penalty, n_jobs))
+    return np.array(tsd.twe(_u, _v, stifness, penalty, n_jobs, device))
 
 @typechecked
 def sb_distance(

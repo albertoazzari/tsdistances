@@ -288,7 +288,7 @@ pub mod warp {
             }
         }
         fn dtw_distance[DTWImpl](a, b, i, j, x, y, z, [], [], [], [], []) {
-            let dist = (a[i as usize] - b[j as usize]).abs();
+            let dist = (a[i as usize] - b[j as usize]).powi(2);
             dist + z.min(x.min(y))
         }
         fn wdtw_distance[WDTWImpl](a, b, i, j, x, y, z, [], [], [], [], [weights: f32]) {
