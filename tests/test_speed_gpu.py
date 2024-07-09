@@ -11,7 +11,7 @@ UCR_ARCHIVE_PATH = "/media/aazzari/UCRArchive_2018/"
 def load_random_ucr_dataset():
     # Load the UCR dataset
     # dataset_name = np.random.choice(os.listdir(UCR_ARCHIVE_PATH))
-    dataset_name = "TwoLeadECG"
+    dataset_name = "ACSF1"
     print(f"Using: {dataset_name}")
     dataset_path = os.path.join(UCR_ARCHIVE_PATH, dataset_name, dataset_name)
 
@@ -23,7 +23,7 @@ def load_random_ucr_dataset():
 
     return np.vstack((X_train, X_test)), np.hstack((y_train, y_test))
 
-class TestSpeedAllDistances(unittest.TestCase):
+class TestSpeedCPUAllDistances(unittest.TestCase):
 
     X, y = load_random_ucr_dataset()
 
@@ -40,7 +40,7 @@ class TestSpeedAllDistances(unittest.TestCase):
 
     def test_erp_distance(self):
         start_D = time.time()
-        erp_distance(self.X, None, gap_penalty=0.05, n_jobs=1)
+        erp_distance(self.X, None, gap_penalty=0.05, n_jobs=1, device="gpu")
         end_D = time.time()
 
         start_aeon = time.time()
@@ -51,7 +51,7 @@ class TestSpeedAllDistances(unittest.TestCase):
     
     def test_lcss_distance(self):
         start_D = time.time()
-        lcss_distance(self.X, None, epsilon=0.1, n_jobs=1)
+        lcss_distance(self.X, None, epsilon=0.1, n_jobs=1, device="gpu")
         end_D = time.time()
 
         start_aeon = time.time()
@@ -62,7 +62,7 @@ class TestSpeedAllDistances(unittest.TestCase):
 
     def test_dtw_distance(self):
         start_D = time.time()
-        dtw_distance(self.X, None, n_jobs=1)
+        dtw_distance(self.X, None, n_jobs=1, device="gpu")
         end_D = time.time()
 
         start_aeon = time.time()
@@ -73,7 +73,7 @@ class TestSpeedAllDistances(unittest.TestCase):
 
     def test_ddtw_distance(self):
         start_D = time.time()
-        ddtw_distance(self.X, None, n_jobs=1)
+        ddtw_distance(self.X, None, n_jobs=1, device="gpu")
         end_D = time.time()
 
         start_aeon = time.time()
@@ -84,7 +84,7 @@ class TestSpeedAllDistances(unittest.TestCase):
 
     def test_wdtw_distance(self):
         start_D = time.time()
-        wdtw_distance(self.X, None, g=0.05, n_jobs=1)
+        wdtw_distance(self.X, None, g=0.05, n_jobs=1, device="gpu")
         end_D = time.time()
 
         start_aeon = time.time()
@@ -95,7 +95,7 @@ class TestSpeedAllDistances(unittest.TestCase):
 
     def test_wddtw_distance(self):
         start_D = time.time()
-        wddtw_distance(self.X, None, g=0.05, n_jobs=1)
+        wddtw_distance(self.X, None, g=0.05, n_jobs=1, device="gpu")
         end_D = time.time()
 
         start_aeon = time.time()
@@ -106,7 +106,7 @@ class TestSpeedAllDistances(unittest.TestCase):
 
     def test_adtw_distance(self):
         start_D = time.time()
-        adtw_distance(self.X, None, warp_penalty=1.0, n_jobs=1)
+        adtw_distance(self.X, None, warp_penalty=1.0, n_jobs=1, device="gpu")
         end_D = time.time()
 
         start_aeon = time.time()
@@ -117,7 +117,7 @@ class TestSpeedAllDistances(unittest.TestCase):
 
     def test_msm_distance(self):
         start_D = time.time()
-        msm_distance(self.X, None, n_jobs=1)
+        msm_distance(self.X, None, n_jobs=1, device="gpu")
         end_D = time.time()
 
         start_aeon = time.time()
@@ -129,7 +129,7 @@ class TestSpeedAllDistances(unittest.TestCase):
 
     def test_twe_distance(self):
         start_D = time.time()
-        twe_distance(self.X, None, stifness=0.1, penalty=0.1, n_jobs=1)
+        twe_distance(self.X, None, stifness=0.1, penalty=0.1, n_jobs=1, device="gpu")
         end_D = time.time()
 
         start_aeon = time.time()
