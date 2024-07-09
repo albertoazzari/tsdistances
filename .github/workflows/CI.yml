@@ -31,9 +31,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install toolchains
         run: |
-          rustup set profile minimal
-          rustup toolchain install stable nightly --no-self-update
-          rustup toolchain install nightly-2023-05-27 --component rust-src rustc-dev llvm-tools-preview --no-self-update
+          rustup toolchain install nightly-2023-05-27
+          rustup component add --toolchain nightly-2023-05-27 rust-src rustc-dev llvm-tools-preview
       - name: Install spirv-tools (Linux)
         if: ${{ runner.os == 'Linux' }}
         run: |
@@ -57,12 +56,10 @@ jobs:
           unzip "$tmparch" -d "${HOME}/spirv-tools"
       - if: ${{ runner.os == 'Windows' }}
         run: echo "$HOME/spirv-tools/install/bin" >> $env:GITHUB_PATH
-      - name: Check krnlc
-        run: cargo +nightly-2023-05-27 -Zunstable-options -C=krnlc check --locked --no-default-features --features use-installed-tools -vv
       - name: Install krnlc
-        run: cargo +nightly-2023-05-27 install --path krnlc --root . --locked --no-default-features --features use-installed-tools -vv --debug
-      - name: krnlc check
-        run: ./bin/krnlc -p tsdistances_gpu
+        run: cargo +nightly-2023-05-27 install krnlc --locked
+      - name: Compile tsdistances_gpu
+        run: ./bin/krnlc -p gpu
 
   linux:
     runs-on: ${{ matrix.platform.runner }}
