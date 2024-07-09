@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install toolchains
         run: |
-          rustup toolchain install nightly-2023-05-27
+          rustup toolchain install nightly
           rustup component add --toolchain nightly-2023-05-27 rust-src rustc-dev llvm-tools-preview
       - name: Install spirv-tools (Linux)
         if: ${{ runner.os == 'Linux' }}
