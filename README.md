@@ -1,12 +1,30 @@
 # tsdistances
 
-`tsdistances` is a Python library (with Rust backend) for computing various pairwise distances between sets of time series data. It provides efficient implementations of elastic distance measures such as Dynamic Time Warping (DTW), Longest Common Subsequence (LCSS), and Time Warping Edit (TWE), etc. The library is designed to be fast and scalable, leveraging parallel computation for improved performance.
+`tsdistances` is a Python library (with Rust backend) for computing various pairwise distances between sets of time series data. It provides efficient implementations of elastic distance measures such as Dynamic Time Warping (DTW), Longest Common Subsequence (LCSS), Time Warping Edit (TWE), and many others. The library is designed to be fast and scalable, leveraging parallel computation and GPU support via Vulkan for improved performance.
+
+## Features
+
+- **Multiple Distance Measures**: Supports a wide range of time series distance measures:
+  - Euclidean
+  - Edit Distance with Real Penalty (ERP)
+  - Longest Common Subsequence (LCSS)
+  - Dynamic Time Warping (DTW)
+  - Derivative Dynamic Time Warping (DDTW)
+  - Weighted Dynamic Time Warping (WDTW)
+  - Weighted Derivative Dynamic Time Warping (WDDTW)
+  - Amerced Dynamic Time Warping (ADTW)
+  - Move-Split-Merge (MSM)
+  - Time Warp Edit Distance (TWE)
+  - Shape-Based Distance (SBD)
+
+- **Parallel Computation**: Utilizes multiple CPU cores to speed up computations.
+- **GPU Acceleration**: Optional GPU support using Vulkan for even faster computations.
 
 ## Installation
 
-### Source
+### From Source
 
-You can install `tsdistances` from source:
+To install `tsdistances` from source, follow these steps:
 
 ```bash
 $ git clone https://github.com/albertoazzari/tsdistances/
@@ -17,7 +35,6 @@ $ pip install maturin
 $ maturin develop --release
 ```
 
-
 ### PIP
 If you use pip, you can install `tsdistances` with:
 ```
@@ -26,6 +43,7 @@ pip install tsdistances
 
 
 ## Usage
+Here's a basic example of using tsdistances to compute the Dynamic Time Warping (DTW) distance between two set of time series:
 ```python
 import numpy as np
 import tsdistances
@@ -42,7 +60,7 @@ x2 = np.array([
 ])
 
 # Compute DTW distance
-result = tsdistances.dtw(x1, x2, n_jobs=4)
+result = tsdistances.dtw(x1, x2, n_jobs=4, device='gpu')
 print(result)
 ```
 
