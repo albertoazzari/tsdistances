@@ -58,8 +58,8 @@ jobs:
         run: echo "$HOME/spirv-tools/install/bin" >> $env:GITHUB_PATH
       - name: Install krnlc
         run: cargo +nightly-2023-05-27 install krnlc --locked
-      - name: Compile tsdistances_gpu
-        run: ./bin/krnlc -p gpu
+      - name: Compile kernels
+        run: krnlc -p gpu
 
   linux:
     runs-on: ${{ matrix.platform.runner }}
