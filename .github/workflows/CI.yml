@@ -63,6 +63,7 @@ jobs:
 
   linux:
     runs-on: ${{ matrix.platform.runner }}
+    needs: build-krnlc
     strategy:
       matrix:
         platform:
@@ -92,6 +93,7 @@ jobs:
 
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
+    needs: build-krnlc
     strategy:
       matrix:
         platform:
@@ -121,6 +123,7 @@ jobs:
 
   windows:
     runs-on: ${{ matrix.platform.runner }}
+    needs: build-krnlc
     strategy:
       matrix:
         platform:
@@ -148,6 +151,7 @@ jobs:
 
   macos:
     runs-on: ${{ matrix.platform.runner }}
+    needs: build-krnlc
     strategy:
       matrix:
         platform:
