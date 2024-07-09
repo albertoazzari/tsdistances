@@ -3,6 +3,8 @@ name = "tsdistances"
 version = "0.0.4"
 authors = [
   { name="Alberto Azzari", email="alberto.azzari@univr.it" },
+  { name="Andrea Cracco", email="andrea.cracco@univr.it" },
+  { name="Francesco Masillo", email="francesco.masillo@univr.it" },
 ]
 description = "tsdistances is a Python library (with Rust backend) for computing various pairwise distances between sets of time series data. It provides efficient implementations of elastic distance measures such as Dynamic Time Warping (DTW), Longest Common Subsequence (LCSS), and Time Warping Edit (TWE). The library is designed to be fast and scalable, leveraging parallel computation for improved performance."
 readme = "README.md"

@@ -14,6 +14,56 @@ permissions:
   contents: read
 
 jobs:
+  build-krnlc:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-latest
+            target: x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchains
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable nightly --no-self-update
+          rustup toolchain install nightly-2023-05-27 --component rust-src rustc-dev llvm-tools-preview --no-self-update
+      - name: Install spirv-tools (Linux)
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt install libwayland-cursor0 libxkbcommon-dev libwayland-dev
+          mkdir "${HOME}/spirv-tools"
+          curl -fL "https://storage.googleapis.com/spirv-tools/artifacts/prod/graphics_shader_compiler/spirv-tools/linux-clang-release/continuous/1863/20221024-094528/install.tgz" | tar -xz -C "${HOME}/spirv-tools"
+          echo "${HOME}/spirv-tools/install/bin" >> $GITHUB_PATH
+      - name: Install spirv-tools (macOS)
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          mkdir "${HOME}/spirv-tools"
+          curl -fL "https://storage.googleapis.com/spirv-tools/artifacts/prod/graphics_shader_compiler/spirv-tools/macos-clang-release/continuous/1875/20221024-094531/install.tgz" | tar -xz -C "${HOME}/spirv-tools"
+          echo "${HOME}/spirv-tools/install/bin" >> $GITHUB_PATH
+      - name: Install spirv-tools (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: bash
+        run: |
+          tmparch=$(mktemp)
+          mkdir "${HOME}/spirv-tools"
+          curl -fL -o "$tmparch" "https://storage.googleapis.com/spirv-tools/artifacts/prod/graphics_shader_compiler/spirv-tools/windows-msvc-2017-release/continuous/1851/20221024-094908/install.zip"
+          unzip "$tmparch" -d "${HOME}/spirv-tools"
+      - if: ${{ runner.os == 'Windows' }}
+        run: echo "$HOME/spirv-tools/install/bin" >> $env:GITHUB_PATH
+      - name: Check krnlc
+        run: cargo +nightly-2023-05-27 -Zunstable-options -C=krnlc check --locked --no-default-features --features use-installed-tools -vv
+      - name: Install krnlc
+        run: cargo +nightly-2023-05-27 install --path krnlc --root . --locked --no-default-features --features use-installed-tools -vv --debug
+      - name: krnlc check
+        run: ./bin/krnlc -p tsdistances_gpu
+
   linux:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
