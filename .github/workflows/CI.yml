@@ -67,7 +67,11 @@ jobs:
       - name: Install krnlc
         run: cargo +nightly-2023-05-27 install krnlc --locked
       - name: Compile kernels
-        run: krnlc -p gpu
+        run: |
+          pushd gpu
+          krnlc
+          popd
+
 
   linux:
     runs-on: ${{ matrix.platform.runner }}
