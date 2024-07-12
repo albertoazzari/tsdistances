@@ -46,11 +46,19 @@ fn compute_distance(
                 .iter()
                 .map(|(i, a)| {
                     if let Some(x2) = &x2 {
-                        x2.iter().map(|b| distance(a, b)).collect::<Vec<_>>()
+                        x2.iter()
+                            .map(|b| {
+                                let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+                                distance(a, b)
+                            })
+                            .collect::<Vec<_>>()
                     } else {
                         x1.iter()
                             .take(*i)
-                            .map(|(_, b)| distance(a, b))
+                            .map(|(_, b)| {
+                                let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+                                distance(a, b)
+                            })
                             .collect::<Vec<_>>()
                     }
                 })
@@ -124,8 +132,10 @@ pub fn erp(
                             b,
                             f64::INFINITY,
                             |a, b, i, j, x, y, z| {
-                                (y + (a[i] - b[j]).abs())
-                                    .min((z + (a[i] - gap_penalty).abs()).min(x + (b[j] - gap_penalty).abs()))
+                                (y + (a[i] - b[j]).abs()).min(
+                                    (z + (a[i] - gap_penalty).abs())
+                                        .min(x + (b[j] - gap_penalty).abs()),
+                                )
                             },
                         )
                     },
@@ -137,9 +147,7 @@ pub fn erp(
             "gpu" => {
                 let device_gpu = get_best_gpu();
                 distance_matrix = Some(compute_distance(
-                    |a, b| {
-                        tsdistances_gpu::erp(device_gpu.clone(), a, b, gap_penalty)
-                    },
+                    |a, b| tsdistances_gpu::erp(device_gpu.clone(), a, b, gap_penalty),
                     x1,
                     x2,
                     1,
@@ -182,15 +190,19 @@ pub fn lcss(
             "cpu" => {
                 distance_matrix = Some(compute_distance(
                     |a, b| {
-                        let similarity =
-                            diagonal::diagonal_distance::<DiagonalMatrix>(a, b, 0.0, |a, b, i, j, x, y, z| {
+                        let similarity = diagonal::diagonal_distance::<DiagonalMatrix>(
+                            a,
+                            b,
+                            0.0,
+                            |a, b, i, j, x, y, z| {
                                 let dist = (a[i] - b[j]).abs();
                                 if dist <= epsilon {
                                     y + 1.0
                                 } else {
                                     x.max(z)
                                 }
-                            });
+                            },
+                        );
                         let min_len = a.len().min(b.len()) as f64;
                         1.0 - similarity / min_len
                     },
@@ -231,11 +243,11 @@ pub fn lcss(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1, device="cpu"))]
 pub fn dtw(
-    x1: Vec<Vec<f64>>, 
-    x2: Option<Vec<Vec<f64>>>, 
-    n_jobs: i32, 
-    device: Option<&str>) -> PyResult<Vec<Vec<f64>>> {
-
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    n_jobs: i32,
+    device: Option<&str>,
+) -> PyResult<Vec<Vec<f64>>> {
     let mut distance_matrix = None;
 
     if let Some(device) = device {
@@ -261,9 +273,7 @@ pub fn dtw(
             "gpu" => {
                 let device_gpu = get_best_gpu();
                 distance_matrix = Some(compute_distance(
-                    |a, b| {
-                        tsdistances_gpu::dtw(device_gpu.clone(), a, b)
-                    },
+                    |a, b| tsdistances_gpu::dtw(device_gpu.clone(), a, b),
                     x1,
                     x2,
                     1,
@@ -288,7 +298,12 @@ pub fn dtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1, device="cpu"))]
-pub fn ddtw(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32, device: Option<&str>) -> PyResult<Vec<Vec<f64>>> {
+pub fn ddtw(
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    n_jobs: i32,
+    device: Option<&str>,
+) -> PyResult<Vec<Vec<f64>>> {
     let x1_d = derivate(&x1);
     let x2_d = if let Some(x2) = &x2 {
         Some(derivate(&x2))
@@ -307,7 +322,6 @@ pub fn wdtw(
     n_jobs: i32,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
-
     let mut distance_matrix = None;
 
     if let Some(device) = device {
@@ -321,7 +335,8 @@ pub fn wdtw(
                             b,
                             f64::INFINITY,
                             |a, b, i, j, x, y, z| {
-                                let dist = (a[i] - b[j]).powi(2) * weights[(i as i32 - j as i32).abs() as usize];
+                                let dist = (a[i] - b[j]).powi(2)
+                                    * weights[(i as i32 - j as i32).abs() as usize];
                                 dist + z.min(x.min(y))
                             },
                         )
@@ -334,9 +349,7 @@ pub fn wdtw(
             "gpu" => {
                 let device_gpu = get_best_gpu();
                 distance_matrix = Some(compute_distance(
-                    |a, b| {
-                        tsdistances_gpu::wdtw(device_gpu.clone(), a, b, g)
-                    },
+                    |a, b| tsdistances_gpu::wdtw(device_gpu.clone(), a, b, g),
                     x1,
                     x2,
                     1,
@@ -366,7 +379,7 @@ pub fn wddtw(
     x2: Option<Vec<Vec<f64>>>,
     g: f64,
     n_jobs: i32,
-    device: Option<&str>
+    device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
     let x1_d = derivate(&x1);
     let x2_d = if let Some(x2) = &x2 {
@@ -380,11 +393,11 @@ pub fn wddtw(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1, device="cpu"))]
 pub fn msm(
-    x1: Vec<Vec<f64>>, 
-    x2: Option<Vec<Vec<f64>>>, 
-    n_jobs: i32, 
-    device: Option<&str>) -> PyResult<Vec<Vec<f64>>> {
-    
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    n_jobs: i32,
+    device: Option<&str>,
+) -> PyResult<Vec<Vec<f64>>> {
     let mut distance_matrix = None;
 
     if let Some(device) = device {
@@ -399,10 +412,18 @@ pub fn msm(
                             |a, b, i, j, x, y, z| {
                                 (y + (a[i] - b[j]).abs())
                                     .min(
-                                        z + msm_cost_function(a[i], a.get(i - 1).copied().unwrap_or(0.0), b[j]),
+                                        z + msm_cost_function(
+                                            a[i],
+                                            a.get(i - 1).copied().unwrap_or(0.0),
+                                            b[j],
+                                        ),
                                     )
                                     .min(
-                                        x + msm_cost_function(b[j], a[i], b.get(j - 1).copied().unwrap_or(0.0)),
+                                        x + msm_cost_function(
+                                            b[j],
+                                            a[i],
+                                            b.get(j - 1).copied().unwrap_or(0.0),
+                                        ),
                                     )
                             },
                         )
@@ -415,9 +436,7 @@ pub fn msm(
             "gpu" => {
                 let device_gpu = get_best_gpu();
                 distance_matrix = Some(compute_distance(
-                    |a, b| {
-                        tsdistances_gpu::msm(device_gpu.clone(), a, b)
-                    },
+                    |a, b| tsdistances_gpu::msm(device_gpu.clone(), a, b),
                     x1,
                     x2,
                     1,
@@ -475,12 +494,14 @@ pub fn twe(
                             f64::INFINITY,
                             |a, b, i, j, x, y, z| {
                                 // deletion in a
-                                let del_a: f64 =
-                                    z + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs() + delete_addition;
+                                let del_a: f64 = z
+                                    + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs()
+                                    + delete_addition;
 
                                 // deletion in b
-                                let del_b =
-                                    x + (b.get(j - 1).copied().unwrap_or(0.0) - b[j]).abs() + delete_addition;
+                                let del_b = x
+                                    + (b.get(j - 1).copied().unwrap_or(0.0) - b[j]).abs()
+                                    + delete_addition;
 
                                 // match
                                 let match_current = (a[i] - b[j]).abs();
@@ -504,9 +525,7 @@ pub fn twe(
             "gpu" => {
                 let device_gpu = get_best_gpu();
                 distance_matrix = Some(compute_distance(
-                    |a, b| {
-                        tsdistances_gpu::twe(device_gpu.clone(), a, b, stiffness, penalty)
-                    },
+                    |a, b| tsdistances_gpu::twe(device_gpu.clone(), a, b, stiffness, penalty),
                     x1,
                     x2,
                     1,
@@ -567,9 +586,7 @@ pub fn adtw(
             "gpu" => {
                 let device_gpu = get_best_gpu();
                 distance_matrix = Some(compute_distance(
-                    |a, b| {
-                        tsdistances_gpu::adtw(device_gpu.clone(), a, b, warp_penalty)
-                    },
+                    |a, b| tsdistances_gpu::adtw(device_gpu.clone(), a, b, warp_penalty),
                     x1,
                     x2,
                     1,
