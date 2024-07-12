@@ -9,7 +9,8 @@ UCR_ARCHIVE_PATH = "/media/aazzari/UCRArchive_2018/"
 
 def load_random_ucr_dataset():
     # Load the UCR dataset
-    dataset_name = "Coffee"# np.random.choice(os.listdir(UCR_ARCHIVE_PATH))
+    dataset_name = "Coffee"
+    print(f"Using: {dataset_name}")
     dataset_path = os.path.join(UCR_ARCHIVE_PATH, dataset_name, dataset_name)
 
     # Load the dataset

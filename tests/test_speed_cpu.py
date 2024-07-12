@@ -40,7 +40,7 @@ class TestSpeedCPUAllDistances(unittest.TestCase):
 
     def test_erp_distance(self):
         start_D = time.time()
-        erp_distance(self.X, None, gap_penalty=0.05, n_jobs=1)
+        erp_distance(self.X, None, gap_penalty=0.05, n_jobs=-1)
         end_D = time.time()
 
         start_aeon = time.time()
