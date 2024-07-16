@@ -6,7 +6,7 @@ from aeon import distances as aeon
 import time
 
 
-def load_random_ucr_dataset():
+def load_random_dataset():
     n_timeseries = 10
     n_timesteps = 10000
 
@@ -20,7 +20,7 @@ def load_random_ucr_dataset():
 
 class TestSpeedGPUAllDistances(unittest.TestCase):
 
-    X, y = load_random_ucr_dataset()
+    X, y = load_random_dataset()
 
     def test_erp_distance(self):
         print(self.X.shape)

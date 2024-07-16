@@ -1,6 +1,5 @@
 use rustfft::{algorithm::Radix4, num_complex::Complex, Fft, FftDirection};
 
-
 pub fn next_multiple_of_n(x: usize, n: usize) -> usize {
     (x + n - 1) / n * n
 }

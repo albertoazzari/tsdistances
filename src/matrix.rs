@@ -38,18 +38,16 @@ impl Matrix for FullMatrix {
     }
 
     fn set_diagonal_cell(&mut self, diag_row: usize, diag_offset: isize, value: f64) {
-        self.matrix[diag_row][self.diag_len.overflowing_add_signed(diag_offset).0 % self.diag_len] = value;
+        self.matrix[diag_row]
+            [self.diag_len.overflowing_add_signed(diag_offset).0 % self.diag_len] = value;
     }
 
     fn debug_print(&self) {
-        
-        let mut matrix = vec![vec![0.0; self.b_len+1]; self.a_len+1];
+        let mut matrix = vec![vec![0.0; self.b_len + 1]; self.a_len + 1];
         let mut row = 0;
         let mut col = 0;
 
-
         for i in 0..matrix.len() {
-
             let mut row1 = row;
             let mut col1 = col;
 
@@ -64,8 +62,6 @@ impl Matrix for FullMatrix {
             col -= 1;
         }
     }
-
-
 }
 
 pub struct DiagonalMatrix {
@@ -118,13 +114,16 @@ impl Matrix for CheckMatrix {
             self.full.debug_print();
             self.optim.debug_print();
 
-            assert_eq!(full, optim, "Mismatch at ({}, {}): full={}, optim={}", diag_row, diag_offset, full, optim);
+            assert_eq!(
+                full, optim,
+                "Mismatch at ({}, {}): full={}, optim={}",
+                diag_row, diag_offset, full, optim
+            );
         }
         full
     }
 
     fn set_diagonal_cell(&mut self, diag_row: usize, diag_offset: isize, value: f64) {
-
         // if diag_offset == -14 {
         //     println!("Setting diag_offset: {} to value: {}", diag_offset, value);
         // }

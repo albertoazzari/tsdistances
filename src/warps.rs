@@ -3,8 +3,8 @@ const DIAMOND_SIZE: usize = 64;
 
 #[test]
 fn test_diamond_partitioning() {
-    use crate::matrix::DiagonalMatrix;
     use crate::diagonal::diagonal_distance;
+    use crate::matrix::DiagonalMatrix;
     use tsdistances_gpu::device::get_best_gpu;
 
     let rep = 10;
@@ -19,32 +19,26 @@ fn test_diamond_partitioning() {
         let b: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
 
         let start1 = std::time::Instant::now();
-        r1 +=
-            diamond_partitioning::<DiagonalMatrix>(&a, &b, 0.0, |a, b, i, j, x, y, z| {
-                let dist = (a[i] - b[j]).abs();
-                    if dist <= epsilon {
-                        y + 1.0
-                    } else {
-                        x.max(z)
-                    }
-            });
+        r1 += diamond_partitioning::<DiagonalMatrix>(&a, &b, 0.0, |a, b, i, j, x, y, z| {
+            let dist = (a[i] - b[j]).abs();
+            if dist <= epsilon {
+                y + 1.0
+            } else {
+                x.max(z)
+            }
+        });
         let end1 = start1.elapsed();
         time1 += end1.as_micros();
 
         let start2 = std::time::Instant::now();
-        r2 += diagonal_distance::<DiagonalMatrix>(
-            &a,
-            &b,
-            0.0,
-            |a, b, i, j, x, y, z| {
-                let dist = (a[i] - b[j]).abs();
-                    if dist <= epsilon {
-                        y + 1.0
-                    } else {
-                        x.max(z)
-                    }
-            },
-        );
+        r2 += diagonal_distance::<DiagonalMatrix>(&a, &b, 0.0, 1.0, |a, b, i, j, x, y, z| {
+            let dist = (a[i] - b[j]).abs();
+            if dist <= epsilon {
+                y + 1.0
+            } else {
+                x.max(z)
+            }
+        });
         let end2 = start2.elapsed();
         time2 += end2.as_micros();
 

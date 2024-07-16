@@ -1,6 +1,6 @@
 use krnl::{buffer::Buffer, device::Device};
 
-use crate::{kernels::warp::GpuKernelImpl, utils::next_multiple_of_n};
+use crate::kernels::warp::GpuKernelImpl;
 
 pub fn diamond_partitioning_gpu<G: GpuKernelImpl>(
     device: Device,
@@ -107,6 +107,10 @@ pub fn diamond_partitioning_gpu_<G: GpuKernelImpl>(
     let res = diagonal[(cx as usize) & (diagonal.len() - 1)];
 
     res
+}
+
+fn next_multiple_of_n(x: usize, n: usize) -> usize {
+    (x + n - 1) / n * n
 }
 
 // {

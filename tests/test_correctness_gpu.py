@@ -2,28 +2,24 @@ import unittest
 
 import numpy as np
 import os
-from tsdistances import euclidean_distance, erp_distance, lcss_distance, dtw_distance, ddtw_distance, wdtw_distance, wddtw_distance, adtw_distance, msm_distance, twe_distance, sb_distance
+from tsdistances import erp_distance, lcss_distance, dtw_distance, ddtw_distance, wdtw_distance, wddtw_distance, adtw_distance, msm_distance, twe_distance, sb_distance
 from aeon import distances as aeon
 
-UCR_ARCHIVE_PATH = "/media/aazzari/UCRArchive_2018/"
+def load_random_dataset():
+    n_timeseries = 200
+    n_timesteps = 1000
 
-def load_random_ucr_dataset():
-    # Load the UCR dataset
-    dataset_name = "Coffee"
-    print(f"Using: {dataset_name}")
-    dataset_path = os.path.join(UCR_ARCHIVE_PATH, dataset_name, dataset_name)
+    X_train = np.random.rand(n_timeseries, n_timesteps)
+    y_train = np.random.randint(0, 10, n_timeseries)
 
-    # Load the dataset
-    train = np.loadtxt(dataset_path + "_TRAIN.tsv", delimiter='\t')
-    test = np.loadtxt(dataset_path + "_TEST.tsv", delimiter='\t')
-    X_train, y_train = train[:, 1:], train[:, 0]
-    X_test, y_test = test[:, 1:], test[:, 0]
+    X_test = np.random.rand(n_timeseries, n_timesteps)
+    y_test = np.random.randint(0, 10, n_timeseries)
 
     return np.vstack((X_train, X_test)), np.hstack((y_train, y_test))
 
 class TestCorrectnessGPUAllDistances(unittest.TestCase):
 
-    X, y = load_random_ucr_dataset()
+    X, y = load_random_dataset()
 
     def test_erp_distance(self):
         # Compute the pairwise distances

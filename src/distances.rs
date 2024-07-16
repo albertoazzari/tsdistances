@@ -108,10 +108,11 @@ pub fn euclidean(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, gap_penalty=0.0, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, gap_penalty=0.0, n_jobs=-1, device="cpu"))]
 pub fn erp(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
     gap_penalty: f64,
     n_jobs: i32,
     device: Option<&str>,
@@ -119,6 +120,11 @@ pub fn erp(
     if gap_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Gap penalty must be non-negative",
+        ));
+    }
+    if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Sakoe-Chiba band must be non-negative and less than 1.0",
         ));
     }
     let mut distance_matrix = None;
@@ -131,6 +137,7 @@ pub fn erp(
                             a,
                             b,
                             f64::INFINITY,
+                            sakoe_chiba_band,
                             |a, b, i, j, x, y, z| {
                                 (y + (a[i] - b[j]).abs()).min(
                                     (z + (a[i] - gap_penalty).abs())
@@ -170,10 +177,11 @@ pub fn erp(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, epsilon=1.0, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, epsilon=1.0, n_jobs=-1, device="cpu"))]
 pub fn lcss(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
     epsilon: f64,
     n_jobs: i32,
     device: Option<&str>,
@@ -181,6 +189,11 @@ pub fn lcss(
     if epsilon < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Epsilon must be non-negative",
+        ));
+    }
+    if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Sakoe-Chiba band must be non-negative and less than 1.0",
         ));
     }
     let mut distance_matrix = None;
@@ -194,6 +207,7 @@ pub fn lcss(
                             a,
                             b,
                             0.0,
+                            sakoe_chiba_band,
                             |a, b, i, j, x, y, z| {
                                 let dist = (a[i] - b[j]).abs();
                                 if dist <= epsilon {
@@ -241,13 +255,19 @@ pub fn lcss(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu"))]
 pub fn dtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
     n_jobs: i32,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
+    if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Sakoe-Chiba band must be non-negative and less than 1.0",
+        ));
+    }
     let mut distance_matrix = None;
 
     if let Some(device) = device {
@@ -259,6 +279,7 @@ pub fn dtw(
                             a,
                             b,
                             f64::INFINITY,
+                            sakoe_chiba_band,
                             |a, b, i, j, x, y, z| {
                                 let dist = (a[i] - b[j]).powi(2);
                                 dist + z.min(x.min(y))
@@ -297,10 +318,11 @@ pub fn dtw(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu"))]
 pub fn ddtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
     n_jobs: i32,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
@@ -310,18 +332,24 @@ pub fn ddtw(
     } else {
         None
     };
-    dtw(x1_d, x2_d, n_jobs, device)
+    dtw(x1_d, x2_d, sakoe_chiba_band, n_jobs, device)
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, g=0.05, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, g=0.05, n_jobs=-1, device="cpu"))]
 pub fn wdtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
     g: f64, //constant that controls the curvature (slope) of the function
     n_jobs: i32,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
+    if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Sakoe-Chiba band must be non-negative and less than 1.0",
+        ));
+    }
     let mut distance_matrix = None;
 
     if let Some(device) = device {
@@ -334,6 +362,7 @@ pub fn wdtw(
                             a,
                             b,
                             f64::INFINITY,
+                            sakoe_chiba_band,
                             |a, b, i, j, x, y, z| {
                                 let dist = (a[i] - b[j]).powi(2)
                                     * weights[(i as i32 - j as i32).abs() as usize];
@@ -373,10 +402,11 @@ pub fn wdtw(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, g=0.05, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, g=0.05, n_jobs=-1, device="cpu"))]
 pub fn wddtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
     g: f64,
     n_jobs: i32,
     device: Option<&str>,
@@ -387,17 +417,23 @@ pub fn wddtw(
     } else {
         None
     };
-    wdtw(x1_d, x2_d, g, n_jobs, device)
+    wdtw(x1_d, x2_d, sakoe_chiba_band, g, n_jobs, device)
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu"))]
 pub fn msm(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
     n_jobs: i32,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
+    if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Sakoe-Chiba band must be non-negative and less than 1.0",
+        ));
+    }
     let mut distance_matrix = None;
 
     if let Some(device) = device {
@@ -409,6 +445,7 @@ pub fn msm(
                             a,
                             b,
                             f64::INFINITY,
+                            sakoe_chiba_band,
                             |a, b, i, j, x, y, z| {
                                 (y + (a[i] - b[j]).abs())
                                     .min(
@@ -460,10 +497,11 @@ pub fn msm(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, stiffness=0.001, penalty=1.0, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, stiffness=0.001, penalty=1.0, n_jobs=-1, device="cpu"))]
 pub fn twe(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
     stiffness: f64,
     penalty: f64,
     n_jobs: i32,
@@ -481,6 +519,11 @@ pub fn twe(
     }
     let delete_addition = stiffness + penalty;
 
+    if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Sakoe-Chiba band must be non-negative and less than 1.0",
+        ));
+    }
     let mut distance_matrix = None;
 
     if let Some(device) = device {
@@ -492,6 +535,7 @@ pub fn twe(
                             a,
                             b,
                             f64::INFINITY,
+                            sakoe_chiba_band,
                             |a, b, i, j, x, y, z| {
                                 // deletion in a
                                 let del_a: f64 = z
@@ -549,10 +593,11 @@ pub fn twe(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, warp_penalty=0.1, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, warp_penalty=0.1, n_jobs=-1, device="cpu"))]
 pub fn adtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
     warp_penalty: f64,
     n_jobs: i32,
     device: Option<&str>,
@@ -560,6 +605,11 @@ pub fn adtw(
     if warp_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Weight must be non-negative",
+        ));
+    }
+    if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Sakoe-Chiba band must be non-negative and less than 1.0",
         ));
     }
     let mut distance_matrix = None;
@@ -572,6 +622,7 @@ pub fn adtw(
                             a,
                             b,
                             f64::INFINITY,
+                            sakoe_chiba_band,
                             |a, b, i, j, x, y, z| {
                                 let dist = (a[i] - b[j]).powi(2);
                                 dist + (z + warp_penalty).min((x + warp_penalty).min(y))

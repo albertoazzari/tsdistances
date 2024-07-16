@@ -18,8 +18,8 @@ def euclidean_distance(
     u : (N,) array_like or (M, N) array_like
         Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N) array_like, optional
-        Input array. If provided, `v` should have the same shape as `u`.
-        If `v` is None, pairwise distances within `u` are computed.
+    Input array. If provided, `v` should have the same shape as `u`.
+    If `v` is None, pairwise distances within `u` are computed.
     n_jobs : int, optional
         Number of jobs to use for computation (default is 1).
 
@@ -57,6 +57,7 @@ def euclidean_distance(
 def erp_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        sakoe_chiba_band: Optional[float]=1.0,
         gap_penalty: Optional[float]=1.0, 
         n_jobs: Optional[int]=1,
         device: Optional[str]="cpu") -> np.ndarray:
@@ -70,14 +71,16 @@ def erp_distance(
     Parameters
     ----------
     u : (N,) array_like or (M, N)
-        Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
+    Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N), optional
-        Input array. If provided, `v` should have the same shape as `u`.
-        If `v` is None, pairwise distances within `u` are computed.
+    Input array.
+    If `v` is None, pairwise distances within `u` are computed.
+    sakoe_chiba_band : double, optional
+    Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     gap_penalty : double, optional
-        Penalty for gap insertion/deletion (default is 0.0).
+    Penalty for gap insertion/deletion (default is 0.0).
     n_jobs : int, optional
-        Number of jobs to use for computation (default is 1).
+    Number of jobs to use for computation (default is 1).
 
     Returns
     -------
@@ -95,7 +98,7 @@ def erp_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.erp(u, v, gap_penalty, n_jobs, device))
+        return np.array(tsd.erp(u, v, sakoe_chiba_band, gap_penalty, n_jobs, device))
     except TypeCheckError as e:
         pass        
 
@@ -106,16 +109,17 @@ def erp_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.erp(_u, None, gap_penalty, n_jobs, device))
+            return np.array(tsd.erp(_u, None, sakoe_chiba_band, gap_penalty, n_jobs, device))
         if v.ndim == 2:
             _v = v
             
-    return np.array(tsd.erp(_u, _v, gap_penalty, n_jobs, device))
+    return np.array(tsd.erp(_u, _v, sakoe_chiba_band, gap_penalty, n_jobs, device))
 
 @typechecked
 def lcss_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        sakoe_chiba_band: Optional[float]=1.0,
         epsilon: Optional[float]=1.0, 
         n_jobs: Optional[int]=1,
         device: Optional[str]="cpu") -> np.ndarray:
@@ -129,11 +133,14 @@ def lcss_distance(
     Parameters
     ----------
     u : (N,) array_like or (M, N)
-        Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
+    Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N), optional
-
+    Input array.
+    If `v` is None, pairwise distances within `u` are computed.
+    sakoe_chiba_band : double, optional
+    Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     epsilon : double, optional
-        Threshold value for the distance between two elements (default is 1.0).
+    Threshold value for the distance between two elements (default is 1.0).
     n_jobs : int, optional
 
     Returns
@@ -152,7 +159,7 @@ def lcss_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.lcss(u, v, epsilon, n_jobs, device))
+        return np.array(tsd.lcss(u, v, sakoe_chiba_band, epsilon, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -163,16 +170,17 @@ def lcss_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.lcss(_u, None, epsilon, n_jobs, device))
+            return np.array(tsd.lcss(_u, None, sakoe_chiba_band, epsilon, n_jobs, device))
         if v.ndim == 2:
             _v = v
             
-    return np.array(tsd.lcss(_u, _v, epsilon, n_jobs, device))
+    return np.array(tsd.lcss(_u, _v, sakoe_chiba_band, epsilon, n_jobs, device))
 
 @typechecked
 def dtw_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        sakoe_chiba_band: Optional[float]=1.0,
         n_jobs: Optional[int]=1,
         device: Optional[str]="cpu") -> np.ndarray:
     """
@@ -187,8 +195,10 @@ def dtw_distance(
     u : (N,) array_like or (M, N)
     Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N), optional
-    Input array. If provided, `v` should have the same shape as `u`.
+    Input array.
     If `v` is None, pairwise distances within `u` are computed.
+    sakoe_chiba_band : double, optional
+    Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
     
@@ -208,23 +218,24 @@ def dtw_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.dtw(u, v, n_jobs, device))
+        return np.array(tsd.dtw(u, v, sakoe_chiba_band, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.dtw(_u, None, n_jobs, device))
+            return np.array(tsd.dtw(_u, None, sakoe_chiba_band, n_jobs, device))
         if v.ndim == 2:
             _v = v
 
-    return np.array(tsd.dtw(_u, _v, n_jobs, device))
+    return np.array(tsd.dtw(_u, _v, sakoe_chiba_band, n_jobs, device))
 
 @typechecked
 def ddtw_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        sakoe_chiba_band: Optional[float]=1.0,
         n_jobs: Optional[int]=1,
         device: Optional[str]="cpu") -> np.ndarray:
     """
@@ -239,8 +250,10 @@ def ddtw_distance(
     u : (N,) array_like or (M, N)
     Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N), optional
-    Input array. If provided, `v` should have the same shape as `u`.
+    Input array.
     If `v` is None, pairwise distances within `u` are computed.
+    sakoe_chiba_band : double, optional
+    Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
     
@@ -260,7 +273,7 @@ def ddtw_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.ddtw(u, v, n_jobs, device))
+        return np.array(tsd.ddtw(u, v, sakoe_chiba_band, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -271,16 +284,17 @@ def ddtw_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.ddtw(_u, None, n_jobs, device))
+            return np.array(tsd.ddtw(_u, None, sakoe_chiba_band, n_jobs, device))
         if v.ndim == 2:
             _v = v
 
-    return np.array(tsd.ddtw(_u, _v, n_jobs, device))
+    return np.array(tsd.ddtw(_u, _v, sakoe_chiba_band, n_jobs, device))
 
 @typechecked
 def wdtw_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        sakoe_chiba_band: Optional[float]=1.0,
         g: Optional[float]=0.05, 
         n_jobs: Optional[int]=1,
         device: Optional[str]="cpu") -> np.ndarray:
@@ -296,8 +310,10 @@ def wdtw_distance(
     u : (N,) array_like or (M, N)
     Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N), optional
-    Input array. If provided, `v` should have the same shape as `u`.
+    Input array.
     If `v` is None, pairwise distances within `u` are computed.
+    sakoe_chiba_band : double, optional
+    Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
     
@@ -317,7 +333,7 @@ def wdtw_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.wdtw(u, v, g, n_jobs, device))
+        return np.array(tsd.wdtw(u, v, sakoe_chiba_band, g, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -328,16 +344,17 @@ def wdtw_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.wdtw(_u, None, g, n_jobs, device))
+            return np.array(tsd.wdtw(_u, None, sakoe_chiba_band, g, n_jobs, device))
         if v.ndim == 2:
             _v = v
 
-    return np.array(tsd.wdtw(_u, _v, g, n_jobs, device))
+    return np.array(tsd.wdtw(_u, _v, sakoe_chiba_band, g, n_jobs, device))
 
 @typechecked
 def wddtw_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        sakoe_chiba_band: Optional[float]=1.0,
         g: Optional[float]=0.05, 
         n_jobs: Optional[int]=1,
         device: Optional[str]="cpu") -> np.ndarray:
@@ -353,8 +370,10 @@ def wddtw_distance(
     u : (N,) array_like or (M, N)
     Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N), optional
-    Input array. If provided, `v` should have the same shape as `u`.
+    Input array.
     If `v` is None, pairwise distances within `u` are computed.
+    sakoe_chiba_band : double, optional
+    Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     n_jobs : int, optional
     
     Returns
@@ -373,7 +392,7 @@ def wddtw_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.wddtw(u, v, g, n_jobs, device))
+        return np.array(tsd.wddtw(u, v, sakoe_chiba_band, g, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -384,16 +403,17 @@ def wddtw_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.wddtw(_u, None, n_jobs, device))
+            return np.array(tsd.wddtw(_u, None, sakoe_chiba_band, n_jobs, device))
         if v.ndim == 2:
             _v = v
 
-    return np.array(tsd.wddtw(_u, _v, g, n_jobs, device))
+    return np.array(tsd.wddtw(_u, _v, sakoe_chiba_band, g, n_jobs, device))
 
 @typechecked
 def adtw_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
         v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        sakoe_chiba_band: Optional[float]=1.0,
         warp_penalty: Optional[float]=0.1, 
         n_jobs: Optional[int]=1,
         device: Optional[str]="cpu") -> np.ndarray:
@@ -409,8 +429,10 @@ def adtw_distance(
     u : (N,) array_like or (M, N)
     Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N), optional
-    Input array. If provided, `v` should have the same shape as `u`.
+    Input array.
     If `v` is None, pairwise distances within `u` are computed.
+    sakoe_chiba_band : double, optional
+    Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     w : double, optional
     Weight amercing penalty (default is 0.1).
     n_jobs : int, optional
@@ -432,7 +454,7 @@ def adtw_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.adtw(u, v, warp_penalty, n_jobs, device))
+        return np.array(tsd.adtw(u, v, sakoe_chiba_band, warp_penalty, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -443,16 +465,17 @@ def adtw_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.adtw(_u, None, warp_penalty, n_jobs, device))
+            return np.array(tsd.adtw(_u, None, sakoe_chiba_band, warp_penalty, n_jobs, device))
         if v.ndim == 2:
             _v = v
 
-    return np.array(tsd.adtw(_u, _v, warp_penalty, n_jobs, device))
+    return np.array(tsd.adtw(_u, _v, sakoe_chiba_band, warp_penalty, n_jobs, device))
 
 @typechecked
 def msm_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None, 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        sakoe_chiba_band: Optional[float]=1.0, 
         n_jobs: Optional[int]=1,
         device: Optional[str]="cpu") -> np.ndarray:
     """
@@ -467,8 +490,10 @@ def msm_distance(
     u : (N,) array_like or (M, N)
     Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N), optional
-    Input array. If provided, `v` should have the same shape as `u`.
+    Input array.
     If `v` is None, pairwise distances within `u` are computed.
+    sakoe_chiba_band : double, optional
+    Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
     
@@ -488,7 +513,7 @@ def msm_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.msm(u, v, n_jobs, device))
+        return np.array(tsd.msm(u, v, sakoe_chiba_band, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -499,16 +524,17 @@ def msm_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.adtw(_u, None, n_jobs, device))
+            return np.array(tsd.adtw(_u, None, sakoe_chiba_band, n_jobs, device))
         if v.ndim == 2:
             _v = v
 
-    return np.array(tsd.msm(_u, _v, n_jobs, device))
+    return np.array(tsd.msm(_u, _v, sakoe_chiba_band, n_jobs, device))
 
 @typechecked
 def twe_distance(
         u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None, 
+        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
+        sakoe_chiba_band: Optional[float]=1.0, 
         stifness: Optional[float]=0.001, 
         penalty: Optional[float]=1.0, 
         n_jobs: Optional[int]=1,
@@ -525,8 +551,10 @@ def twe_distance(
     u : (N,) array_like or (M, N)
     Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N), optional
-    Input array. If provided, `v` should have the same shape as `u`.
+    Input array.
     If `v` is None, pairwise distances within `u` are computed.
+    sakoe_chiba_band : double, optional
+    Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     stifness : double, optional
     Elasticity parameter (default is 0.001).
     penalty : double, optional
@@ -550,7 +578,7 @@ def twe_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.twe(u, v, stifness, penalty, n_jobs, device))
+        return np.array(tsd.twe(u, v, sakoe_chiba_band, stifness, penalty, n_jobs, device))
     except TypeCheckError as e:
         pass  
 
@@ -561,11 +589,11 @@ def twe_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.twe(_u, None, stifness, penalty, n_jobs, device))
+            return np.array(tsd.twe(_u, None, sakoe_chiba_band, stifness, penalty, n_jobs, device))
         if v.ndim == 2:
             _v = v
 
-    return np.array(tsd.twe(_u, _v, stifness, penalty, n_jobs, device))
+    return np.array(tsd.twe(_u, _v, sakoe_chiba_band, stifness, penalty, n_jobs, device))
 
 @typechecked
 def sb_distance(
@@ -584,7 +612,7 @@ def sb_distance(
     u : (N,) array_like or (M, N)
     Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
     v : (N,) array_like or (M, N), optional
-    Input array. If provided, `v` should have the same shape as `u`.
+    Input array.
     If `v` is None, pairwise distances within `u` are computed.
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).

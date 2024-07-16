@@ -1,11 +1,9 @@
 use kernels::warp::{ADTWImpl, DTWImpl, ERPImpl, LCSSImpl, MSMImpl, TWEImpl, WDTWImpl};
 use warps::diamond_partitioning_gpu;
 
-pub mod device;
 mod kernels;
-mod utils;
 mod warps;
-pub mod distances;
+pub mod device;
 
 #[test]
 fn list_gpus() {
