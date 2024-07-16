@@ -6,7 +6,6 @@ edition = "2021"
 
 [dependencies]
 ctrlc = "3.4.4"
-dashmap = "5.5.3"
 lazy_static = "1.4.0"
 parking_lot = "0.12.3"
 pyo3 = { version = "0.21.2", features = ["extension-module"] }

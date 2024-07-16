@@ -1,3 +1,7 @@
+use std::{collections::HashMap, sync::Mutex};
+use dashmap::DashMap;
+use krnl::device::Device;
+use lazy_static::lazy_static;
 use vulkano::{
     device::{physical::PhysicalDeviceType, DeviceExtensions, QueueFlags},
     instance::{Instance, InstanceCreateInfo},
@@ -49,14 +53,21 @@ pub fn find_best_device_index() -> usize {
     gpu_index
 }
 
+lazy_static! {
+    static ref GPUS_MAP: DashMap<usize, Device> = DashMap::new();
+}
+
+
 pub fn get_best_gpu() -> krnl::device::Device {
     get_gpu_at_index(find_best_device_index())
 }
 
 pub fn get_gpu_at_index(index: usize) -> krnl::device::Device {
-    krnl::device::Device::builder()
-        .index(index)
-        .build()
-        .ok()
-        .unwrap()
+    GPUS_MAP.entry(index).or_insert_with(|| {
+        krnl::device::Device::builder()
+            .index(index)
+            .build()
+            .ok()
+            .unwrap()
+    }).clone()
 }
