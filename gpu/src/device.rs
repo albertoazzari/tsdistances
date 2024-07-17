@@ -1,4 +1,3 @@
-use std::{collections::HashMap, sync::Mutex};
 use dashmap::DashMap;
 use krnl::device::Device;
 use lazy_static::lazy_static;
