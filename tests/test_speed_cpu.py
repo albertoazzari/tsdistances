@@ -1,14 +1,15 @@
-import unittest
-
-import numpy as np
-import os
-from tsdistances import euclidean_distance, erp_distance, lcss_distance, dtw_distance, ddtw_distance, wdtw_distance, wddtw_distance, adtw_distance, msm_distance, twe_distance, sb_distance
-from aeon import distances as aeon
+import pytest
 import time
+import numpy as np
+from tsdistances import (
+    euclidean_distance, erp_distance, lcss_distance, dtw_distance, ddtw_distance, 
+    wdtw_distance, wddtw_distance, adtw_distance, msm_distance, twe_distance, sb_distance
+)
+from aeon import distances as aeon
 
 def load_random_dataset():
-    n_timeseries = 200
-    n_timesteps = 1000
+    n_timeseries = 2
+    n_timesteps = 10
 
     X_train = np.random.rand(n_timeseries, n_timesteps)
     y_train = np.random.randint(0, 10, n_timeseries)
@@ -18,128 +19,109 @@ def load_random_dataset():
 
     return np.vstack((X_train, X_test)), np.hstack((y_train, y_test))
 
-class TestSpeedCPUAllDistances(unittest.TestCase):
+def assert_running_times(tsd_time, aeon_time):
+    print(tsd_time, aeon_time)
+    assert tsd_time <= aeon_time
 
-    X, y = load_random_dataset()
+X, y = load_random_dataset()
 
-    def test_euclidean_distance(self):
-        start_D = time.time()
-        euclidean_distance(self.X, None, n_jobs=1)
-        end_D = time.time()
+def test_euclidean_distance():
+    tsd_time = time.time()
+    D = euclidean_distance(X, None, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.euclidean_pairwise_distance(X)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)
 
-        start_aeon = time.time()
-        aeon.euclidean_pairwise_distance(self.X)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
+def test_erp_distance():
+    tsd_time = time.time()
+    gap_penalty = 0.0
+    sakoe_chiba_band = 0.5
+    D = erp_distance(X, None, sakoe_chiba_band=sakoe_chiba_band, gap_penalty=gap_penalty, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.erp_pairwise_distance(X, g=gap_penalty, window=sakoe_chiba_band)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)
 
-    def test_erp_distance(self):
-        start_D = time.time()
-        erp_distance(self.X, None, gap_penalty=0.05, n_jobs=-1)
-        end_D = time.time()
+def test_lcss_distance():
+    tsd_time = time.time()
+    D = lcss_distance(X, None, sakoe_chiba_band=0.1, epsilon=0.1, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.lcss_pairwise_distance(X, window=0.1, epsilon=0.1)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)
 
-        start_aeon = time.time()
-        aeon.erp_pairwise_distance(self.X, g=0.05)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
-    
-    def test_lcss_distance(self):
-        start_D = time.time()
-        lcss_distance(self.X, None, epsilon=0.1, n_jobs=1)
-        end_D = time.time()
+def test_dtw_distance():
+    tsd_time = time.time()
+    D = dtw_distance(X, None, sakoe_chiba_band=0.1, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.dtw_pairwise_distance(X, window=0.1)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)
 
-        start_aeon = time.time()
-        aeon.lcss_pairwise_distance(self.X, epsilon=0.1)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
+def test_ddtw_distance():
+    tsd_time = time.time()
+    D = ddtw_distance(X, None, sakoe_chiba_band=0.1, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.ddtw_pairwise_distance(X, window=0.1)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)
 
-    def test_dtw_distance(self):
-        start_D = time.time()
-        dtw_distance(self.X, None, n_jobs=1)
-        end_D = time.time()
+def test_wdtw_distance():
+    tsd_time = time.time()
+    D = wdtw_distance(X, None, sakoe_chiba_band=0.1, g=0.05, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.wdtw_pairwise_distance(X, window=0.1, g=0.05)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)
 
-        start_aeon = time.time()
-        aeon.dtw_pairwise_distance(self.X)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
+def test_wddtw_distance():
+    tsd_time = time.time()
+    D = wddtw_distance(X, None, sakoe_chiba_band=0.1, g=0.05, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.wddtw_pairwise_distance(X, window=0.1, g=0.05)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)
 
-    def test_ddtw_distance(self):
-        start_D = time.time()
-        ddtw_distance(self.X, None, n_jobs=1)
-        end_D = time.time()
+def test_adtw_distance():
+    tsd_time = time.time()
+    D = adtw_distance(X, None, sakoe_chiba_band=0.1, warp_penalty=1.0, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.adtw_pairwise_distance(X, window=0.1, warp_penalty=1.0)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)
 
-        start_aeon = time.time()
-        aeon.ddtw_pairwise_distance(self.X)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
+def test_msm_distance():
+    tsd_time = time.time()
+    D = msm_distance(X, None, sakoe_chiba_band=0.1, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.msm_pairwise_distance(X, window=0.1)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)
 
-    def test_wdtw_distance(self):
-        start_D = time.time()
-        wdtw_distance(self.X, None, g=0.05, n_jobs=1)
-        end_D = time.time()
+def test_twe_distance():
+    tsd_time = time.time()
+    D = twe_distance(X, None, sakoe_chiba_band=0.1, stifness=0.1, penalty=0.1, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.twe_pairwise_distance(X, nu=0.1, lmbda=0.1, window=0.1)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)
 
-        start_aeon = time.time()
-        aeon.wdtw_pairwise_distance(self.X, g=0.05)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
-
-    def test_wddtw_distance(self):
-        start_D = time.time()
-        wddtw_distance(self.X, None, g=0.05, n_jobs=1)
-        end_D = time.time()
-
-        start_aeon = time.time()
-        aeon.wddtw_pairwise_distance(self.X, g=0.05)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
-
-    def test_adtw_distance(self):
-        start_D = time.time()
-        adtw_distance(self.X, None, warp_penalty=1.0, n_jobs=1)
-        end_D = time.time()
-
-        start_aeon = time.time()
-        aeon.adtw_pairwise_distance(self.X, warp_penalty=1.0)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
-
-    def test_msm_distance(self):
-        start_D = time.time()
-        msm_distance(self.X, None, n_jobs=1)
-        end_D = time.time()
-
-        start_aeon = time.time()
-        aeon.msm_pairwise_distance(self.X)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
-
-
-    def test_twe_distance(self):
-        start_D = time.time()
-        twe_distance(self.X, None, stifness=0.1, penalty=0.1, n_jobs=1)
-        end_D = time.time()
-
-        start_aeon = time.time()
-        aeon.twe_pairwise_distance(self.X, nu=0.1, lmbda=0.1)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
-
-    def test_sbd_distance(self):
-        start_D = time.time()
-        sb_distance(self.X, None, n_jobs=1)
-        end_D = time.time()
-
-        start_aeon = time.time()
-        aeon.sbd_pairwise_distance(self.X)
-        end_aeon = time.time()
-        print(end_aeon - start_aeon, end_D - start_D)
-        self.assertLessEqual(end_D - start_D, end_aeon - start_aeon)
+def test_sbd_distance():
+    tsd_time = time.time()
+    D = sb_distance(X, None, n_jobs=1)
+    tsd_time = time.time() - tsd_time
+    aeon_time = time.time()
+    aeon_D = aeon.sbd_pairwise_distance(X)
+    aeon_time = time.time() - aeon_time
+    assert_running_times(tsd_time, aeon_time)

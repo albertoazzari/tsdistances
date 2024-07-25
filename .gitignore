@@ -6,3 +6,4 @@ target/
 __pycache__/
 compute_ee.py
 .history/
+requirements*
