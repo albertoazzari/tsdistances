@@ -378,7 +378,10 @@ pub fn wdtw(
             "gpu" => {
                 let device_gpu = get_best_gpu();
                 distance_matrix = Some(compute_distance(
-                    |a, b| tsdistances_gpu::wdtw(device_gpu.clone(), a, b, g),
+                    |a, b| {
+                        let weights = dtw_weights(a.len().max(b.len()), g);
+                        tsdistances_gpu::wdtw(device_gpu.clone(), a, b, &weights)
+                    },
                     x1,
                     x2,
                     1,

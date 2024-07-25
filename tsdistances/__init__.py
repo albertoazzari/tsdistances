@@ -4,11 +4,11 @@ from typeguard import TypeCheckError, typechecked, check_type, warn_on_error
 from tsdistances import tsdistances as tsd
 import numpy as np
 
+
 @typechecked
 def euclidean_distance(
-        u: np.ndarray, 
-        v: Optional[np.ndarray]=None,
-        n_jobs: Optional[int]=1) -> np.ndarray:
+    u: np.ndarray, v: Optional[np.ndarray] = None, n_jobs: Optional[int] = 1
+) -> np.ndarray:
     """
     Computes the Euclidean distance between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise Euclidean distances within `u`.
@@ -43,7 +43,7 @@ def euclidean_distance(
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
-    
+
     if u.ndim == 2:
         _u = u
         if v is None:
@@ -52,22 +52,24 @@ def euclidean_distance(
             _v = v
 
     return np.array(tsd.euclidean(_u, _v, n_jobs))
-    
+
+
 @typechecked
 def erp_distance(
-        u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        sakoe_chiba_band: Optional[float]=1.0,
-        gap_penalty: Optional[float]=1.0, 
-        n_jobs: Optional[int]=1,
-        device: Optional[str]="cpu") -> np.ndarray:
+    u: Union[np.ndarray, List[np.ndarray]],
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    sakoe_chiba_band: Optional[float] = 1.0,
+    gap_penalty: Optional[float] = 1.0,
+    n_jobs: Optional[int] = 1,
+    device: Optional[str] = "cpu",
+) -> np.ndarray:
     """
     Computes the Edit Distance with Real Penalty (ERP) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise ERP distances within `u`.
     The length of the input arrays are not required to be the same.
 
     [1] Chen, L. et al., On The Marriage of Lp-norms and Edit Distance, 2004.
-    
+
     Parameters
     ----------
     u : (N,) array_like or (M, N)
@@ -100,29 +102,33 @@ def erp_distance(
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
         return np.array(tsd.erp(u, v, sakoe_chiba_band, gap_penalty, n_jobs, device))
     except TypeCheckError as e:
-        pass        
+        pass
 
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
-    
+
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.erp(_u, None, sakoe_chiba_band, gap_penalty, n_jobs, device))
+            return np.array(
+                tsd.erp(_u, None, sakoe_chiba_band, gap_penalty, n_jobs, device)
+            )
         if v.ndim == 2:
             _v = v
-            
+
     return np.array(tsd.erp(_u, _v, sakoe_chiba_band, gap_penalty, n_jobs, device))
+
 
 @typechecked
 def lcss_distance(
-        u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        sakoe_chiba_band: Optional[float]=1.0,
-        epsilon: Optional[float]=1.0, 
-        n_jobs: Optional[int]=1,
-        device: Optional[str]="cpu") -> np.ndarray:
+    u: Union[np.ndarray, List[np.ndarray]],
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    sakoe_chiba_band: Optional[float] = 1.0,
+    epsilon: Optional[float] = 1.0,
+    n_jobs: Optional[int] = 1,
+    device: Optional[str] = "cpu",
+) -> np.ndarray:
     """
     Computes the Longest Common Subsequence (LCSS) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise LCSS distances within `u`.
@@ -161,35 +167,39 @@ def lcss_distance(
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
         return np.array(tsd.lcss(u, v, sakoe_chiba_band, epsilon, n_jobs, device))
     except TypeCheckError as e:
-        pass  
+        pass
 
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
-    
+
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.lcss(_u, None, sakoe_chiba_band, epsilon, n_jobs, device))
+            return np.array(
+                tsd.lcss(_u, None, sakoe_chiba_band, epsilon, n_jobs, device)
+            )
         if v.ndim == 2:
             _v = v
-            
+
     return np.array(tsd.lcss(_u, _v, sakoe_chiba_band, epsilon, n_jobs, device))
+
 
 @typechecked
 def dtw_distance(
-        u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        sakoe_chiba_band: Optional[float]=1.0,
-        n_jobs: Optional[int]=1,
-        device: Optional[str]="cpu") -> np.ndarray:
+    u: Union[np.ndarray, List[np.ndarray]],
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    sakoe_chiba_band: Optional[float] = 1.0,
+    n_jobs: Optional[int] = 1,
+    device: Optional[str] = "cpu",
+) -> np.ndarray:
     """
     Computes the Dynamic Time Warping (DTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise DTW distances within `u`.
     The length of the input arrays are not required to be the same.
 
     [1] Berndt, D.J. and Clifford, J., Using Dynamic Time Warping to Find Patterns in Time Series, 1994.
-    
+
     Parameters
     ----------
     u : (N,) array_like or (M, N)
@@ -201,12 +211,12 @@ def dtw_distance(
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
-    
+
     Returns
     -------
     distance : double or ndarray
     The DTW distance(s) between vectors/sets `u` and `v`.
-    
+
     Examples
     --------
     >>> dtw_distance([1, 0, 0], [0, 1, 0])
@@ -220,7 +230,7 @@ def dtw_distance(
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
         return np.array(tsd.dtw(u, v, sakoe_chiba_band, n_jobs, device))
     except TypeCheckError as e:
-        pass  
+        pass
 
     if u.ndim == 2:
         _u = u
@@ -231,20 +241,22 @@ def dtw_distance(
 
     return np.array(tsd.dtw(_u, _v, sakoe_chiba_band, n_jobs, device))
 
+
 @typechecked
 def ddtw_distance(
-        u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        sakoe_chiba_band: Optional[float]=1.0,
-        n_jobs: Optional[int]=1,
-        device: Optional[str]="cpu") -> np.ndarray:
+    u: Union[np.ndarray, List[np.ndarray]],
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    sakoe_chiba_band: Optional[float] = 1.0,
+    n_jobs: Optional[int] = 1,
+    device: Optional[str] = "cpu",
+) -> np.ndarray:
     """
     Computes the Derivative Dynamic Time Warping (DDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise DDTW distances within `u`.
     The length of the input arrays are not required to be the same.
 
     [1] Keogh, E. et al., Derivative Dynamic Time Warping, 2001.
-    
+
     Parameters
     ----------
     u : (N,) array_like or (M, N)
@@ -256,12 +268,12 @@ def ddtw_distance(
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
-    
+
     Returns
     -------
     distance : double or ndarray
     The DDTW distance(s) between vectors/sets `u` and `v`.
-    
+
     Examples
     --------
     >>> ddtw_distance([1, 0, 0], [0, 1, 0])
@@ -275,12 +287,12 @@ def ddtw_distance(
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
         return np.array(tsd.ddtw(u, v, sakoe_chiba_band, n_jobs, device))
     except TypeCheckError as e:
-        pass  
+        pass
 
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
-    
+
     if u.ndim == 2:
         _u = u
         if v is None:
@@ -290,21 +302,23 @@ def ddtw_distance(
 
     return np.array(tsd.ddtw(_u, _v, sakoe_chiba_band, n_jobs, device))
 
+
 @typechecked
 def wdtw_distance(
-        u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        sakoe_chiba_band: Optional[float]=1.0,
-        g: Optional[float]=0.05, 
-        n_jobs: Optional[int]=1,
-        device: Optional[str]="cpu") -> np.ndarray:
+    u: Union[np.ndarray, List[np.ndarray]],
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    sakoe_chiba_band: Optional[float] = 1.0,
+    g: Optional[float] = 0.05,
+    n_jobs: Optional[int] = 1,
+    device: Optional[str] = "cpu",
+) -> np.ndarray:
     """
     Computes the Weighted Dynamic Time Warping (WDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise WDTW distances within `u`.
     The length of the input arrays are not required to be the same.
 
     [1] Jeong Y.-S. et al., Weighted dynamic time warping for time series classification, 2011.
-    
+
     Parameters
     ----------
     u : (N,) array_like or (M, N)
@@ -316,12 +330,12 @@ def wdtw_distance(
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
-    
+
     Returns
     -------
     distance : double or ndarray
     The WDTW distance(s) between vectors/sets `u` and `v`.
-    
+
     Examples
     --------
     >>> wdtw_distance([1, 0, 0], [0, 1, 0])
@@ -335,12 +349,12 @@ def wdtw_distance(
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
         return np.array(tsd.wdtw(u, v, sakoe_chiba_band, g, n_jobs, device))
     except TypeCheckError as e:
-        pass  
+        pass
 
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
-    
+
     if u.ndim == 2:
         _u = u
         if v is None:
@@ -350,21 +364,23 @@ def wdtw_distance(
 
     return np.array(tsd.wdtw(_u, _v, sakoe_chiba_band, g, n_jobs, device))
 
+
 @typechecked
 def wddtw_distance(
-        u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        sakoe_chiba_band: Optional[float]=1.0,
-        g: Optional[float]=0.05, 
-        n_jobs: Optional[int]=1,
-        device: Optional[str]="cpu") -> np.ndarray:
+    u: Union[np.ndarray, List[np.ndarray]],
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    sakoe_chiba_band: Optional[float] = 1.0,
+    g: Optional[float] = 0.05,
+    n_jobs: Optional[int] = 1,
+    device: Optional[str] = "cpu",
+) -> np.ndarray:
     """
     Computes the Weighted Derivative Dynamic Time Warping (WDDTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise WDDTW distances within `u`.
     The length of the input arrays are not required to be the same.
 
     [1] Jeong, Y.-S. et al., Weighted dynamic time warping for time series classification, 2011.
-    
+
     Parameters
     ----------
     u : (N,) array_like or (M, N)
@@ -375,12 +391,12 @@ def wddtw_distance(
     sakoe_chiba_band : double, optional
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     n_jobs : int, optional
-    
+
     Returns
     -------
     distance : double or ndarray
     The WDDTW distance(s) between vectors/sets `u` and `v`.
-    
+
     Examples
     --------
     >>> wddtw_distance([1, 0, 0], [0, 1, 0])
@@ -394,12 +410,12 @@ def wddtw_distance(
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
         return np.array(tsd.wddtw(u, v, sakoe_chiba_band, g, n_jobs, device))
     except TypeCheckError as e:
-        pass  
+        pass
 
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
-    
+
     if u.ndim == 2:
         _u = u
         if v is None:
@@ -409,21 +425,23 @@ def wddtw_distance(
 
     return np.array(tsd.wddtw(_u, _v, sakoe_chiba_band, g, n_jobs, device))
 
+
 @typechecked
 def adtw_distance(
-        u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        sakoe_chiba_band: Optional[float]=1.0,
-        warp_penalty: Optional[float]=0.1, 
-        n_jobs: Optional[int]=1,
-        device: Optional[str]="cpu") -> np.ndarray:
+    u: Union[np.ndarray, List[np.ndarray]],
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    sakoe_chiba_band: Optional[float] = 1.0,
+    warp_penalty: Optional[float] = 0.1,
+    n_jobs: Optional[int] = 1,
+    device: Optional[str] = "cpu",
+) -> np.ndarray:
     """
     Computes the Amercing Dynamic Time Warping (ADTW) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise ADTW distances within `u`.
     The length of the input arrays are not required to be the same.
 
     [1] Hermann, M. et al., Amercing: An intuitive and effective constraint for dynamic time warping, 2023
-    
+
     Parameters
     ----------
     u : (N,) array_like or (M, N)
@@ -437,12 +455,12 @@ def adtw_distance(
     Weight amercing penalty (default is 0.1).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
-    
+
     Returns
     -------
     distance : double or ndarray
     The ADTW distance(s) between vectors/sets `u` and `v`.
-    
+
     Examples
     --------
     >>> adtw_distance([1, 0, 0], [0, 1, 0])
@@ -456,35 +474,39 @@ def adtw_distance(
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
         return np.array(tsd.adtw(u, v, sakoe_chiba_band, warp_penalty, n_jobs, device))
     except TypeCheckError as e:
-        pass  
+        pass
 
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
-    
+
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.adtw(_u, None, sakoe_chiba_band, warp_penalty, n_jobs, device))
+            return np.array(
+                tsd.adtw(_u, None, sakoe_chiba_band, warp_penalty, n_jobs, device)
+            )
         if v.ndim == 2:
             _v = v
 
     return np.array(tsd.adtw(_u, _v, sakoe_chiba_band, warp_penalty, n_jobs, device))
 
+
 @typechecked
 def msm_distance(
-        u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        sakoe_chiba_band: Optional[float]=1.0, 
-        n_jobs: Optional[int]=1,
-        device: Optional[str]="cpu") -> np.ndarray:
+    u: Union[np.ndarray, List[np.ndarray]],
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    sakoe_chiba_band: Optional[float] = 1.0,
+    n_jobs: Optional[int] = 1,
+    device: Optional[str] = "cpu",
+) -> np.ndarray:
     """
     Computes the Move-Split-Merge (MSM) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise MSM distances within `u`.
     The length of the input arrays are not required to be the same.
 
     [1] Stefan, A. et al., The Move-Split-Merge Metric for Time Series, 2012.
-    
+
     Parameters
     ----------
     u : (N,) array_like or (M, N)
@@ -496,12 +518,12 @@ def msm_distance(
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
-    
+
     Returns
     -------
     distance : double or ndarray
     The MSM distance(s) between vectors/sets `u` and `v`.
-    
+
     Examples
     --------
     >>> msm_distance([1, 0, 0], [0, 1, 0])
@@ -515,12 +537,12 @@ def msm_distance(
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
         return np.array(tsd.msm(u, v, sakoe_chiba_band, n_jobs, device))
     except TypeCheckError as e:
-        pass  
+        pass
 
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
-    
+
     if u.ndim == 2:
         _u = u
         if v is None:
@@ -530,22 +552,24 @@ def msm_distance(
 
     return np.array(tsd.msm(_u, _v, sakoe_chiba_band, n_jobs, device))
 
+
 @typechecked
 def twe_distance(
-        u: Union[np.ndarray, List[np.ndarray]], 
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None,
-        sakoe_chiba_band: Optional[float]=1.0, 
-        stifness: Optional[float]=0.001, 
-        penalty: Optional[float]=1.0, 
-        n_jobs: Optional[int]=1,
-        device: Optional[str]="cpu") -> np.ndarray:
+    u: Union[np.ndarray, List[np.ndarray]],
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    sakoe_chiba_band: Optional[float] = 1.0,
+    stifness: Optional[float] = 0.001,
+    penalty: Optional[float] = 1.0,
+    n_jobs: Optional[int] = 1,
+    device: Optional[str] = "cpu",
+) -> np.ndarray:
     """
     Computes the Time Warp Edit (TWE) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise TWE distances within `u`.
     The length of the input arrays are not required to be the same.
 
     [1] Marteau, P., Time Warp Edit Distance with Stiffness Adjustment for Time Series Matching, 2008.
-    
+
     Parameters
     ----------
     u : (N,) array_like or (M, N)
@@ -561,12 +585,12 @@ def twe_distance(
     Penalty for gap insertion/deletion (default is 1.0).
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
-    
+
     Returns
     -------
     distance : double or ndarray
     The TWE distance(s) between vectors/sets `u` and `v`.
-    
+
     Examples
     --------
     >>> twe_distance([1, 0, 0], [0, 1, 0])
@@ -578,35 +602,43 @@ def twe_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.twe(u, v, sakoe_chiba_band, stifness, penalty, n_jobs, device))
+        return np.array(
+            tsd.twe(u, v, sakoe_chiba_band, stifness, penalty, n_jobs, device)
+        )
     except TypeCheckError as e:
-        pass  
+        pass
 
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
-    
+
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.twe(_u, None, sakoe_chiba_band, stifness, penalty, n_jobs, device))
+            return np.array(
+                tsd.twe(_u, None, sakoe_chiba_band, stifness, penalty, n_jobs, device)
+            )
         if v.ndim == 2:
             _v = v
 
-    return np.array(tsd.twe(_u, _v, sakoe_chiba_band, stifness, penalty, n_jobs, device))
+    return np.array(
+        tsd.twe(_u, _v, sakoe_chiba_band, stifness, penalty, n_jobs, device)
+    )
+
 
 @typechecked
 def sb_distance(
-        u: Union[np.ndarray, List[np.ndarray]],
-        v: Optional[Union[np.ndarray, List[np.ndarray]]]=None, 
-        n_jobs: Optional[int]=1) -> np.ndarray:
+    u: Union[np.ndarray, List[np.ndarray]],
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    n_jobs: Optional[int] = 1,
+) -> np.ndarray:
     """
     Computes the Shape-Based Distance (SBD) [1] between two 1-D arrays or between two sets of 1-D arrays.
     If `v` is None, the function computes the pairwise SBD distances within `u`.
     The length of the input arrays are not required to be the same.
 
     [1] Paparrizos, J. et al., k-Shape: Efficient and Accurate Clustering of Time Series, 2015.
-    
+
     Parameters
     ----------
     u : (N,) array_like or (M, N)
@@ -616,12 +648,12 @@ def sb_distance(
     If `v` is None, pairwise distances within `u` are computed.
     n_jobs : int, optional
     Number of jobs to use for computation (default is 1).
-    
+
     Returns
     -------
     distance : double or ndarray
     The SBD distance(s) between vectors/sets `u` and `v`.
-    
+
     Examples
     --------
     >>> sb_distance([1, 0, 0], [0, 1, 0])
@@ -635,16 +667,29 @@ def sb_distance(
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
         return np.array(tsd.sbd(u, v, n_jobs))
     except TypeCheckError as e:
-        pass  
+        pass
 
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
-    
+
     if u.ndim == 2 and v.ndim == 2:
         _u = u
         _v = v
 
     return np.array(tsd.sbd(_u, _v, n_jobs))
 
-__all__ = ['euclidean', 'erp', 'lcss', 'dtw', 'ddtw', 'wdtw', 'wddtw', 'adtw', 'msm', 'twe', 'sbd']
+
+__all__ = [
+    "euclidean",
+    "erp",
+    "lcss",
+    "dtw",
+    "ddtw",
+    "wdtw",
+    "wddtw",
+    "adtw",
+    "msm",
+    "twe",
+    "sbd",
+]

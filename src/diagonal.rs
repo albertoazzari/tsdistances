@@ -7,10 +7,13 @@ pub fn diagonal_distance<M: Matrix>(
     sakoe_chiba_band: f64,
     dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
 ) -> f64 {
-
-    diagonal_distance_::<M>(a.len(), b.len(), init_val, sakoe_chiba_band, |i, j, x, y, z| {
-        dist_lambda(&a, &b, i, j, x, y, z)
-    })
+    diagonal_distance_::<M>(
+        a.len(),
+        b.len(),
+        init_val,
+        sakoe_chiba_band,
+        |i, j, x, y, z| dist_lambda(&a, &b, i, j, x, y, z),
+    )
 }
 
 fn diagonal_distance_<M: Matrix>(
@@ -95,4 +98,3 @@ fn diagonal_distance_<M: Matrix>(
     let (rx, cx) = M::index_mat_to_diag(a_len, b_len);
     matrix.get_diagonal_cell(rx, cx)
 }
-
