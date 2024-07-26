@@ -39,13 +39,22 @@ X, y = load_random_dataset()
 
 
 def test_euclidean_distance():
-    tsd_time = time.time()
-    D = euclidean_distance(X, None, n_jobs=1)
-    tsd_time = time.time() - tsd_time
-    aeon_time = time.time()
-    aeon_D = aeon.euclidean_pairwise_distance(X)
-    aeon_time = time.time() - aeon_time
-    assert_running_times(tsd_time, aeon_time)
+    tsd_times = []
+    aeon_times = []
+    repeat = 1000
+    for i in range(repeat):
+
+        tsd_time = time.time()
+        euclidean_distance(X, None, n_jobs=1)
+        tsd_time = time.time() - tsd_time
+        tsd_times.append(tsd_time)
+
+        aeon_time = time.time()
+        aeon.euclidean_pairwise_distance(X)
+        aeon_time = time.time() - aeon_time
+        aeon_times.append(aeon_time)
+
+    assert_running_times(sum(tsd_times) / repeat, sum(aeon_times) / repeat)
 
 
 def test_erp_distance():
