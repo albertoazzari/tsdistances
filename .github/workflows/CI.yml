@@ -39,7 +39,7 @@ jobs:
           manylinux: auto
       - name: Run tests
         run: |
-          python -m pip install pytest numpy aeon dist/*.whl
+          python -m pip install pytest numpy aeon
           python -m pytest tests -k "correctness"
       - name: Upload wheels
         if: success()
@@ -75,7 +75,7 @@ jobs:
           manylinux: musllinux_1_2
       - name: Run tests
         run: |
-          python -m pip install pytest numpy aeon dist/*.whl
+          python -m pip install pytest numpy aeon
           python -m pytest tests -k "correctness"
       - name: Upload wheels
         if: success()
@@ -107,7 +107,7 @@ jobs:
           sccache: 'true'
       - name: Run tests
         run: |
-          python -m pip install pytest numpy aeon dist/*.whl
+          python -m pip install pytest numpy aeon
           python -m pytest tests -k "correctness"
       - name: Upload wheels
         if: success()
@@ -138,7 +138,7 @@ jobs:
           sccache: 'true'
       - name: Run tests
         run: |
-          python -m pip install pytest numpy aeon dist/*.whl
+          python -m pip install pytest numpy aeon
           python -m pytest tests -k "correctness"
       - name: Upload wheels
         if: success()
