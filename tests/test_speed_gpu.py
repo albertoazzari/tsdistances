@@ -34,121 +34,118 @@ def assert_running_times(gpu_time, cpu_time):
 
 
 X, y = load_random_dataset()
-
+band = 1.0
 
 def test_erp_distance():
-    gpu_time = time.time()
     gap_penalty = 0.0
-    sakoe_chiba_band = 1.0
-    D = erp_distance(
-        X,
-        None,
-        sakoe_chiba_band=sakoe_chiba_band,
-        gap_penalty=gap_penalty,
-        n_jobs=1,
-        device="gpu",
-    )
+
+    gpu_time = time.time()
+    erp_distance(X, None, band=band, gap_penalty=gap_penalty, n_jobs=1, device="gpu")
     gpu_time = time.time() - gpu_time
+    
     cpu_time = time.time()
-    D = erp_distance(
-        X,
-        None,
-        sakoe_chiba_band=sakoe_chiba_band,
-        gap_penalty=gap_penalty,
-        n_jobs=-1,
-        device="cpu",
-    )
+    erp_distance(X, None, band=band, gap_penalty=gap_penalty, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
+    
     assert_running_times(gpu_time, cpu_time)
 
 
 def test_lcss_distance():
+    epsilon = 0.1
     gpu_time = time.time()
-    D = lcss_distance(
-        X, None, sakoe_chiba_band=1.0, epsilon=0.1, n_jobs=1, device="gpu"
-    )
+    lcss_distance(X, None, band=band, epsilon=epsilon, n_jobs=1, device="gpu")
     gpu_time = time.time() - gpu_time
+
     cpu_time = time.time()
-    D = lcss_distance(
-        X, None, sakoe_chiba_band=1.0, epsilon=0.1, n_jobs=-1, device="cpu"
-    )
+    lcss_distance(X, None, band=band, epsilon=epsilon, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
+
     assert_running_times(gpu_time, cpu_time)
 
 
 def test_dtw_distance():
     gpu_time = time.time()
-    D = dtw_distance(X, None, sakoe_chiba_band=1.0, n_jobs=1, device="gpu")
+    dtw_distance(X, None, band=band, n_jobs=1, device="gpu")
     gpu_time = time.time() - gpu_time
+
     cpu_time = time.time()
-    D = dtw_distance(X, None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu")
+    dtw_distance(X, None, band=band, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
+
     assert_running_times(gpu_time, cpu_time)
 
 
 def test_ddtw_distance():
     gpu_time = time.time()
-    D = ddtw_distance(X, None, sakoe_chiba_band=1.0, n_jobs=1, device="gpu")
+    ddtw_distance(X, None, band=band, n_jobs=1, device="gpu")
     gpu_time = time.time() - gpu_time
+
     cpu_time = time.time()
-    D = ddtw_distance(X, None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu")
+    ddtw_distance(X, None, band=band, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
+
     assert_running_times(gpu_time, cpu_time)
 
 
 def test_wdtw_distance():
+    g = 0.05
     gpu_time = time.time()
-    D = wdtw_distance(X, None, sakoe_chiba_band=1.0, g=0.05, n_jobs=1, device="gpu")
+    wdtw_distance(X, None, g=g, band=band, n_jobs=1, device="gpu")
     gpu_time = time.time() - gpu_time
+
     cpu_time = time.time()
-    D = wdtw_distance(X, None, sakoe_chiba_band=1.0, g=0.05, n_jobs=-1, device="cpu")
+    wdtw_distance(X, None, g=g, band=band, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
+
     assert_running_times(gpu_time, cpu_time)
 
 
 def test_wddtw_distance():
+    g = 0.05
     gpu_time = time.time()
-    D = wddtw_distance(X, None, sakoe_chiba_band=1.0, g=0.05, n_jobs=1, device="gpu")
+    wddtw_distance(X, None, g=g, band=band, n_jobs=1, device="gpu")
     gpu_time = time.time() - gpu_time
+
     cpu_time = time.time()
-    D = wddtw_distance(X, None, sakoe_chiba_band=1.0, g=0.05, n_jobs=-1, device="cpu")
+    wddtw_distance(X, None, g=g, band=band, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
     assert_running_times(gpu_time, cpu_time)
 
 
 def test_adtw_distance():
+    warp_penalty = 1.0
     gpu_time = time.time()
-    D = adtw_distance(
-        X, None, sakoe_chiba_band=1.0, warp_penalty=1.0, n_jobs=1, device="gpu"
-    )
+    adtw_distance(X, None, band=band, warp_penalty=warp_penalty, n_jobs=1, device="gpu")
     gpu_time = time.time() - gpu_time
+
     cpu_time = time.time()
-    D = adtw_distance(
-        X, None, sakoe_chiba_band=1.0, warp_penalty=1.0, n_jobs=-1, device="cpu"
-    )
+    adtw_distance(X, None, band=band, warp_penalty=warp_penalty, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
+
     assert_running_times(gpu_time, cpu_time)
 
 
 def test_msm_distance():
     gpu_time = time.time()
-    D = msm_distance(X, None, sakoe_chiba_band=1.0, n_jobs=1, device="gpu")
+    msm_distance(X, None, band=band, n_jobs=1, device="gpu")
     gpu_time = time.time() - gpu_time
+
     cpu_time = time.time()
-    D = msm_distance(X, None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu")
+    msm_distance(X, None, band=band, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
+
     assert_running_times(gpu_time, cpu_time)
 
 
 def test_twe_distance():
+    stifness = 0.1
+    penalty = 0.1
     gpu_time = time.time()
-    D = twe_distance(
-        X, None, sakoe_chiba_band=1.0, stifness=0.1, penalty=0.1, n_jobs=1, device="gpu"
-    )
+    twe_distance(X, None, band=band, stifness=stifness, penalty=penalty, n_jobs=1, device="gpu")
     gpu_time = time.time() - gpu_time
+
     cpu_time = time.time()
-    D = twe_distance(
-        X, None, sakoe_chiba_band=1.0, stifness=0.1, penalty=0.1, n_jobs=1, device="cpu"
-    )
+    twe_distance(X, None, band=band, stifness=stifness, penalty=penalty, n_jobs=1, device="cpu")
     cpu_time = time.time() - cpu_time
+
     assert_running_times(gpu_time, cpu_time)

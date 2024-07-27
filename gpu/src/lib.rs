@@ -41,33 +41,6 @@ pub fn dtw(device: krnl::device::Device, a: &[f64], b: &[f64]) -> f64 {
     res as f64
 }
 
-pub fn derivate_gpu(x: &[f32]) -> Vec<f32> {
-    let mut x_d = Vec::with_capacity(x.len());
-    for i in 1..x.len() - 1 {
-        x_d[i-1] = ((x[i] - x[i - 1]) + (x[i + 1] - x[i - 1]) / 2.0) / 2.0;
-    }
-    x_d
-}
-
-pub fn ddtw(device: krnl::device::Device, a: &[f64], b: &[f64]) -> f64 {
-    let a = a.iter().map(|x| *x as f32).collect::<Vec<f32>>();
-    let b = b.iter().map(|x| *x as f32).collect::<Vec<f32>>();
-
-    let res = diamond_partitioning_gpu(device, DTWImpl {}, &derivate_gpu(&a), &derivate_gpu(&b), f32::INFINITY);
-    res as f64
-}
-
-const WEIGHT_MAX: f32 = 1.0;
-pub fn dtw_weights(len: usize, g: f32) -> Vec<f32> {
-    let mut weights = vec![0.0; len];
-    let half_len = len / 2;
-    for i in 0..len {
-        weights[i] =
-            WEIGHT_MAX / (1.0 + std::f32::consts::E.powf(-g * (i as f32 - half_len as f32)));
-    }
-    weights
-}
-
 pub fn wdtw(device: krnl::device::Device, a: &[f64], b: &[f64], weights: &[f64]) -> f64 {
     let a = a.iter().map(|x| *x as f32).collect::<Vec<f32>>();
     let b = b.iter().map(|x| *x as f32).collect::<Vec<f32>>();

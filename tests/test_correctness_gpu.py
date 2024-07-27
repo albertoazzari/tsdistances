@@ -18,7 +18,7 @@ from aeon import distances as aeon
 
 def load_random_dataset():
     n_timeseries = 2
-    n_timesteps = 10
+    n_timesteps = 100
 
     X_train = np.random.rand(n_timeseries, n_timesteps)
     y_train = np.random.randint(0, 10, n_timeseries)
@@ -30,6 +30,7 @@ def load_random_dataset():
 
 
 X, y = load_random_dataset()
+band = 1.0
 
 
 def check_distance_matrix(D, X):
@@ -46,72 +47,69 @@ def check_distance_matrix(D, X):
 
 def test_erp_distance():
     gap_penalty = 0.0
-    D = erp_distance(X, None, gap_penalty=gap_penalty, n_jobs=1, device="gpu")
-    D = np.array(D)
-    check_distance_matrix(D, X)
-    aeon_D = aeon.erp_pairwise_distance(X, g=gap_penalty)
-    assert np.allclose(D, aeon_D, atol=1e-2)
+    D_cpu = erp_distance(X, None, gap_penalty=gap_penalty, band=band, n_jobs=1, device='cpu')
+    check_distance_matrix(D_cpu, X)
+    D_gpu = erp_distance(X, None, gap_penalty=gap_penalty, band=band, n_jobs=1, device='gpu')
+    assert np.allclose(D_cpu, D_gpu, atol=1e-8)
 
 
 def test_lcss_distance():
-    D = lcss_distance(X, None, epsilon=0.1, n_jobs=1, device="gpu")
-    D = np.array(D)
-    check_distance_matrix(D, X)
-    aeon_D = aeon.lcss_pairwise_distance(X, epsilon=0.1)
-    assert np.allclose(D, aeon_D, atol=1e-2)
+    epsilon = 0.1
+    D_cpu = lcss_distance(X, None, epsilon=epsilon, band=band, n_jobs=1, device='cpu')
+    check_distance_matrix(D_cpu, X)
+    D_gpu = lcss_distance(X, None, epsilon=epsilon, band=band, n_jobs=1, device='gpu')
+    assert np.allclose(D_cpu, D_gpu, atol=1e-8)
 
 
 def test_dtw_distance():
-    D = dtw_distance(X, None, n_jobs=1, device="gpu")
-    D = np.array(D)
-    check_distance_matrix(D, X)
-    aeon_D = aeon.dtw_pairwise_distance(X)
-    assert np.allclose(D, aeon_D, atol=1e-2)
+    D_cpu = dtw_distance(X, None, band=band, n_jobs=1, device='cpu')
+    check_distance_matrix(D_cpu, X)
+    D_gpu = dtw_distance(X, None, band=band, n_jobs=1, device='gpu')
+    assert np.allclose(D_cpu, D_gpu, atol=1e-8)
 
 
 def test_ddtw_distance():
-    D = ddtw_distance(X, None, n_jobs=1, device="gpu")
-    D = np.array(D)
-    check_distance_matrix(D, X)
-    aeon_D = aeon.ddtw_pairwise_distance(X)
-    assert np.allclose(D, aeon_D, atol=1e-2)
+    D_cpu = ddtw_distance(X, None, band=band, n_jobs=1, device='cpu')
+    check_distance_matrix(D_cpu, X)
+    D_gpu = ddtw_distance(X, None, band=band, n_jobs=1, device='gpu')
+    assert np.allclose(D_cpu, D_gpu, atol=1e-8)
 
 
 def test_wdtw_distance():
-    D = wdtw_distance(X, None, g=0.05, n_jobs=1, device="gpu")
-    D = np.array(D)
-    check_distance_matrix(D, X)
-    aeon_D = aeon.wdtw_pairwise_distance(X, g=0.05)
-    assert np.allclose(D, aeon_D, atol=1e-2)
+    g = 0.05
+    D_cpu = wdtw_distance(X, None, g=g, band=band, n_jobs=1, device='cpu')
+    check_distance_matrix(D_cpu, X)
+    D_gpu = wdtw_distance(X, None, g=g, band=band, n_jobs=1, device='gpu')
+    assert np.allclose(D_cpu, D_gpu, atol=1e-8)
 
 
 def test_wddtw_distance():
-    D = wddtw_distance(X, None, g=0.05, n_jobs=1, device="gpu")
-    D = np.array(D)
-    check_distance_matrix(D, X)
-    aeon_D = aeon.wddtw_pairwise_distance(X, g=0.05)
-    assert np.allclose(D, aeon_D, atol=1e-2)
+    g = 0.05
+    D_cpu = wddtw_distance(X, None, g=g, band=band, n_jobs=1, device='cpu')
+    check_distance_matrix(D_cpu, X)
+    D_gpu = wddtw_distance(X, None, g=g, band=band, n_jobs=1, device='gpu')
+    assert np.allclose(D_cpu, D_gpu, atol=1e-8)
 
 
 def test_adtw_distance():
-    D = adtw_distance(X, None, warp_penalty=1.0, n_jobs=1, device="gpu")
-    D = np.array(D)
-    check_distance_matrix(D, X)
-    aeon_D = aeon.adtw_pairwise_distance(X, warp_penalty=1.0)
-    assert np.allclose(D, aeon_D, atol=1e-2)
+    warp_penalty = 1.0
+    D_cpu = adtw_distance(X, None, band=band, warp_penalty=warp_penalty, n_jobs=1, device='cpu')
+    check_distance_matrix(D_cpu, X)
+    D_gpu = adtw_distance(X, None, band=band, warp_penalty=warp_penalty, n_jobs=1, device='gpu')
+    assert np.allclose(D_cpu, D_gpu, atol=1e-8)
 
 
 def test_msm_distance():
-    D = msm_distance(X, None, n_jobs=1, device="gpu")
-    D = np.array(D)
-    check_distance_matrix(D, X)
-    aeon_D = aeon.msm_pairwise_distance(X)
-    assert np.allclose(D, aeon_D, atol=1e-2)
+    D_cpu = msm_distance(X, None, band=band, n_jobs=1, device='cpu')
+    check_distance_matrix(D_cpu, X)
+    D_gpu = msm_distance(X, None, band=band, n_jobs=1, device='gpu')
+    assert np.allclose(D_cpu, D_gpu, atol=1e-8)
 
 
 def test_twe_distance():
-    D = twe_distance(X, None, stifness=0.1, penalty=0.1, n_jobs=1, device="gpu")
-    D = np.array(D)
-    check_distance_matrix(D, X)
-    aeon_D = aeon.twe_pairwise_distance(X, nu=0.1, lmbda=0.1)
-    assert np.allclose(D, aeon_D, atol=1e-2)
+    stiffness = 0.1
+    penalty = 0.1
+    D_cpu = twe_distance(X, None, band=band, stifness=stiffness, penalty=penalty, n_jobs=1, device='cpu')
+    check_distance_matrix(D_cpu, X)
+    D_gpu = twe_distance(X, None, band=band, stifness=stiffness, penalty=penalty, n_jobs=1, device='gpu')
+    assert np.allclose(D_cpu, D_gpu, atol=1e-8)
