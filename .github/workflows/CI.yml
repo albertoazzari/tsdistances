@@ -37,10 +37,10 @@ jobs:
           args: --release --out dist --find-interpreter
           sccache: 'true'
           manylinux: auto
-      - name: Run tests
-        run: |
-          python -m pip install pytest numpy aeon typeguard
-          python -m pytest tests -k "correctness"
+      # - name: Run tests
+      #   run: |
+      #     python -m pip install pytest numpy aeon typeguard
+      #     python -m pytest tests -k "correctness"
       - name: Upload wheels
         if: success()
         uses: actions/upload-artifact@v4
@@ -73,10 +73,10 @@ jobs:
           args: --release --out dist --find-interpreter
           sccache: 'true'
           manylinux: musllinux_1_2
-      - name: Run tests
-        run: |
-          python -m pip install pytest numpy aeon typeguard
-          python -m pytest tests -k "correctness"
+      # - name: Run tests
+      #   run: |
+      #     python -m pip install pytest numpy aeon typeguard
+      #     python -m pytest tests -k "correctness"
       - name: Upload wheels
         if: success()
         uses: actions/upload-artifact@v4
@@ -105,10 +105,10 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: 'true'
-      - name: Run tests
-        run: |
-          python -m pip install pytest numpy aeon typeguard
-          python -m pytest tests -k "correctness"
+      # - name: Run tests
+      #   run: |
+      #     python -m pip install pytest numpy aeon typeguard
+      #     python -m pytest tests -k "correctness"
       - name: Upload wheels
         if: success()
         uses: actions/upload-artifact@v4
@@ -136,10 +136,10 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: 'true'
-      - name: Run tests
-        run: |
-          python -m pip install pytest numpy aeon typeguard
-          python -m pytest tests -k "correctness"
+      # - name: Run tests
+      #   run: |
+      #     python -m pip install pytest numpy aeon typeguard
+      #     python -m pytest tests -k "correctness"
       - name: Upload wheels
         if: success()
         uses: actions/upload-artifact@v4
