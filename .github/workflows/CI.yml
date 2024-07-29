@@ -1,4 +1,4 @@
-name: CI
+name: Cross-compile tsdistances and upload to PyPI
 
 on:
   push:
@@ -36,11 +36,11 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           manylinux: auto
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-linux-${{ matrix.platform.target }}
-          path: dist
+      # - name: Upload wheels
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: wheels-linux-${{ matrix.platform.target }}
+      #     path: dist
 
   # musllinux:
   #   runs-on: self-hosted
@@ -132,19 +132,19 @@ jobs:
         with:
           command: sdist
           args: --out dist
-      - name: Upload sdist
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-sdist
-          path: dist
+      # - name: Upload sdist
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: wheels-sdist
+      #     path: dist
 
   release:
     name: Release
     runs-on: self-hosted
-    if: startsWith(github.ref, 'refs/tags/')
+    # if: startsWith(github.ref, 'refs/tags/')
     #needs: [linux, musllinux, windows, macos, sdist]
     steps:
-      - uses: actions/download-artifact@v4
+      #- uses: actions/download-artifact@v4
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         env:
