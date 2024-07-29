@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   linux:
-    runs-on: self-hosted
+    runs-on: littlebeast
     strategy:
       matrix:
         platform:
@@ -24,7 +24,7 @@ jobs:
           - runner: ubuntu-latest
             target: aarch64
     steps:
-      # - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -52,14 +52,14 @@ jobs:
           pytest -k "correctness"
 
   windows:
-    runs-on: self-hosted
+    runs-on: littlebeast
     strategy:
       matrix:
         platform:
           - runner: windows-latest
             target: x64
     steps:
-      # - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -87,7 +87,7 @@ jobs:
           pytest -k "correctness"
 
   macos:
-    runs-on: self-hosted
+    runs-on: littlebeast
     strategy:
       matrix:
         platform:
@@ -96,7 +96,7 @@ jobs:
           - runner: macos-14
             target: aarch64
     steps:
-      # - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -121,9 +121,9 @@ jobs:
           pytest -k "correctness"
 
   sdist:
-    runs-on: self-hosted
+    runs-on: littlebeast
     steps:
-      # - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
@@ -137,7 +137,7 @@ jobs:
 
   release:
     name: Release
-    runs-on: self-hosted
+    runs-on: littlebeast
     if: startsWith(github.ref, 'refs/tags/')
     needs: [linux, windows, macos, sdist]
     steps:
