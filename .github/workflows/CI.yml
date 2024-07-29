@@ -27,7 +27,7 @@ jobs:
             target: aarch64
     steps:
       - name: Change permissions
-        run: sudo chown -R $USER:$USER /home/github/actions-runner/_work/{REPOSITORY_NAME_HERE}
+        run: sudo chown -R $USER:$USER /home/github/actions-runner/_work/${{ github.repository }}
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
