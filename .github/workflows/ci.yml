@@ -25,6 +25,8 @@ jobs:
             target: aarch64
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: false
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -60,6 +62,8 @@ jobs:
             target: x64
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: false
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -97,6 +101,8 @@ jobs:
             target: aarch64
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: false
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -124,6 +130,8 @@ jobs:
     runs-on: littlebeast
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: false
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
