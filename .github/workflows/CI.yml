@@ -26,8 +26,6 @@ jobs:
           - runner: ubuntu-latest
             target: aarch64
     steps:
-      - name: Change permissions
-        run: sudo chown -R $USER:$USER /home/github/actions-runner/_work/${{ github.repository }}
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -38,11 +36,11 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           manylinux: auto
-      # - name: Upload wheels
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: wheels-linux-${{ matrix.platform.target }}
-      #     path: dist
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.platform.target }}
+          path: dist
 
   # musllinux:
   #   runs-on: self-hosted

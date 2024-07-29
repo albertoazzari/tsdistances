@@ -1,8 +1,13 @@
 name: cleanup caches by a branch
 on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - '*'
   pull_request:
-    types:
-      - closed
+  workflow_dispatch:
 
 jobs:
   cleanup:
