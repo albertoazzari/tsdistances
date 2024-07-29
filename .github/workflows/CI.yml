@@ -42,7 +42,7 @@ jobs:
       #     python -m pip install pytest numpy aeon typeguard
       #     python -m pytest tests -k "correctness"
       - name: Upload wheels
-        if: success()
+        # if: success()
         uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.platform.target }}
@@ -78,7 +78,7 @@ jobs:
       #     python -m pip install pytest numpy aeon typeguard
       #     python -m pytest tests -k "correctness"
       - name: Upload wheels
-        if: success()
+        # if: success()
         uses: actions/upload-artifact@v4
         with:
           name: wheels-musllinux-${{ matrix.platform.target }}
@@ -110,7 +110,7 @@ jobs:
       #     python -m pip install pytest numpy aeon typeguard
       #     python -m pytest tests -k "correctness"
       - name: Upload wheels
-        if: success()
+        # if: success()
         uses: actions/upload-artifact@v4
         with:
           name: wheels-windows-${{ matrix.platform.target }}
@@ -141,7 +141,7 @@ jobs:
       #     python -m pip install pytest numpy aeon typeguard
       #     python -m pytest tests -k "correctness"
       - name: Upload wheels
-        if: success()
+        # if: success()
         uses: actions/upload-artifact@v4
         with:
           name: wheels-macos-${{ matrix.platform.target }}
