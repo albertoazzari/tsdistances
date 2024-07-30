@@ -48,7 +48,7 @@ jobs:
           python3 -m venv .venv
           source .venv/bin/activate
           pip install tsdistances --find-links dist --force-reinstall
-          pip install pytest
+          pip install pytest aeon typeguard
           pytest -k "correctness"
 
   windows:
@@ -83,7 +83,7 @@ jobs:
           python3 -m venv .venv
           source .venv/bin/activate
           pip install tsdistances --find-links dist --force-reinstall
-          pip install pytest
+          pip install pytest aeon typeguard
           pytest -k "correctness"
 
   macos:
@@ -117,7 +117,7 @@ jobs:
           python3 -m venv .venv
           source .venv/bin/activate
           pip install tsdistances --find-links dist --force-reinstall
-          pip install pytest
+          pip install pytest aeon typeguard
           pytest -k "correctness"
 
   sdist:
