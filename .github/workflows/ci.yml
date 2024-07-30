@@ -42,7 +42,7 @@ jobs:
           set -e
           python3 -m venv .venv
           source .venv/bin/activate
-          pip install tsdistances --find-links dist --force-reinstall
+          maturin develop --release --find-interpreter
           pip install pytest aeon typeguard
           pytest -k "correctness"
 
