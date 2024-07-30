@@ -81,7 +81,7 @@ jobs:
         run: |
           set -e
           python3 -m venv .venv
-          source .venv/Scripts/activate
+          source .venv/bin/activate
           pip install tsdistances --find-links dist --force-reinstall
           pip install pytest
           pytest -k "correctness"
