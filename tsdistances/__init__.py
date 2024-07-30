@@ -1,7 +1,6 @@
 from typing import List, Optional, Union
 from typeguard import TypeCheckError, typechecked, check_type, warn_on_error
-
-from tsdistances import tsdistances as tsd
+import tsdistances as tsd
 import numpy as np
 
 
