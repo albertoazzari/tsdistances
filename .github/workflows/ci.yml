@@ -43,7 +43,7 @@ jobs:
           python3 -m venv .venv
           source .venv/bin/activate
           pip install maturin
-          maturin develop --release --find-interpreter
+          maturin develop --release
           pip install pytest aeon typeguard
           pytest -k "correctness"
 
