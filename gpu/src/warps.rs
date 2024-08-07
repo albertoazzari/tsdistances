@@ -2,38 +2,130 @@ use krnl::{buffer::Buffer, device::Device};
 
 use crate::kernels::warp::GpuKernelImpl;
 
-pub fn diamond_partitioning_gpu<G: GpuKernelImpl>(
+pub trait GpuBatchMode {
+    const IS_BATCH: bool;
+
+    type ReturnType;
+    type InputType<'a>;
+
+    fn input_seq_len(input: &Self::InputType<'_>) -> usize;
+    fn new_return(alen: usize, blen: usize) -> Self::ReturnType;
+    fn set_return(ret: &mut Self::ReturnType, i: usize, j: usize, value: f32);
+    fn build_padded(input: &Self::InputType<'_>, pad_stride: usize) -> Vec<f32>;
+
+    fn apply_fn(ret: Self::ReturnType, func: impl Fn(f64) -> f64) -> Self::ReturnType;
+}
+
+pub struct SingleBatchMode;
+impl GpuBatchMode for SingleBatchMode {
+    const IS_BATCH: bool = false;
+
+    type ReturnType = f64;
+    type InputType<'a> = &'a [f64];
+
+    fn input_seq_len(input: &Self::InputType<'_>) -> usize {
+        input.len()
+    }
+
+    fn new_return(_: usize, _: usize) -> Self::ReturnType {
+        0.0
+    }
+
+    fn set_return(ret: &mut Self::ReturnType, _: usize, _: usize, value: f32) {
+        *ret = value as f64;
+    }
+
+    fn build_padded(input: &Self::InputType<'_>, pad_stride: usize) -> Vec<f32> {
+        let padded_len = next_multiple_of_n(input.len(), pad_stride);
+        let mut padded = vec![0.0; padded_len];
+        for (padded, input) in padded.iter_mut().zip(input.iter()) {
+            *padded = *input as f32;
+        }
+
+        padded
+    }
+
+    fn apply_fn(ret: Self::ReturnType, func: impl Fn(f64) -> f64) -> Self::ReturnType {
+        func(ret)
+    }
+}
+
+pub struct MultiBatchMode;
+
+impl GpuBatchMode for MultiBatchMode {
+    const IS_BATCH: bool = true;
+
+    type ReturnType = Vec<Vec<f64>>;
+
+    type InputType<'a> = &'a [Vec<f64>];
+
+    fn input_seq_len(input: &Self::InputType<'_>) -> usize {
+        input.first().map_or(0, |x| x.len())
+    }
+
+    fn new_return(alen: usize, blen: usize) -> Self::ReturnType {
+        vec![vec![0.0; blen]; alen]
+    }
+
+    fn set_return(ret: &mut Self::ReturnType, i: usize, j: usize, value: f32) {
+        ret[i][j] = value as f64;
+    }
+
+    fn build_padded(input: &Self::InputType<'_>, pad_stride: usize) -> Vec<f32> {
+        let single_padded_len =
+            next_multiple_of_n(input.first().map_or(0, |x| x.len()), pad_stride);
+        let mut padded = vec![0.0; input.len() * single_padded_len];
+        for i in 0..input.len() {
+            for j in 0..input[i].len() {
+                padded[i * single_padded_len + j] = input[i][j] as f32;
+            }
+        }
+
+        padded
+    }
+
+    fn apply_fn(mut ret: Self::ReturnType, func: impl Fn(f64) -> f64) -> Self::ReturnType {
+        for i in 0..ret.len() {
+            for j in 0..ret[i].len() {
+                ret[i][j] = func(ret[i][j]);
+            }
+        }
+        ret
+    }
+}
+
+pub fn diamond_partitioning_gpu<'a, G: GpuKernelImpl, M: GpuBatchMode>(
     device: Device,
     params: G,
-    a: &[f32],
-    b: &[f32],
+    a: M::InputType<'a>,
+    b: M::InputType<'a>,
     init_val: f32,
-) -> f32 {
-    let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+) -> M::ReturnType {
+    let (a, b) = if M::input_seq_len(&a) > M::input_seq_len(&b) {
+        (b, a)
+    } else {
+        (a, b)
+    };
 
     let max_subgroup_threads: usize = device.info().unwrap().max_subgroup_threads() as usize;
-    let new_a_len = next_multiple_of_n(a.len(), max_subgroup_threads);
-    let new_b_len = next_multiple_of_n(b.len(), max_subgroup_threads);
+    let a_padded = M::build_padded(&a, max_subgroup_threads);
+    let b_padded = M::build_padded(&b, max_subgroup_threads);
 
-    let mut a_padded = vec![0.0; new_a_len];
-    let mut b_padded = vec![0.0; new_b_len];
-
-    a_padded[..a.len()].copy_from_slice(a);
-    b_padded[..b.len()].copy_from_slice(b);
-
-    diamond_partitioning_gpu_::<G>(
+    diamond_partitioning_gpu_::<G, M>(
         device,
         params,
         max_subgroup_threads,
-        a.len(),
-        b.len(),
+        M::input_seq_len(&a),
+        M::input_seq_len(&b),
         a_padded,
         b_padded,
         init_val,
+        M::IS_BATCH,
     )
 }
 
-pub fn diamond_partitioning_gpu_<G: GpuKernelImpl>(
+#[inline(always)]
+fn diamond_partitioning_gpu_<G: GpuKernelImpl, M: GpuBatchMode>(
     device: Device,
     params: G,
     max_subgroup_threads: usize,
@@ -42,17 +134,24 @@ pub fn diamond_partitioning_gpu_<G: GpuKernelImpl>(
     a: Vec<f32>,
     b: Vec<f32>,
     init_val: f32,
-) -> f32 {
+    is_batch: bool,
+) -> M::ReturnType {
     let a_gpu = Buffer::from(a.clone()).into_device(device.clone()).unwrap();
     let b_gpu = Buffer::from(b.clone()).into_device(device.clone()).unwrap();
 
     let padded_a_len = next_multiple_of_n(a_len, max_subgroup_threads);
     let padded_b_len = next_multiple_of_n(b_len, max_subgroup_threads);
 
+    let a_count = a.len() / padded_a_len;
+    let b_count = b.len() / padded_b_len;
+
     let diag_len = 2 * (padded_a_len + 1).next_power_of_two();
 
-    let mut diagonal = vec![init_val; diag_len];
-    diagonal[0] = 0.0;
+    let mut diagonal = vec![init_val; a_count * b_count * diag_len];
+
+    for i in 0..(a_count * b_count) {
+        diagonal[i * diag_len] = 0.0;
+    }
 
     let mut diagonal = Buffer::from(diagonal).into_device(device.clone()).unwrap();
 
@@ -67,20 +166,39 @@ pub fn diamond_partitioning_gpu_<G: GpuKernelImpl>(
 
     // Number of kernel calls
     for i in 0..rows_count {
-        params.dispatch(
-            device.clone(),
-            first_coord as i64,
-            i as u64,
-            diamonds_count as u64,
-            a_start as u64,
-            b_start as u64,
-            a_len as u64,
-            b_len as u64,
-            max_subgroup_threads as u64,
-            a_gpu.as_slice(),
-            b_gpu.as_slice(),
-            diagonal.as_slice_mut(),
-        );
+        if is_batch {
+            params.dispatch_batch(
+                device.clone(),
+                first_coord as i64,
+                i as u64,
+                diamonds_count as u64,
+                a_start as u64,
+                b_start as u64,
+                a_len as u64,
+                b_len as u64,
+                padded_a_len as u64,
+                padded_b_len as u64,
+                max_subgroup_threads as u64,
+                a_gpu.as_slice(),
+                b_gpu.as_slice(),
+                diagonal.as_slice_mut(),
+            );
+        } else {
+            params.dispatch(
+                device.clone(),
+                first_coord as i64,
+                i as u64,
+                diamonds_count as u64,
+                a_start as u64,
+                b_start as u64,
+                a_len as u64,
+                b_len as u64,
+                max_subgroup_threads as u64,
+                a_gpu.as_slice(),
+                b_gpu.as_slice(),
+                diagonal.as_slice_mut(),
+            );
+        }
 
         if i < (a_diamonds - 1) {
             diamonds_count += 1;
@@ -104,7 +222,19 @@ pub fn diamond_partitioning_gpu_<G: GpuKernelImpl>(
 
     let (_, cx) = index_mat_to_diag(a_len, b_len);
 
-    let res = diagonal[(cx as usize) & (diagonal.len() - 1)];
+    let mut res = M::new_return(a_count, b_count);
+
+    for i in 0..a_count {
+        for j in 0..b_count {
+            let diag_offset = (i * b_count + j) * diag_len;
+            M::set_return(
+                &mut res,
+                i,
+                j,
+                diagonal[diag_offset + ((cx as usize) & (diag_len - 1))],
+            );
+        }
+    }
 
     res
 }

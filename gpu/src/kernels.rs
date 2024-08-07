@@ -9,17 +9,21 @@ pub mod warp {
     use krnl::krnl_core;
     use krnl_core::buffer::UnsafeIndex;
     use krnl_core::buffer::UnsafeSlice;
-    use krnl_core::macros::kernel;
 
     pub struct GpuMatrix<'a> {
         diagonal: UnsafeSlice<'a, f32>,
+        diagonal_offset: usize,
         mask: usize,
     }
 
     impl GpuMatrix<'_> {
         #[inline(always)]
         fn get_diagonal_cell(&self, _diag_row: usize, diag_offset: isize) -> f32 {
-            unsafe { *self.diagonal.unsafe_index(diag_offset as usize & self.mask) }
+            unsafe {
+                *self
+                    .diagonal
+                    .unsafe_index(self.diagonal_offset + (diag_offset as usize & self.mask))
+            }
         }
 
         #[inline(always)]
@@ -27,12 +31,9 @@ pub mod warp {
             unsafe {
                 *self
                     .diagonal
-                    .unsafe_index_mut(diag_offset as usize & self.mask) = value;
+                    .unsafe_index_mut(self.diagonal_offset + (diag_offset as usize & self.mask)) =
+                    value;
             }
-        }
-
-        fn debug_print(&self) {
-            unimplemented!()
         }
     }
 
@@ -97,6 +98,8 @@ pub mod warp {
         b_len: u64,
         max_subgroup_threads: u64,
         diagonal: krnl_core::buffer::UnsafeSlice<f32>,
+        diagonal_offset: u64,
+        diagonal_len: u64,
         distance_lambda: impl Fn(u64, u64, f32, f32, f32) -> f32,
     ) {
         let warp_id = global_id % max_subgroup_threads;
@@ -115,7 +118,8 @@ pub mod warp {
 
         let matrix = GpuMatrix {
             diagonal,
-            mask: diagonal.len() - 1,
+            diagonal_offset: diagonal_offset as usize,
+            mask: diagonal_len as usize - 1,
         };
 
         warp_kernel_inner(
@@ -134,8 +138,8 @@ pub mod warp {
     macro_rules! warp_kernel_spec {
         ($(
             fn $name:ident[$impl_struct:ident](
-                $a:ident,
-                $b:ident,
+                $a:ident[$a_offset:ident],
+                $b:ident[$b_offset:ident],
                 $i:ident,
                 $j:ident,
                 $x:ident,
@@ -149,20 +153,116 @@ pub mod warp {
             ) $body:block
         )*) => {
             $(
-                #[cfg(not(target_arch = "spirv"))]
-                pub struct $impl_struct {
-                    $(pub $param1: $ty1,)?
-                    $(pub $param2: $ty2,)?
-                    $(pub $param3: $ty3,)?
-                    $(pub $param4: $ty4,)?
-                    $(pub $vec5:  krnl::buffer::Buffer<$ty5>,)?
-                }
+                pub mod $name {
+                    #[cfg(not(target_arch = "spirv"))]
+                    use krnl::krnl_core;
+                    use krnl_core::macros::kernel;
 
-                #[cfg(not(target_arch = "spirv"))]
-                impl GpuKernelImpl for $impl_struct {
-                    fn dispatch(
-                        &self,
-                        device: krnl::device::Device,
+                    #[cfg(not(target_arch = "spirv"))]
+                    use super::GpuKernelImpl;
+
+                    #[cfg(not(target_arch = "spirv"))]
+                    pub struct $impl_struct {
+                        $(pub $param1: $ty1,)?
+                        $(pub $param2: $ty2,)?
+                        $(pub $param3: $ty3,)?
+                        $(pub $param4: $ty4,)?
+                        $(pub $vec5:  krnl::buffer::Buffer<$ty5>,)?
+                    }
+
+                    #[cfg(not(target_arch = "spirv"))]
+                    impl GpuKernelImpl for $impl_struct {
+                        fn dispatch(
+                            &self,
+                            device: krnl::device::Device,
+                            first_coord: i64,
+                            row: u64,
+                            diamonds_count: u64,
+                            a_start: u64,
+                            b_start: u64,
+                            a_len: u64,
+                            b_len: u64,
+                            max_subgroup_threads: u64,
+                            a: krnl::buffer::Slice<f32>,
+                            b: krnl::buffer::Slice<f32>,
+                            diagonal: krnl::buffer::SliceMut<f32>,
+                        ) {
+                            single_call::builder()
+                                .unwrap()
+                                .build(device)
+                                .unwrap()
+                                .with_global_threads((diamonds_count * max_subgroup_threads) as u32)
+                                .dispatch(
+                                    first_coord,
+                                    row,
+                                    diamonds_count,
+                                    a_start,
+                                    b_start,
+                                    a_len,
+                                    b_len,
+                                    max_subgroup_threads,
+                                    $(self.$param1,)?
+                                    $(self.$param2,)?
+                                    $(self.$param3,)?
+                                    $(self.$param4,)?
+                                    $(self.$vec5.as_slice(),)?
+                                    a,
+                                    b,
+                                    diagonal,
+                                )
+                                .unwrap();
+                        }
+
+                        fn dispatch_batch(
+                            &self,
+                            device: krnl::device::Device,
+                            first_coord: i64,
+                            row: u64,
+                            diamonds_count: u64,
+                            a_start: u64,
+                            b_start: u64,
+                            a_len: u64,
+                            b_len: u64,
+                            padded_a_len: u64,
+                            padded_b_len: u64,
+                            max_subgroup_threads: u64,
+                            a: krnl::buffer::Slice<f32>,
+                            b: krnl::buffer::Slice<f32>,
+                            diagonal: krnl::buffer::SliceMut<f32>,
+                        ) {
+                            let a_count = a.len() as u64 / padded_a_len;
+                            let b_count = b.len() as u64 / padded_b_len;
+                            batch_call::builder()
+                                .unwrap()
+                                .build(device)
+                                .unwrap()
+                                .with_global_threads((a_count * b_count * diamonds_count * max_subgroup_threads) as u32)
+                                .dispatch(
+                                    first_coord,
+                                    row,
+                                    diamonds_count,
+                                    a_start,
+                                    b_start,
+                                    a_len,
+                                    b_len,
+                                    padded_a_len,
+                                    padded_b_len,
+                                    max_subgroup_threads,
+                                    $(self.$param1,)?
+                                    $(self.$param2,)?
+                                    $(self.$param3,)?
+                                    $(self.$param4,)?
+                                    $(self.$vec5.as_slice(),)?
+                                    a,
+                                    b,
+                                    diagonal,
+                                )
+                                .unwrap();
+                        }
+                    }
+
+                    #[kernel]
+                    fn single_call(
                         first_coord: i64,
                         row: u64,
                         diamonds_count: u64,
@@ -171,79 +271,110 @@ pub mod warp {
                         a_len: u64,
                         b_len: u64,
                         max_subgroup_threads: u64,
-                        a: krnl::buffer::Slice<f32>,
-                        b: krnl::buffer::Slice<f32>,
-                        diagonal: krnl::buffer::SliceMut<f32>,
+                        $(param1: $ty1,)?
+                        $(param2: $ty2,)?
+                        $(param3: $ty3,)?
+                        $(param4: $ty4,)?
+                        $(#[global] vec5: Slice<$ty5>,)?
+                        #[global] $a: Slice<f32>,
+                        #[global] $b: Slice<f32>,
+                        #[global] diagonal: UnsafeSlice<f32>,
                     ) {
-                        $name::builder()
-                            .unwrap()
-                            .build(device)
-                            .unwrap()
-                            .with_global_threads((diamonds_count * max_subgroup_threads) as u32)
-                            .dispatch(
-                                first_coord,
-                                row,
-                                diamonds_count,
-                                a_start,
-                                b_start,
-                                a_len,
-                                b_len,
-                                max_subgroup_threads,
-                                $(self.$param1,)?
-                                $(self.$param2,)?
-                                $(self.$param3,)?
-                                $(self.$param4,)?
-                                $(self.$vec5.as_slice(),)?
-                                a,
-                                b,
-                                diagonal,
-                            )
-                            .unwrap();
+                        use krnl_core::buffer::UnsafeIndex;
+                        use krnl_core::num_traits::Float;
+
+                        $(let $param1 = param1;)?
+                        $(let $param2 = param2;)?
+                        $(let $param3 = param3;)?
+                        $(let $param4 = param4;)?
+                        $(let $vec5 = vec5;)?
+
+                        let $a_offset = 0;
+                        let $b_offset = 0;
+
+                        let global_id = kernel.global_id() as u64;
+                        super::warp_kernel(
+                            global_id,
+                            first_coord,
+                            row,
+                            diamonds_count,
+                            a_start,
+                            b_start,
+                            a_len,
+                            b_len,
+                            max_subgroup_threads,
+                            diagonal,
+                            0,
+                            diagonal.len() as u64,
+                            |$i, $j, $x, $y, $z| $body,
+                        );
                     }
-                }
 
-                #[kernel]
-                fn $name(
-                    first_coord: i64,
-                    row: u64,
-                    diamonds_count: u64,
-                    a_start: u64,
-                    b_start: u64,
-                    a_len: u64,
-                    b_len: u64,
-                    max_subgroup_threads: u64,
-                    $(param1: $ty1,)?
-                    $(param2: $ty2,)?
-                    $(param3: $ty3,)?
-                    $(param4: $ty4,)?
-                    $(#[global] vec5: Slice<$ty5>,)?
-                    #[global] $a: Slice<f32>,
-                    #[global] $b: Slice<f32>,
-                    #[global] diagonal: UnsafeSlice<f32>,
-                ) {
-                    use krnl_core::buffer::UnsafeIndex;
-                    use krnl_core::num_traits::Float;
+                    #[kernel]
+                    fn batch_call(
+                        first_coord: i64,
+                        row: u64,
+                        diamonds_count: u64,
+                        a_start: u64,
+                        b_start: u64,
+                        a_len: u64,
+                        b_len: u64,
+                        padded_a_len: u64,
+                        padded_b_len: u64,
+                        max_subgroup_threads: u64,
+                        $(param1: $ty1,)?
+                        $(param2: $ty2,)?
+                        $(param3: $ty3,)?
+                        $(param4: $ty4,)?
+                        $(#[global] vec5: Slice<$ty5>,)?
+                        #[global] $a: Slice<f32>,
+                        #[global] $b: Slice<f32>,
+                        #[global] diagonal: UnsafeSlice<f32>,
+                    ) {
+                        use krnl_core::buffer::UnsafeIndex;
+                        use krnl_core::num_traits::Float;
 
-                    $(let $param1 = param1;)?
-                    $(let $param2 = param2;)?
-                    $(let $param3 = param3;)?
-                    $(let $param4 = param4;)?
-                    $(let $vec5 = vec5;)?
+                        $(let $param1 = param1;)?
+                        $(let $param2 = param2;)?
+                        $(let $param3 = param3;)?
+                        $(let $param4 = param4;)?
+                        $(let $vec5 = vec5;)?
 
-                    let global_id = kernel.global_id() as u64;
-                    warp_kernel(
-                        global_id,
-                        first_coord,
-                        row,
-                        diamonds_count,
-                        a_start,
-                        b_start,
-                        a_len,
-                        b_len,
-                        max_subgroup_threads,
-                        diagonal,
-                        |$i, $j, $x, $y, $z| $body,
-                    );
+
+                        let global_id = kernel.global_id() as u64;
+                        let threads_stride = diamonds_count * max_subgroup_threads;
+
+                        let pair_index = global_id / threads_stride;
+                        let instance_id = global_id % threads_stride;
+
+                        let a_count = $a.len() / padded_a_len as usize;
+                        let b_count = $b.len() / padded_b_len as usize;
+
+                        let a_index = pair_index / b_count as u64;
+                        let b_index = pair_index % b_count as u64;
+
+                        let diagonal_stride = (diagonal.len() / (a_count * b_count)) as u64;
+                        let diagonal_offset = pair_index * diagonal_stride;
+
+                        let $a_offset = a_index as usize * padded_a_len as usize;
+                        let $b_offset = b_index as usize * padded_b_len as usize;
+
+                        super::warp_kernel(
+                            instance_id,
+                            first_coord,
+                            row,
+                            diamonds_count,
+                            a_start,
+                            b_start,
+                            a_len,
+                            b_len,
+                            max_subgroup_threads,
+                            diagonal,
+                            diagonal_offset,
+                            diagonal_stride,
+                            |$i, $j, $x, $y, $z| $body,
+                        );
+                    }
                 }
             )*
         };
@@ -266,6 +397,24 @@ pub mod warp {
             b: krnl::buffer::Slice<f32>,
             diagonal: krnl::buffer::SliceMut<f32>,
         );
+
+        fn dispatch_batch(
+            &self,
+            device: krnl::device::Device,
+            first_coord: i64,
+            row: u64,
+            diamonds_count: u64,
+            a_start: u64,
+            b_start: u64,
+            a_len: u64,
+            b_len: u64,
+            padded_a_len: u64,
+            padded_b_len: u64,
+            max_subgroup_threads: u64,
+            a: krnl::buffer::Slice<f32>,
+            b: krnl::buffer::Slice<f32>,
+            diagonal: krnl::buffer::SliceMut<f32>,
+        );
     }
 
     const MSM_C: f32 = 1.0;
@@ -275,49 +424,49 @@ pub mod warp {
     }
 
     warp_kernel_spec! {
-        fn erp_distance[ERPImpl](a, b, i, j, x, y, z, [gap_penalty: f32], [], [], [], []) {
-            (y + (a[i as usize] - b[j as usize]).abs())
-            .min((z + (a[i as usize] - gap_penalty).abs()).min(x + (b[j as usize] - gap_penalty).abs()))
+        fn erp_distance[ERPImpl](a[a_offset], b[b_offset], i, j, x, y, z, [gap_penalty: f32], [], [], [], []) {
+            (y + (a[a_offset + i as usize] - b[b_offset + j as usize]).abs())
+            .min((z + (a[a_offset + i as usize] - gap_penalty).abs()).min(x + (b[b_offset + j as usize] - gap_penalty).abs()))
         }
-        fn lcss_distance[LCSSImpl](a, b, i, j, x, y, z, [epsilon: f32], [], [], [], []) {
-            let dist = (a[i as usize] - b[j as usize]).abs();
+        fn lcss_distance[LCSSImpl](a[a_offset], b[b_offset], i, j, x, y, z, [epsilon: f32], [], [], [], []) {
+            let dist = (a[a_offset + i as usize] - b[b_offset + j as usize]).abs();
             if dist <= epsilon {
                 y + 1.0
             } else {
                 x.max(z)
             }
         }
-        fn dtw_distance[DTWImpl](a, b, i, j, x, y, z, [], [], [], [], []) {
-            let dist = (a[i as usize] - b[j as usize]).powi(2);
+        fn dtw_distance[DTWImpl](a[a_offset], b[b_offset], i, j, x, y, z, [], [], [], [], []) {
+            let dist = (a[a_offset + i as usize] - b[b_offset + j as usize]).powi(2);
             dist + z.min(x.min(y))
         }
-        fn wdtw_distance[WDTWImpl](a, b, i, j, x, y, z, [], [], [], [], [weights: f32]) {
-            let dist = (a[i as usize] - b[j as usize]).powi(2) * weights[(i as i32 - j as i32).abs() as usize];
+        fn wdtw_distance[WDTWImpl](a[a_offset], b[b_offset], i, j, x, y, z, [], [], [], [], [weights: f32]) {
+            let dist = (a[a_offset + i as usize] - b[b_offset + j as usize]).powi(2) * weights[(i as i32 - j as i32).abs() as usize];
             dist + x.min(y.min(z))
         }
-        fn msm_distance[MSMImpl](a, b, i, j, x, y, z, [], [], [], [], []) {
-            (y + (a[i as usize] - b[j as usize]).abs())
+        fn msm_distance[MSMImpl](a[a_offset], b[b_offset], i, j, x, y, z, [], [], [], [], []) {
+            (y + (a[a_offset + i as usize] - b[b_offset + j as usize]).abs())
             .min(
-                z + msm_cost_function(a[i as usize], if i == 0 {0.0} else {a[i as usize - 1]}, b[j as usize]),
+                z + super::msm_cost_function(a[a_offset + i as usize], if i == 0 {0.0} else {a[a_offset + i as usize - 1]}, b[b_offset + j as usize]),
             )
             .min(
-                x + msm_cost_function(b[j as usize], a[i as usize], if j == 0 {0.0} else {b[j as usize - 1]}),
+                x + super::msm_cost_function(b[b_offset + j as usize], a[a_offset + i as usize], if j == 0 {0.0} else {b[b_offset + j as usize - 1]}),
             )
         }
-        fn twe_distance[TWEImpl](a, b, i, j, x, y, z, [stiffness: f32], [penalty: f32], [], [], []) {
+        fn twe_distance[TWEImpl](a[a_offset], b[b_offset], i, j, x, y, z, [stiffness: f32], [penalty: f32], [], [], []) {
             let delete_addition = penalty + stiffness;
             // deletion in a
             let del_a =
-            z + (if i == 0 {0.0} else {a[i as usize - 1]} - a[i as usize]).abs() + delete_addition;
+            z + (if i == 0 {0.0} else {a[a_offset + i as usize - 1]} - a[a_offset + i as usize]).abs() + delete_addition;
 
             // deletion in b
             let del_b =
-                x + (if j == 0 {0.0} else {b[j as usize - 1]} - b[j as usize]).abs() + delete_addition;
+                x + (if j == 0 {0.0} else {b[b_offset + j as usize - 1]} - b[b_offset + j as usize]).abs() + delete_addition;
 
             // match
-            let match_current = (a[i as usize] - b[j as usize]).abs();
-            let match_previous = (if i == 0 {0.0} else {a[i as usize - 1]}
-                - if j == 0 {0.0} else {b[j as usize - 1]})
+            let match_current = (a[a_offset + i as usize] - b[b_offset + j as usize]).abs();
+            let match_previous = (if i == 0 {0.0} else {a[a_offset + i as usize - 1]}
+                - if j == 0 {0.0} else {b[b_offset + j as usize - 1]})
             .abs();
             let match_a_b = y
                 + match_current
@@ -326,8 +475,8 @@ pub mod warp {
 
             del_a.min(del_b.min(match_a_b))
         }
-        fn adtw_distance[ADTWImpl](a, b, i, j, x, y, z, [w: f32], [], [], [], []) {
-            let dist = (a[i as usize] - b[j as usize]).powi(2);
+        fn adtw_distance[ADTWImpl](a[a_offset], b[b_offset], i, j, x, y, z, [w: f32], [], [], [], []) {
+            let dist = (a[a_offset + i as usize] - b[b_offset + j as usize]).powi(2);
                     dist + (z + w).min((x + w).min(y))
         }
 
