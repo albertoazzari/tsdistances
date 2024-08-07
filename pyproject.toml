@@ -5,7 +5,7 @@ tool = { rye = { dev-dependencies = [
 ] } }
 [project]
 name = "tsdistances"
-version = "0.0.4"
+version = "0.0.5"
 authors = [
   { name="Alberto Azzari", email="alberto.azzari@univr.it" },
   { name="Andrea Cracco", email="andrea.cracco@univr.it" },

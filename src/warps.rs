@@ -1,3 +1,5 @@
+use tsdistances_gpu::{MultiBatchMode, SingleBatchMode};
+
 use crate::{matrix::Matrix, utils::next_multiple_of_n};
 const DIAMOND_SIZE: usize = 64;
 
@@ -43,7 +45,7 @@ fn test_diamond_partitioning() {
         time2 += end2.as_micros();
 
         let start3 = std::time::Instant::now();
-        r3 += tsdistances_gpu::lcss(device.clone(), &a, &b, epsilon);
+        r3 += tsdistances_gpu::lcss::<SingleBatchMode>(device.clone(), &a, &b, epsilon);
         let end3 = start3.elapsed();
         time3 += end3.as_micros();
     }

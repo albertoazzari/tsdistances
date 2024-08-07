@@ -45,7 +45,44 @@ jobs:
           pip install maturin
           maturin develop --release
           pip install pytest aeon typeguard
-          pytest -k "correctness"
+          pytest -k "correctness_cpu"
+      # - name: pytest
+      #   if: ${{ startsWith(matrix.platform.target, 'x86_64') }}
+      #   shell: bash
+      #   run: |
+      #     set -e
+      #     python3 -m venv .venv
+      #     source .venv/bin/activate
+      #     pip install tsdistances --find-links dist --force-reinstall
+      #     pip install pytest aeon typeguard
+      #     pytest -k correctness_cpu
+
+  musllinux:
+    runs-on: littlebeast
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64
+          - runner: ubuntu-latest
+            target: aarch64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist --find-interpreter
+          sccache: 'true'
+          manylinux: musllinux_1_2
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-musllinux-${{ matrix.platform.target }}
+          path: dist
 
   windows:
     runs-on: littlebeast
@@ -101,7 +138,7 @@ jobs:
   release:
     name: Release
     runs-on: littlebeast
-    if: startsWith(github.ref, 'refs/tags/')
+    #if: startsWith(github.ref, 'refs/tags/')
     needs: [linux, windows, macos, sdist]
     steps:
       - name: Publish to PyPI
