@@ -43,7 +43,7 @@ def test_erp_distance():
     D_gpu = erp_distance(X, None, band=band, gap_penalty=gap_penalty, n_jobs=1, device="gpu")
     gpu_time = time.time() - gpu_time
     
-    cpu_time = time.time()
+    cpu_time = time.time() 
     D_cpu = erp_distance(X, None, band=band, gap_penalty=gap_penalty, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
     
@@ -153,7 +153,7 @@ def test_twe_distance():
     gpu_time = time.time() - gpu_time
 
     cpu_time = time.time()
-    D_cpu = twe_distance(X, None, band=band, stifness=stifness, penalty=penalty, n_jobs=1, device="cpu")
+    D_cpu = twe_distance(X, None, band=band, stifness=stifness, penalty=penalty, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
 
     assert np.allclose(D_cpu, D_gpu, atol=1e-2)

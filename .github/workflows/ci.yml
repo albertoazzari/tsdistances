@@ -46,16 +46,11 @@ jobs:
           maturin develop --release
           pip install pytest aeon typeguard
           pytest -k "correctness_cpu"
-      # - name: pytest
-      #   if: ${{ startsWith(matrix.platform.target, 'x86_64') }}
-      #   shell: bash
-      #   run: |
-      #     set -e
-      #     python3 -m venv .venv
-      #     source .venv/bin/activate
-      #     pip install tsdistances --find-links dist --force-reinstall
-      #     pip install pytest aeon typeguard
-      #     pytest -k correctness_cpu
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.platform.target }}
+          path: dist
 
   musllinux:
     runs-on: littlebeast
@@ -103,6 +98,11 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: 'true'
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-${{ matrix.platform.target }}
+          path: dist
 
   macos:
     runs-on: littlebeast
@@ -124,6 +124,11 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: 'true'
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-${{ matrix.platform.target }}
+          path: dist
 
   sdist:
     runs-on: littlebeast
@@ -134,6 +139,11 @@ jobs:
         with:
           command: sdist
           args: --out dist
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist
 
   release:
     name: Release
@@ -141,6 +151,7 @@ jobs:
     #if: startsWith(github.ref, 'refs/tags/')
     needs: [linux, windows, macos, sdist]
     steps:
+      - uses: actions/download-artifact@v4
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         env:
