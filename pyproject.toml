@@ -1,8 +1,9 @@
 tool = { rye = { dev-dependencies = [
-    "pip>=24.1.2",
-    "pytest>=8.3.1",
-    "aeon>=0.9.0",
+    "pytest>=8.3.2",
+    "aeon>=0.10.0",
+    "pip>=24.2",
 ] } }
+
 [project]
 name = "tsdistances"
 version = "0.0.5"
@@ -14,16 +15,19 @@ authors = [
 description = "tsdistances is a Python library (with Rust backend) for computing various pairwise distances between sets of time series data. It provides efficient implementations of elastic distance measures such as Dynamic Time Warping (DTW), Longest Common Subsequence (LCSS), and Time Warping Edit (TWE). The library is designed to be fast and scalable, leveraging parallel computation for improved performance."
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.11"
+
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
+
 dependencies = [
     "numpy",
     "maturin",
     "typeguard",
 ]
+
 [build-system]
 requires = ["maturin>=1.6.0"]
 build-backend = "maturin"

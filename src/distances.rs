@@ -6,6 +6,7 @@ use crate::{
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
+use core::f64;
 use std::cmp::max;
 use tsdistances_gpu::device::get_best_gpu;
 use tsdistances_gpu::GpuBatchMode;
@@ -318,11 +319,7 @@ pub fn lcss(
                             sakoe_chiba_band,
                             |a, b, i, j, x, y, z| {
                                 let dist = (a[i] - b[j]).abs();
-                                if dist <= epsilon {
-                                    y + 1.0
-                                } else {
-                                    x.max(z)
-                                }
+                                (dist <= epsilon) as i32 as f64 * (y + 1.0) + (dist > epsilon) as i32 as f64 * x.max(z)
                             },
                         );
                         let min_len = a.len().min(b.len()) as f64;
@@ -559,6 +556,7 @@ pub fn msm(
                             f64::INFINITY,
                             sakoe_chiba_band,
                             |a, b, i, j, x, y, z| {
+                                
                                 (y + (a[i] - b[j]).abs())
                                     .min(
                                         z + msm_cost_function(

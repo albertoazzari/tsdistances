@@ -1,5 +1,3 @@
-use tsdistances_gpu::{MultiBatchMode, SingleBatchMode};
-
 use crate::{matrix::Matrix, utils::next_multiple_of_n};
 const DIAMOND_SIZE: usize = 64;
 
@@ -8,6 +6,7 @@ fn test_diamond_partitioning() {
     use crate::diagonal::diagonal_distance;
     use crate::matrix::DiagonalMatrix;
     use tsdistances_gpu::device::get_best_gpu;
+    use tsdistances_gpu::SingleBatchMode;
 
     let rep = 10;
     let epsilon = 0.1;

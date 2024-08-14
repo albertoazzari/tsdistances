@@ -36,6 +36,7 @@ def assert_running_times(tsd_time, aeon_time):
 
 
 X, y = load_random_dataset()
+band = 0.5
 
 
 def test_euclidean_distance():
@@ -60,93 +61,98 @@ def test_euclidean_distance():
 def test_erp_distance():
     tsd_time = time.time()
     gap_penalty = 0.0
-    sakoe_chiba_band = 0.5
     D = erp_distance(
-        X, None, sakoe_chiba_band=sakoe_chiba_band, gap_penalty=gap_penalty, n_jobs=1
+        X, None, band=band, gap_penalty=gap_penalty, n_jobs=1
     )
     tsd_time = time.time() - tsd_time
     aeon_time = time.time()
-    aeon_D = aeon.erp_pairwise_distance(X, g=gap_penalty, window=sakoe_chiba_band)
+    aeon_D = aeon.erp_pairwise_distance(X, g=gap_penalty, window=band)
     aeon_time = time.time() - aeon_time
     assert_running_times(tsd_time, aeon_time)
 
 
 def test_lcss_distance():
     tsd_time = time.time()
-    D = lcss_distance(X, None, sakoe_chiba_band=0.1, epsilon=0.1, n_jobs=1)
+    D = lcss_distance(X, None, band=band, epsilon=0.1, n_jobs=1)
     tsd_time = time.time() - tsd_time
     aeon_time = time.time()
-    aeon_D = aeon.lcss_pairwise_distance(X, window=0.1, epsilon=0.1)
+    aeon_D = aeon.lcss_pairwise_distance(X, window=band, epsilon=0.1)
     aeon_time = time.time() - aeon_time
     assert_running_times(tsd_time, aeon_time)
 
 
 def test_dtw_distance():
     tsd_time = time.time()
-    D = dtw_distance(X, None, sakoe_chiba_band=0.1, n_jobs=1)
+    D = dtw_distance(X, None, band=band, n_jobs=1)
     tsd_time = time.time() - tsd_time
     aeon_time = time.time()
-    aeon_D = aeon.dtw_pairwise_distance(X, window=0.1)
+    aeon_D = aeon.dtw_pairwise_distance(X, window=band)
     aeon_time = time.time() - aeon_time
     assert_running_times(tsd_time, aeon_time)
 
 
 def test_ddtw_distance():
     tsd_time = time.time()
-    D = ddtw_distance(X, None, sakoe_chiba_band=0.1, n_jobs=1)
+    D = ddtw_distance(X, None, band=band, n_jobs=1)
     tsd_time = time.time() - tsd_time
     aeon_time = time.time()
-    aeon_D = aeon.ddtw_pairwise_distance(X, window=0.1)
+    aeon_D = aeon.ddtw_pairwise_distance(X, window=band)
     aeon_time = time.time() - aeon_time
     assert_running_times(tsd_time, aeon_time)
 
 
 def test_wdtw_distance():
     tsd_time = time.time()
-    D = wdtw_distance(X, None, sakoe_chiba_band=0.1, g=0.05, n_jobs=1)
+    D = wdtw_distance(X, None, band=band, g=0.05, n_jobs=1)
     tsd_time = time.time() - tsd_time
     aeon_time = time.time()
-    aeon_D = aeon.wdtw_pairwise_distance(X, window=0.1, g=0.05)
+    aeon_D = aeon.wdtw_pairwise_distance(X, window=band, g=0.05)
     aeon_time = time.time() - aeon_time
     assert_running_times(tsd_time, aeon_time)
 
 
 def test_wddtw_distance():
     tsd_time = time.time()
-    D = wddtw_distance(X, None, sakoe_chiba_band=0.1, g=0.05, n_jobs=1)
+    D = wddtw_distance(X, None, band=band, g=0.05, n_jobs=1)
     tsd_time = time.time() - tsd_time
     aeon_time = time.time()
-    aeon_D = aeon.wddtw_pairwise_distance(X, window=0.1, g=0.05)
+    aeon_D = aeon.wddtw_pairwise_distance(X, window=band, g=0.05)
     aeon_time = time.time() - aeon_time
     assert_running_times(tsd_time, aeon_time)
 
 
 def test_adtw_distance():
     tsd_time = time.time()
-    D = adtw_distance(X, None, sakoe_chiba_band=0.1, warp_penalty=1.0, n_jobs=1)
+    D = adtw_distance(X, None, band=band, warp_penalty=1.0, n_jobs=1)
     tsd_time = time.time() - tsd_time
     aeon_time = time.time()
-    aeon_D = aeon.adtw_pairwise_distance(X, window=0.1, warp_penalty=1.0)
+    aeon_D = aeon.adtw_pairwise_distance(X, window=band, warp_penalty=1.0)
     aeon_time = time.time() - aeon_time
     assert_running_times(tsd_time, aeon_time)
 
 
 def test_msm_distance():
-    tsd_time = time.time()
-    D = msm_distance(X, None, sakoe_chiba_band=0.1, n_jobs=1)
-    tsd_time = time.time() - tsd_time
-    aeon_time = time.time()
-    aeon_D = aeon.msm_pairwise_distance(X, window=0.1)
-    aeon_time = time.time() - aeon_time
-    assert_running_times(tsd_time, aeon_time)
+    tsd_times = []
+    aeon_times = []
+    repeat = 100
+    for i in range(repeat):
+        tsd_time = time.time()
+        D = msm_distance(X, None, band=band, n_jobs=1)
+        tsd_time = time.time() - tsd_time
+        aeon_time = time.time()
+        aeon_D = aeon.msm_pairwise_distance(X, window=band)
+        aeon_time = time.time() - aeon_time
+        tsd_times.append(tsd_time)
+        aeon_times.append(aeon_time)
+    assert_running_times(sum(tsd_times)/len(tsd_times), sum(aeon_times)/len(aeon_times))
 
 
 def test_twe_distance():
     tsd_time = time.time()
-    D = twe_distance(X, None, sakoe_chiba_band=0.1, stifness=0.1, penalty=0.1, n_jobs=1)
+    D = twe_distance(X, None, band=band, stifness=0.1, penalty=0.1, n_jobs=1)
     tsd_time = time.time() - tsd_time
     aeon_time = time.time()
-    aeon_D = aeon.twe_pairwise_distance(X, nu=0.1, lmbda=0.1, window=0.1)
+    aeon_D = aeon.twe_pairwise_distance(X, nu=0.1, lmbda=0.1, window=band)
     aeon_time = time.time() - aeon_time
     assert_running_times(tsd_time, aeon_time)
 

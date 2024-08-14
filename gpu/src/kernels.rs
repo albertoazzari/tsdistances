@@ -430,11 +430,7 @@ pub mod warp {
         }
         fn lcss_distance[LCSSImpl](a[a_offset], b[b_offset], i, j, x, y, z, [epsilon: f32], [], [], [], []) {
             let dist = (a[a_offset + i as usize] - b[b_offset + j as usize]).abs();
-            if dist <= epsilon {
-                y + 1.0
-            } else {
-                x.max(z)
-            }
+            (dist <= epsilon) as i32 as f32 * (y + 1.0) + (dist > epsilon) as i32 as f32 * x.max(z)
         }
         fn dtw_distance[DTWImpl](a[a_offset], b[b_offset], i, j, x, y, z, [], [], [], [], []) {
             let dist = (a[a_offset + i as usize] - b[b_offset + j as usize]).powi(2);

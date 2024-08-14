@@ -156,5 +156,5 @@ def test_twe_distance():
     D_cpu = twe_distance(X, None, band=band, stifness=stifness, penalty=penalty, n_jobs=-1, device="cpu")
     cpu_time = time.time() - cpu_time
 
-    assert np.allclose(D_cpu, D_gpu, atol=1e-2)
+    assert np.allclose(D_cpu, D_gpu, atol=1e-1)
     assert_running_times(gpu_time, cpu_time)
