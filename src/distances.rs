@@ -99,6 +99,8 @@ fn compute_distance(
     if x2.is_none() {
         let mut distance_matrix = distance_matrix;
         for i in 0..distance_matrix.len() {
+            let row_len = distance_matrix.len();
+            distance_matrix[i].reserve(row_len - i);
             distance_matrix[i].push(0.0);
             for j in i + 1..distance_matrix.len() {
                 let d = distance_matrix[j][i];

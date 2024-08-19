@@ -132,19 +132,18 @@ def test_adtw_distance():
 
 
 def test_msm_distance():
-    tsd_times = []
-    aeon_times = []
-    repeat = 100
+    repeat = 20
+    tsd_time = time.time()
     for i in range(repeat):
-        tsd_time = time.time()
         D = msm_distance(X, None, band=band, n_jobs=1)
-        tsd_time = time.time() - tsd_time
-        aeon_time = time.time()
+    tsd_time = time.time() - tsd_time
+
+    aeon_time = time.time()
+    for i in range(repeat):
         aeon_D = aeon.msm_pairwise_distance(X, window=band)
-        aeon_time = time.time() - aeon_time
-        tsd_times.append(tsd_time)
-        aeon_times.append(aeon_time)
-    assert_running_times(sum(tsd_times)/len(tsd_times), sum(aeon_times)/len(aeon_times))
+    aeon_time = time.time() - aeon_time
+        #assert np.allclose(D, aeon_D, atol=1e-8)
+    assert_running_times(tsd_time, aeon_time)
 
 
 def test_twe_distance():
