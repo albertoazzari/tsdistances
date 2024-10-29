@@ -1,7 +1,10 @@
 tool = { rye = { dev-dependencies = [
     "pytest>=8.3.2",
-    "aeon>=0.10.0",
+    "aeon>=0.11.0",
     "pip>=24.2",
+    "scikit-learn>=1.5.1",
+    "matplotlib>=3.9.2",
+    "seaborn>=0.13.2",
 ] } }
 
 [project]

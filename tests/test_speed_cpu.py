@@ -18,8 +18,8 @@ from aeon import distances as aeon
 
 
 def load_random_dataset():
-    n_timeseries = 100
-    n_timesteps = 100
+    n_timeseries = 1000
+    n_timesteps = 10
 
     X_train = np.random.rand(n_timeseries, n_timesteps)
     y_train = np.random.randint(0, 10, n_timeseries)
@@ -132,7 +132,7 @@ def test_adtw_distance():
 
 
 def test_msm_distance():
-    repeat = 20
+    repeat = 1
     tsd_time = time.time()
     for i in range(repeat):
         D = msm_distance(X, None, band=band, n_jobs=1)
@@ -142,7 +142,7 @@ def test_msm_distance():
     for i in range(repeat):
         aeon_D = aeon.msm_pairwise_distance(X, window=band)
     aeon_time = time.time() - aeon_time
-        #assert np.allclose(D, aeon_D, atol=1e-8)
+    #assert np.allclose(D, aeon_D, atol=1e-8)
     assert_running_times(tsd_time, aeon_time)
 
 
@@ -153,6 +153,7 @@ def test_twe_distance():
     aeon_time = time.time()
     aeon_D = aeon.twe_pairwise_distance(X, nu=0.1, lmbda=0.1, window=band)
     aeon_time = time.time() - aeon_time
+    assert np.allclose(D, aeon_D, atol=1e-8)
     assert_running_times(tsd_time, aeon_time)
 
 
@@ -163,4 +164,5 @@ def test_sbd_distance():
     aeon_time = time.time()
     aeon_D = aeon.sbd_pairwise_distance(X)
     aeon_time = time.time() - aeon_time
+    assert np.allclose(D, aeon_D, atol=1e-8)
     assert_running_times(tsd_time, aeon_time)

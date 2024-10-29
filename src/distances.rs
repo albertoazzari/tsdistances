@@ -563,7 +563,7 @@ pub fn msm(
                                     .min(
                                         z + msm_cost_function(
                                             a[i],
-                                            a.get(i - 1).copied().unwrap_or(0.0),
+                                            a.get(i - 1).copied().unwrap_or_default(),
                                             b[j],
                                         ),
                                     )
@@ -571,7 +571,7 @@ pub fn msm(
                                         x + msm_cost_function(
                                             b[j],
                                             a[i],
-                                            b.get(j - 1).copied().unwrap_or(0.0),
+                                            b.get(j - 1).copied().unwrap_or_default(),
                                         ),
                                     )
                             },
