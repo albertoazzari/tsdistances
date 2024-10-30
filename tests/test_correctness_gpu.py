@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 from tsdistances import (
-    euclidean_distance,
     erp_distance,
     lcss_distance,
     dtw_distance,
@@ -11,7 +10,6 @@ from tsdistances import (
     adtw_distance,
     msm_distance,
     twe_distance,
-    sb_distance,
 )
 from aeon import distances as aeon
 

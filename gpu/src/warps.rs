@@ -1,3 +1,6 @@
+use core::panic;
+use std::i32;
+
 use krnl::{buffer::Buffer, device::Device};
 
 use crate::kernels::warp::GpuKernelImpl;
@@ -9,11 +12,14 @@ pub trait GpuBatchMode {
     type InputType<'a>;
 
     fn input_seq_len(input: &Self::InputType<'_>) -> usize;
+    fn get_samples_count(input: &Self::InputType<'_>) -> usize;
     fn new_return(alen: usize, blen: usize) -> Self::ReturnType;
     fn set_return(ret: &mut Self::ReturnType, i: usize, j: usize, value: f32);
     fn build_padded(input: &Self::InputType<'_>, pad_stride: usize) -> Vec<f32>;
-
+    fn get_padded_len(input: &Self::InputType<'_>, pad_stride: usize) -> usize;
+    fn get_subslice<'a>(input: &Self::InputType<'a>, start: usize, len: usize) -> Self::InputType<'a>;
     fn apply_fn(ret: Self::ReturnType, func: impl Fn(f64) -> f64) -> Self::ReturnType;
+    fn join_results(results: Vec<Self::ReturnType>) -> Self::ReturnType;
 }
 
 pub struct SingleBatchMode;
@@ -27,6 +33,10 @@ impl GpuBatchMode for SingleBatchMode {
         input.len()
     }
 
+    fn get_samples_count(input: &Self::InputType<'_>) -> usize {
+       1
+    }
+
     fn new_return(_: usize, _: usize) -> Self::ReturnType {
         0.0
     }
@@ -36,7 +46,7 @@ impl GpuBatchMode for SingleBatchMode {
     }
 
     fn build_padded(input: &Self::InputType<'_>, pad_stride: usize) -> Vec<f32> {
-        let padded_len = next_multiple_of_n(input.len(), pad_stride);
+        let padded_len = Self::get_padded_len(input, pad_stride);
         let mut padded = vec![0.0; padded_len];
         for (padded, input) in padded.iter_mut().zip(input.iter()) {
             *padded = *input as f32;
@@ -45,8 +55,20 @@ impl GpuBatchMode for SingleBatchMode {
         padded
     }
 
+    fn get_padded_len(input: &Self::InputType<'_>, pad_stride: usize) -> usize {
+        next_multiple_of_n(input.len(), pad_stride)
+    }
+
     fn apply_fn(ret: Self::ReturnType, func: impl Fn(f64) -> f64) -> Self::ReturnType {
         func(ret)
+    }
+
+    fn get_subslice<'a>(input: &Self::InputType<'a>, _: usize, _: usize) -> Self::InputType<'a> {
+        &input
+    }
+
+    fn join_results(results: Vec<Self::ReturnType>) -> Self::ReturnType {
+        results[0]
     }
 }
 
@@ -63,6 +85,10 @@ impl GpuBatchMode for MultiBatchMode {
         input.first().map_or(0, |x| x.len())
     }
 
+    fn get_samples_count(input: &Self::InputType<'_>) -> usize {
+        input.len()
+    }
+
     fn new_return(alen: usize, blen: usize) -> Self::ReturnType {
         vec![vec![0.0; blen]; alen]
     }
@@ -72,8 +98,7 @@ impl GpuBatchMode for MultiBatchMode {
     }
 
     fn build_padded(input: &Self::InputType<'_>, pad_stride: usize) -> Vec<f32> {
-        let single_padded_len =
-            next_multiple_of_n(input.first().map_or(0, |x| x.len()), pad_stride);
+        let single_padded_len = Self::get_padded_len(input, pad_stride);
         let mut padded = vec![0.0; input.len() * single_padded_len];
         for i in 0..input.len() {
             for j in 0..input[i].len() {
@@ -84,6 +109,12 @@ impl GpuBatchMode for MultiBatchMode {
         padded
     }
 
+    fn get_padded_len(input: &Self::InputType<'_>, pad_stride: usize) -> usize {
+        let padded_len =
+            next_multiple_of_n(input.first().map_or(0, |x| x.len()), pad_stride);
+        padded_len
+    }
+
     fn apply_fn(mut ret: Self::ReturnType, func: impl Fn(f64) -> f64) -> Self::ReturnType {
         for i in 0..ret.len() {
             for j in 0..ret[i].len() {
@@ -91,6 +122,15 @@ impl GpuBatchMode for MultiBatchMode {
             }
         }
         ret
+    }
+
+    fn get_subslice<'a>(input: &Self::InputType<'a>, start: usize, len: usize) -> Self::InputType<'a> {
+        // println!("GINO start: {}, len: {}, a_len: {}", start, len, input.len());
+        &input[start..(start + len)]
+    }
+
+    fn join_results(results: Vec<Self::ReturnType>) -> Self::ReturnType {
+        results.into_iter().flatten().collect()
     }
 }
 
@@ -108,26 +148,45 @@ pub fn diamond_partitioning_gpu<'a, G: GpuKernelImpl, M: GpuBatchMode>(
     };
 
     let max_subgroup_threads: usize = device.info().unwrap().max_subgroup_threads() as usize;
-    let a_padded = M::build_padded(&a, max_subgroup_threads);
-    let b_padded = M::build_padded(&b, max_subgroup_threads);
 
-    diamond_partitioning_gpu_::<G, M>(
-        device,
-        params,
-        max_subgroup_threads,
-        M::input_seq_len(&a),
-        M::input_seq_len(&b),
-        a_padded,
-        b_padded,
-        init_val,
-        M::IS_BATCH,
-    )
+    let diag_len = 2 * (M::get_padded_len(&a, max_subgroup_threads) + 1).next_power_of_two();
+    let chunk_size = (i32::MAX / 2) as usize;
+    let tot_len = M::input_seq_len(&a) * M::input_seq_len(&b) * diag_len;
+
+    let chunks_count = tot_len.div_ceil(chunk_size);
+    let batch_size = M::get_padded_len(&a, max_subgroup_threads).div_ceil(chunks_count);
+    let mut start = 0;
+    let a_len = M::get_samples_count(&a);
+    let mut distances = Vec::new();
+
+    while start < a_len {
+
+        let len = batch_size.min(a_len - start);
+        // println!("start: {}, len: {}, a_len: {}", start, len, a_len);
+        let a = M::get_subslice(&a, start, len);
+        let a_padded = M::build_padded(&a, max_subgroup_threads);
+        let b_padded = M::build_padded(&b, max_subgroup_threads);
+
+        distances.push(diamond_partitioning_gpu_::<G, M>(
+            device.clone(),
+            &params,
+            max_subgroup_threads,
+            M::input_seq_len(&a),
+            M::input_seq_len(&b),
+            a_padded,
+            b_padded,
+            init_val,
+            M::IS_BATCH,
+        ));
+        start += len;
+    }
+    M::join_results(distances)
 }
 
 #[inline(always)]
 fn diamond_partitioning_gpu_<G: GpuKernelImpl, M: GpuBatchMode>(
     device: Device,
-    params: G,
+    params: &G,
     max_subgroup_threads: usize,
     a_len: usize,
     b_len: usize,
@@ -153,7 +212,9 @@ fn diamond_partitioning_gpu_<G: GpuKernelImpl, M: GpuBatchMode>(
         diagonal[i * diag_len] = 0.0;
     }
 
-    let mut diagonal = Buffer::from(diagonal).into_device(device.clone()).unwrap();
+    let mut diagonal = Buffer::from(diagonal).into_device(device.clone()).unwrap_or_else(|e| {
+        panic!("Failed to create buffer for diagonal matrix of len {}\n {:?}", a_count * b_count * diag_len, e);
+    });
 
     let a_diamonds = padded_a_len.div_ceil(max_subgroup_threads);
     let b_diamonds = padded_b_len.div_ceil(max_subgroup_threads);
