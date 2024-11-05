@@ -7,7 +7,7 @@ use crate::{
 use core::f64;
 use pyo3::prelude::*;
 use rayon::prelude::*;
-use std::cmp::max;
+use std::cmp::{max, min};
 use tsdistances_gpu::device::get_best_gpu;
 use tsdistances_gpu::GpuBatchMode;
 
@@ -113,28 +113,6 @@ fn compute_distance(
     }
 }
 
-#[pyfunction]
-#[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-pub fn euclidean(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    n_jobs: i32,
-) -> PyResult<Vec<Vec<f64>>> {
-    let distance_matrix = compute_distance(
-        |a, b| {
-            a.iter()
-                .zip(b.iter())
-                .map(|(x, y)| (x - y).powi(2))
-                .sum::<f64>()
-                .sqrt()
-        },
-        x1,
-        x2,
-        n_jobs,
-    );
-    Ok(distance_matrix)
-}
-
 fn check_same_length(x: &[Vec<f64>]) -> bool {
     if x.len() == 0 {
         return false;
@@ -216,6 +194,36 @@ macro_rules! gpu_call {
             }
         );
     };
+}
+
+#[pyfunction]
+#[pyo3(signature = (x1, x2=None, n_jobs=-1))]
+pub fn euclidean(
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    n_jobs: i32,
+) -> PyResult<Vec<Vec<f64>>> {
+    let distance_matrix = compute_distance(
+        |a, b| {
+            a.iter()
+                .zip(b.iter())
+                .map(|(x, y)| (x - y).powi(2))
+                .sum::<f64>()
+                .sqrt()
+        },
+        x1,
+        x2,
+        n_jobs,
+    );
+    Ok(distance_matrix)
+}
+
+fn euclidean_(x1: &[f64], x2: &[f64]) -> f64 {
+    x1.iter()
+        .zip(x2.iter())
+        .map(|(x, y)| (x - y).powi(2))
+        .sum::<f64>()
+        .sqrt()
 }
 
 #[pyfunction]
@@ -780,8 +788,8 @@ pub fn adtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-pub fn sbd(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
-    let distance_matrix = compute_distance(
+pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+    let mut distance_matrix = compute_distance(
         |a, b| {
             let a = zscore(&a);
             let b = zscore(&b);
@@ -793,5 +801,95 @@ pub fn sbd(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResul
         x2,
         n_jobs,
     );
+
+    // Set to zero all the cells close to zero (numerical errors)
+    for i in 0..distance_matrix.len() {
+        for j in 0..distance_matrix[i].len() {
+            if distance_matrix[i][j] < 1e-8 {
+                distance_matrix[i][j] = 0.0;
+            }
+        }
+    }
     Ok(distance_matrix)
+}
+
+#[pyfunction]
+#[pyo3(signature = (x1, window, x2=None, n_jobs=-1))]
+pub fn mp(
+    x1: Vec<Vec<f64>>,
+    window: i32,
+    x2: Option<Vec<Vec<f64>>>,
+    n_jobs: i32,
+) -> PyResult<Vec<Vec<f64>>> {
+    let threshold = 0.05;
+    let window = window as usize;
+    let distance_matrix = compute_distance(
+        |a, b| {
+            let n_a = a.len();
+            let n_b = b.len();
+            let mut p_abba = mp_(&a, &b, window as usize);
+            let n = min(
+                (threshold * (n_a + n_b) as f64).ceil() as usize,
+                n_a - window + 1 + n_b - window + 1 - 1,
+            );
+            *p_abba
+                .select_nth_unstable_by(n, |x, y| x.partial_cmp(y).unwrap())
+                .1
+        },
+        x1,
+        x2,
+        n_jobs,
+    );
+    Ok(distance_matrix)
+}
+
+fn mp_(a: &[f64], b: &[f64], window: usize) -> Vec<f64> {
+    let n_a = a.len();
+    let n_b = b.len();
+
+    let mut p_ab = vec![f64::INFINITY; n_a - window + 1];
+    let mut p_ba = vec![f64::INFINITY; n_b - window + 1];
+
+    for (i, sw_a) in a.windows(window).enumerate() {
+        let sw_a = zscore(sw_a);
+        for (j, sw_b) in b.windows(window).enumerate() {
+            let sw_b = zscore(sw_b);
+            let mut dist = 0.0;
+            for (x, y) in sw_a.iter().zip(sw_b.iter()) {
+                dist += (x - y).powi(2);
+            }
+            dist = dist.sqrt();
+            p_ab[i] = p_ab[i].min(dist);
+            p_ba[j] = p_ba[j].min(dist);
+        }
+    }
+
+    if p_ab.len() > p_ba.len() {
+        p_ab.extend(p_ba);
+        p_ab
+    } else {
+        p_ba.extend(p_ab);
+        p_ba
+    }
+}
+fn z_scored_ed(x: &[f64], y: &[f64]) -> f64 {
+    // Calculate mean and standard deviation for each vector
+    let mean_x = x.iter().sum::<f64>() / x.len() as f64;
+    let mean_y = y.iter().sum::<f64>() / y.len() as f64;
+    let std_x = (x.iter().map(|xi| (xi - mean_x).powi(2)).sum::<f64>() / x.len() as f64).sqrt();
+    let std_y = (y.iter().map(|yi| (yi - mean_y).powi(2)).sum::<f64>() / y.len() as f64).sqrt();
+
+    // Normalize vectors and calculate Euclidean distance
+    let distance = x
+        .iter()
+        .zip(y.iter())
+        .map(|(&xi, &yi)| {
+            let x_z = (xi - mean_x) / std_x;
+            let y_z = (yi - mean_y) / std_y;
+            (x_z - y_z).powi(2)
+        })
+        .sum::<f64>()
+        .sqrt();
+
+    distance
 }

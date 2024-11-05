@@ -12,8 +12,10 @@ from tsdistances import (
     msm_distance,
     twe_distance,
     sb_distance,
+    mp_distance
 )
 from aeon import distances as aeon
+import stumpy
 
 
 def load_random_dataset():
@@ -121,9 +123,14 @@ def test_twe_distance():
     aeon_D = aeon.twe_pairwise_distance(X, nu=stiffness, lmbda=penalty, window=band)
     assert np.allclose(D, aeon_D, atol=1e-8)
 
-
-def test_sbd_distance():
+def test_sb_distance():
     D = sb_distance(X, None, n_jobs=1)
     check_distance_matrix(D, X)
     aeon_D = aeon.sbd_pairwise_distance(X)
     assert np.allclose(D, aeon_D, atol=1e-8)
+
+def test_mp_distance():
+    D = mp_distance(X, 10, None, n_jobs=1)
+    check_distance_matrix(D, X)
+    D_stumpy = np.array([[stumpy.mpdist(X[i], X[j], m=10) for j in range(X.shape[0])] for i in range(X.shape[0])])
+    assert np.allclose(D, D_stumpy, atol=1e-8)

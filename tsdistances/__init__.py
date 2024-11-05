@@ -1,5 +1,5 @@
 from typing import List, Optional, Union
-from typeguard import TypeCheckError, typechecked, check_type, warn_on_error
+from typeguard import TypeCheckError, typechecked, check_type
 from tsdistances import tsdistances as tsd
 import numpy as np
 
@@ -664,7 +664,7 @@ def sb_distance(
     """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
-        return np.array(tsd.sbd(u, v, n_jobs))
+        return np.array(tsd.sb(u, v, n_jobs))
     except TypeCheckError as e:
         pass
 
@@ -676,8 +676,29 @@ def sb_distance(
         _u = u
         _v = v
 
-    return np.array(tsd.sbd(_u, _v, n_jobs))
+    return np.array(tsd.sb(_u, _v, n_jobs))
 
+def mp_distance(
+    u: Union[np.ndarray, List[np.ndarray]],
+    window: int = 1,
+    v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
+    n_jobs: Optional[int] = 1,
+):
+    try:
+        check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
+        return np.array(tsd.mp(u, window, v, n_jobs))
+    except TypeCheckError as e:
+        pass
+
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
+
+    if u.ndim == 2 and v.ndim == 2:
+        _u = u
+        _v = v
+
+    return np.array(tsd.mp(_u, window, _v, n_jobs))
 
 __all__ = [
     "euclidean",
@@ -690,5 +711,6 @@ __all__ = [
     "adtw",
     "msm",
     "twe",
-    "sbd",
+    "sb",
+    "mp"
 ]

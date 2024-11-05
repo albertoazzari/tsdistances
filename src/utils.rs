@@ -67,7 +67,7 @@ pub fn cross_correlation(a: &[f64], b: &[f64]) -> Vec<f64> {
 
 pub fn zscore(x: &[f64]) -> Vec<f64> {
     let mean = x.iter().sum::<f64>() / x.len() as f64;
-    let std = x.iter().map(|val| (val - mean).powi(2)).sum::<f64>().sqrt();
+    let std = (x.iter().map(|val| (val - mean).powi(2)).sum::<f64>() / x.len() as f64).sqrt();
     x.iter().map(|val| (val - mean) / std).collect()
 }
 
