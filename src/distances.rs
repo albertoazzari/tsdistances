@@ -10,6 +10,7 @@ use rayon::prelude::*;
 use std::cmp::{max, min};
 use tsdistances_gpu::device::get_best_gpu;
 use tsdistances_gpu::GpuBatchMode;
+use catch22;
 
 const MIN_CHUNK_SIZE: usize = 16;
 const CHUNKS_PER_THREAD: usize = 8;
@@ -218,12 +219,70 @@ pub fn euclidean(
     Ok(distance_matrix)
 }
 
-fn euclidean_(x1: &[f64], x2: &[f64]) -> f64 {
-    x1.iter()
-        .zip(x2.iter())
-        .map(|(x, y)| (x - y).powi(2))
-        .sum::<f64>()
-        .sqrt()
+#[pyfunction]
+#[pyo3(signature = (x1, x2=None, n_jobs=-1))]
+pub fn catch_euclidean(
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    n_jobs: i32,
+) -> PyResult<Vec<Vec<f64>>> {
+    let x1 =  x1.iter().map(|x| {
+        let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
+        for i in 0..catch22::N_CATCH22{
+            let value = catch22::compute(&x, i);
+            if value.is_nan(){
+                transformed_x.push(0.0);
+            } else {
+                transformed_x.push(value);
+            }
+        }
+        return transformed_x;
+    }).collect::<Vec<Vec<_>>>();
+    let x2 = if let Some(x2) = x2 {
+        Some(x2.iter().map(|x| {
+            let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
+            for i in 0..catch22::N_CATCH22{
+                let value = catch22::compute(&x, i);
+                if value.is_finite(){
+                    transformed_x.push(value);
+                } else {
+                    transformed_x.push(0.0);
+                }
+            }
+            return transformed_x;
+        }).collect::<Vec<Vec<_>>>())
+    } else {
+        None
+    };
+    // Z-Normalize on the column-wise
+    let mean_x1 = (0..catch22::N_CATCH22).map(|i| {
+        let sum = x1.iter().map(|x| x[i]).sum::<f64>();
+        sum / x1.len() as f64
+    }).collect::<Vec<f64>>();
+    let std_x1 = (0..catch22::N_CATCH22).map(|i| {
+        let sum = x1.iter().map(|x| (x[i] - mean_x1[i]).powi(2)).sum::<f64>();
+        (sum / x1.len() as f64).sqrt()
+    }).collect::<Vec<f64>>();
+    let x1 = x1.iter().map(|x| {
+        x.iter().enumerate().map(|(i, val)| (val - mean_x1[i]) / if std_x1[i].abs() < f64::EPSILON {1.0} else {std_x1[i]}).collect::<Vec<f64>>()
+    }).collect::<Vec<Vec<f64>>>();
+    
+    let x2 = if let Some(x2) = x2 {
+        let mean_x2 = (0..catch22::N_CATCH22).map(|i| {
+            let sum = x2.iter().map(|x| x[i]).sum::<f64>();
+            sum / x2.len() as f64
+        }).collect::<Vec<f64>>();
+        let std_x2 = (0..catch22::N_CATCH22).map(|i| {
+            let sum = x2.iter().map(|x| (x[i] - mean_x2[i]).powi(2)).sum::<f64>();
+            (sum / x2.len() as f64).sqrt()
+        }).collect::<Vec<f64>>();
+        Some(x2.iter().map(|x| {
+            x.iter().enumerate().map(|(i, val)| (val - mean_x2[i]) / if std_x2[i].abs() < f64::EPSILON {1.0} else {std_x2[i]}).collect::<Vec<f64>>()
+        }).collect::<Vec<Vec<f64>>>())
+    } else {
+        None
+    };
+    euclidean(x1, x2, n_jobs)
 }
 
 #[pyfunction]
@@ -789,7 +848,7 @@ pub fn adtw(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
 pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
-    let mut distance_matrix = compute_distance(
+    let distance_matrix = compute_distance(
         |a, b| {
             let a = zscore(&a);
             let b = zscore(&b);
@@ -801,15 +860,6 @@ pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult
         x2,
         n_jobs,
     );
-
-    // Set to zero all the cells close to zero (numerical errors)
-    for i in 0..distance_matrix.len() {
-        for j in 0..distance_matrix[i].len() {
-            if distance_matrix[i][j] < 1e-8 {
-                distance_matrix[i][j] = 0.0;
-            }
-        }
-    }
     Ok(distance_matrix)
 }
 
@@ -871,25 +921,4 @@ fn mp_(a: &[f64], b: &[f64], window: usize) -> Vec<f64> {
         p_ba.extend(p_ab);
         p_ba
     }
-}
-fn z_scored_ed(x: &[f64], y: &[f64]) -> f64 {
-    // Calculate mean and standard deviation for each vector
-    let mean_x = x.iter().sum::<f64>() / x.len() as f64;
-    let mean_y = y.iter().sum::<f64>() / y.len() as f64;
-    let std_x = (x.iter().map(|xi| (xi - mean_x).powi(2)).sum::<f64>() / x.len() as f64).sqrt();
-    let std_y = (y.iter().map(|yi| (yi - mean_y).powi(2)).sum::<f64>() / y.len() as f64).sqrt();
-
-    // Normalize vectors and calculate Euclidean distance
-    let distance = x
-        .iter()
-        .zip(y.iter())
-        .map(|(&xi, &yi)| {
-            let x_z = (xi - mean_x) / std_x;
-            let y_z = (yi - mean_y) / std_y;
-            (x_z - y_z).powi(2)
-        })
-        .sum::<f64>()
-        .sqrt();
-
-    distance
 }

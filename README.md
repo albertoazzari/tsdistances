@@ -6,6 +6,7 @@
 
 - **Multiple Distance Measures**: Supports a wide range of time series distance measures:
   - Euclidean
+  - CATCH22 Euclidean
   - Edit Distance with Real Penalty (ERP)
   - Longest Common Subsequence (LCSS)
   - Dynamic Time Warping (DTW)
@@ -16,6 +17,7 @@
   - Move-Split-Merge (MSM)
   - Time Warp Edit Distance (TWE)
   - Shape-Based Distance (SBD)
+  - MPDist
 
 - **Parallel Computation**: Utilizes multiple CPU cores to speed up computations.
 - **GPU Acceleration**: Optional GPU support using Vulkan for even faster computations.

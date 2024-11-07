@@ -33,7 +33,7 @@ impl GpuBatchMode for SingleBatchMode {
         input.len()
     }
 
-    fn get_samples_count(input: &Self::InputType<'_>) -> usize {
+    fn get_samples_count(_input: &Self::InputType<'_>) -> usize {
        1
     }
 

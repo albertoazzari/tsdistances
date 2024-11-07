@@ -52,6 +52,52 @@ def euclidean_distance(
 
     return np.array(tsd.euclidean(_u, _v, n_jobs))
 
+@typechecked
+def catcheucl_distance(
+    u: np.ndarray, v: Optional[np.ndarray] = None, n_jobs: Optional[int] = 1
+) -> np.ndarray:
+    """
+    Computes the Catch22-Euclidean distance between two 1-D arrays or between two sets of 1-D arrays.
+    If `v` is None, the function computes the pairwise Catch22-Euclidean distances within `u`.
+
+    Parameters
+    ----------
+    u : (N,) array_like or (M, N) array_like
+        Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
+    v : (N,) array_like or (M, N) array_like, optional
+    Input array. If provided, `v` should have the same shape as `u`.
+    If `v` is None, pairwise distances within `u` are computed.
+    n_jobs : int, optional
+        Number of jobs to use for computation (default is 1).
+
+    Returns
+    -------
+    distance : double or ndarray
+        The Catch22-Euclidean distance(s) between vectors/sets `u` and `v`.
+
+    Examples
+    --------
+    >>> catcheucl_distance([1, 0, 0], [0, 1, 0])
+    1.0
+    >>> catcheucl_distance([[1, 1, 1], [0, 1, 1]], [[0, 1, 0], [-1, 0, 0]])
+    array([[1.0, 2.0], [1.0, 1.0]])
+    >>> catcheucl_distance([[1, 1, 1], [0, 1, 1]])
+    array([[0.0, 1.0], [1.0, 0.0]])
+
+    """
+    if u.ndim == 1 and v.ndim == 1:
+        _u = u.reshape((1, u.shape[0]))
+        _v = v.reshape((1, v.shape[0]))
+
+    if u.ndim == 2:
+        _u = u
+        if v is None:
+            return np.array(tsd.catch_euclidean(_u, None, n_jobs))
+        if v.ndim == 2:
+            _v = v
+
+    return np.array(tsd.catch_euclidean(_u, _v, n_jobs))
+
 
 @typechecked
 def erp_distance(
@@ -684,6 +730,42 @@ def mp_distance(
     v: Optional[Union[np.ndarray, List[np.ndarray]]] = None,
     n_jobs: Optional[int] = 1,
 ):
+    """
+    Computes the Matrix Profile distance (MPdist) [1] between two 1-D arrays or between two sets of 1-D arrays.
+    If `v` is None, the function computes the pairwise MP distances within `u`.
+    The length of the input arrays are not required to be the same.
+
+    [1] Gharghabi S. et al., An Ultra-Fast Time Series Distance Measure to allow Data Mining in more Complex Real-World Deployments, 2020.
+
+    Parameters
+    ----------
+    u : (N,) array_like or (M, N)
+    Input array. If 1-D, `u` represents a single vector. If 2-D, `u` represents a set of vectors.
+
+    v : (N,) array_like or (M, N), optional
+    Input array.
+    If `v` is None, pairwise distances within `u` are computed.
+
+    window : int, optional
+    Window size for the Matrix Profile calculation (default is 1).
+
+    n_jobs : int, optional
+    Number of jobs to use for computation (default is 1).
+
+    Returns
+    -------
+    distance : double or ndarray
+    The MP distance(s) between vectors/sets `u` and `v`.
+    
+    Examples
+    --------
+    >>> mp_distance([1, 0, 0], [0, 1, 0])
+    1.4142135623730951
+    >>> mp_distance([[1, 1, 1], [0, 1, 1]], [[0, 1, 0], [-1, 0, 0]])    
+    array([[1.41421356, 2.44948974], [1.        , 1.73205081]])
+    >>> mp_distance([[1, 1, 1], [0, 1, 1]])
+    p array([[0.        , 1.        ], [1.        , 0.        ]])
+    """
     try:
         check_type(u, List[np.ndarray], typecheck_fail_callback=lambda x, y: False)
         return np.array(tsd.mp(u, window, v, n_jobs))
@@ -702,6 +784,7 @@ def mp_distance(
 
 __all__ = [
     "euclidean",
+    "catch_euclidean",
     "erp",
     "lcss",
     "dtw",

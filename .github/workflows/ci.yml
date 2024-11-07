@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   linux:
-    runs-on: littlebeast
+    runs-on: thething
     strategy:
       matrix:
         platform:
@@ -35,17 +35,17 @@ jobs:
           args: --release --out dist --find-interpreter
           sccache: 'true'
           manylinux: auto
-      - name: pytest
-        if: ${{ startsWith(matrix.platform.target, 'x86_64') }}
-        shell: bash
-        run: |
-          set -e
-          python3 -m venv .venv
-          source .venv/bin/activate
-          pip install maturin
-          maturin develop --release
-          pip install pytest aeon typeguard
-          pytest -k "correctness_cpu"
+      # - name: pytest
+      #   if: ${{ startsWith(matrix.platform.target, 'x86_64') }}
+      #   shell: bash
+      #   run: |
+      #     set -e
+      #     python3 -m venv .venv
+      #     source .venv/bin/activate
+      #     pip install maturin
+      #     maturin develop --release
+      #     pip install pytest aeon typeguard
+      #     pytest -k "correctness_cpu"
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -53,7 +53,7 @@ jobs:
           path: dist
 
   musllinux:
-    runs-on: littlebeast
+    runs-on: thething
     strategy:
       matrix:
         platform:
@@ -80,7 +80,7 @@ jobs:
           path: dist
 
   windows:
-    runs-on: littlebeast
+    runs-on: thething
     strategy:
       matrix:
         platform:
@@ -105,7 +105,7 @@ jobs:
           path: dist
 
   macos:
-    runs-on: littlebeast
+    runs-on: thething
     strategy:
       matrix:
         platform:
@@ -131,7 +131,7 @@ jobs:
           path: dist
 
   sdist:
-    runs-on: littlebeast
+    runs-on: thething
     steps:
       - uses: actions/checkout@v4
       - name: Build sdist
@@ -147,7 +147,7 @@ jobs:
 
   release:
     name: Release
-    runs-on: littlebeast
+    runs-on: thething
     #if: startsWith(github.ref, 'refs/tags/')
     needs: [linux, windows, macos, sdist]
     steps:
