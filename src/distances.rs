@@ -900,13 +900,14 @@ fn mp_(a: &[f64], b: &[f64], window: usize) -> Vec<f64> {
     let mut p_ab = vec![f64::INFINITY; n_a - window + 1];
     let mut p_ba = vec![f64::INFINITY; n_b - window + 1];
 
+    let (mean_a, std_a) = mean_std_per_windows(&a, window);
+    let (mean_b, std_b) = mean_std_per_windows(&b, window);
+
     for (i, sw_a) in a.windows(window).enumerate() {
-        let sw_a = zscore(sw_a);
         for (j, sw_b) in b.windows(window).enumerate() {
-            let sw_b = zscore(sw_b);
             let mut dist = 0.0;
             for (x, y) in sw_a.iter().zip(sw_b.iter()) {
-                dist += (x - y).powi(2);
+                dist += (((x - mean_a[i]) / std_a[i]) - ((y - mean_b[j]) / std_b[j])).powi(2);
             }
             dist = dist.sqrt();
             p_ab[i] = p_ab[i].min(dist);
@@ -920,5 +921,75 @@ fn mp_(a: &[f64], b: &[f64], window: usize) -> Vec<f64> {
     } else {
         p_ba.extend(p_ab);
         p_ba
+    }
+}
+
+// fn mean_std_per_windows(a: &[f64], window: i32) -> (Vec<f64>, Vec<f64>) {
+//     let mut means = Vec::with_capacity(a.len() - window + 1);
+//     let mut stds = Vec::with_capacity(a.len() - window + 1);
+
+//     for (i, sw_a) in a.windows(window).enumerate() {
+//         means[i] = mean(sw_a);
+//         stds[i] = std(sw_a);
+//     }
+
+//     (means, stds)
+// }
+fn mean_std_per_windows(a: &[f64], window: usize) -> (Vec<f64>, Vec<f64>) {
+    let n = a.len();
+
+    let mut means = Vec::with_capacity(n - window + 1);
+    let mut stds = Vec::with_capacity(n - window + 1);
+
+    let mut sum: f64 = a[0..window].iter().sum();
+    let mut sum_squares: f64 = a[0..window].iter().map(|&x| x * x).sum();
+
+    means.push(sum / window as f64);
+    let var = (sum_squares / window as f64) - (means[0] * means[0]);
+    stds.push(var.sqrt());
+
+    for i in window..n {
+
+
+        sum += a[i] - a[i - window];
+        sum_squares += a[i] * a[i] - a[i - window] * a[i - window];
+
+
+        let mean = sum / window as f64;
+        means.push(mean);
+
+        let var = (sum_squares / window as f64) - (mean * mean);
+        stds.push(var.sqrt());
+    }
+
+    (means, stds)
+}
+
+#[test]
+pub fn test_mean() {
+    use rand::random;
+    let a = (0..100).map(|x| random::<f64>()).collect::<Vec<_>>();
+    let mut mean_a = Vec::new();
+    let mut std_a = Vec::new();
+    for (i, sw_a) in a.windows(10).enumerate() {
+        mean_a.push(sw_a.iter().sum::<f64>() / sw_a.len() as f64);
+        std_a.push((sw_a.iter().map(|val| (val - mean_a[i]).powi(2)).sum::<f64>() / sw_a.len() as f64).sqrt());
+    }
+
+    let (mean_a_, std_a_) = mean_std_per_windows(&a, 10);
+
+    // Define a tolerance for floating-point comparison
+    let tolerance = 1e-8;
+
+    // Check lengths
+    assert_eq!(mean_a.len(), mean_a_.len());
+    assert_eq!(std_a.len(), std_a_.len());
+
+    // Check each value with tolerance
+    for (m1, m2) in mean_a.iter().zip(mean_a_) {
+        assert!((m1 - m2).abs() < tolerance, "Mean values differ: {} vs {}", m1, m2);
+    }
+    for (s1, s2) in std_a.iter().zip(std_a_) {
+        assert!((s1 - s2).abs() < tolerance, "Std values differ: {} vs {}", s1, s2);
     }
 }
