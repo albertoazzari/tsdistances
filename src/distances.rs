@@ -897,6 +897,8 @@ fn mp_(a: &[f64], b: &[f64], window: usize) -> Vec<f64> {
     let n_a = a.len();
     let n_b = b.len();
 
+    let window = window.min(n_a).min(n_b);
+
     let mut p_ab = vec![f64::INFINITY; n_a - window + 1];
     let mut p_ba = vec![f64::INFINITY; n_b - window + 1];
 
@@ -949,7 +951,6 @@ fn mean_std_per_windows(a: &[f64], window: usize) -> (Vec<f64>, Vec<f64>) {
     stds.push(var.sqrt());
 
     for i in window..n {
-
 
         sum += a[i] - a[i - window];
         sum_squares += a[i] * a[i] - a[i - window] * a[i - window];
