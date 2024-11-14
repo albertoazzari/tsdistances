@@ -150,7 +150,7 @@ pub fn diamond_partitioning_gpu<'a, G: GpuKernelImpl, M: GpuBatchMode>(
     let max_subgroup_threads: usize = device.info().unwrap().max_subgroup_threads() as usize;
 
     let diag_len = 2 * (M::get_padded_len(&a, max_subgroup_threads) + 1).next_power_of_two();
-    let chunk_size = (i32::MAX / 2) as usize;
+    let chunk_size = (i32::MAX / 16) as usize;
     let tot_len = M::input_seq_len(&a) * M::input_seq_len(&b) * diag_len;
 
     let chunks_count = tot_len.div_ceil(chunk_size);
