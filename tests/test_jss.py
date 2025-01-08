@@ -19,7 +19,7 @@ import time
 import pathlib
 import pandas as pd
 
-UCR_ARCHIVE_PATH = pathlib.Path('/media/DATA/albertoazzari/UCRArchive_2018')
+UCR_ARCHIVE_PATH = pathlib.Path('../../DATA/ucr')
 BENCHMARKS_DS = ["ArrowHead", "Beef", "HouseTwenty", "CBF", "DiatomSizeReduction", "ItalyPowerDemand", "FreezerSmallTrain", "CinCECGTorso", "ECG200", "Ham", "ACSF1", "Adiac", "CricketX", "Haptics", "ChlorineConcentration", "FreezerRegularTrain", "MixedShapesSmallTrain", "DistalPhalanxOutlineCorrect", "Strawberry", "ShapesAll", "EthanolLevel", "Wafer", "UWaveGestureLibraryX", "NonInvasiveFetalECGThorax1"]
 DISTANCES = [euclidean_distance, catcheucl_distance, erp_distance, lcss_distance, dtw_distance, ddtw_distance, wdtw_distance, wddtw_distance, adtw_distance, msm_distance, twe_distance, sb_distance, mp_distance]
 MODALITIES = ["", "par", "gpu"]
@@ -64,3 +64,40 @@ def test_tsdistances():
 
     np.save("times_tsdistances.npy", times)
     
+def test_electric_devices_and_starlight_curves_gpu():
+    N_DATASETS = 2
+    times = np.full((N_DATASETS, len(DISTANCES)), np.nan)
+
+    for i, distance in enumerate(DISTANCES):
+        print(f"\nDistance: {distance.__name__}")
+        print("\tElectric Devices")
+        train = np.loadtxt(UCR_ARCHIVE_PATH / "ElectricDevices" / "ElectricDevices_TRAIN.tsv", delimiter="\t")
+        test = np.loadtxt(UCR_ARCHIVE_PATH / "ElectricDevices" / "ElectricDevices_TEST.tsv", delimiter="\t")
+        X_train, _ = train[:, 1:], train[:, 0]
+        X_test, _= test[:, 1:], test[:, 0]
+
+        X = np.vstack((X_train, X_test))
+
+        if distance.__name__ in ["erp_distance", "lcss_distance", "dtw_distance", "ddtw_distance", "wdtw_distance", "wddtw_distance", "adtw_distance", "msm_distance", "twe_distance"]:
+            print("\t\tGPU")
+            start = time.time()
+            D = distance(X, None, device='gpu')
+            end = time.time()
+            times[0, i] = end - start
+
+        print("\tStarlight Curves")
+        train = np.loadtxt(UCR_ARCHIVE_PATH / "StarLightCurves" / "StarLightCurves_TRAIN.tsv", delimiter="\t")
+        test = np.loadtxt(UCR_ARCHIVE_PATH / "StarLightCurves" / "StarLightCurves_TEST.tsv", delimiter="\t")
+        X_train, _ = train[:, 1:], train[:, 0]
+        X_test, _= test[:, 1:], test[:, 0]
+
+        X = np.vstack((X_train, X_test))
+
+        if distance.__name__ in ["erp_distance", "lcss_distance", "dtw_distance", "ddtw_distance", "wdtw_distance", "wddtw_distance", "adtw_distance", "msm_distance", "twe_distance"]:
+            print("\t\tGPU")
+            start = time.time()
+            D = distance(X, None, device='gpu')
+            end = time.time()
+            times[1, i] = end - start
+
+    np.savetxt("times_electric_devices_and_starlight_curves_gpu.csv", times)

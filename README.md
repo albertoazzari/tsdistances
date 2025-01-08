@@ -62,7 +62,7 @@ x2 = np.array([
 ])
 
 # Compute DTW distance
-result = tsdistances.dtw(x1, x2, n_jobs=4, device='cpu')
+result = tsdistances.dtw_distance(x1, x2, n_jobs=4, device='cpu')
 print(result)
 ```
 

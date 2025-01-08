@@ -26,7 +26,6 @@ pub fn dtw_weights(len: usize, g: f64) -> Vec<f64> {
             WEIGHT_MAX / (1.0 + std::f64::consts::E.powf(-g * (i as f64 - half_len as f64)));
     }
     weights
-
 }
 // [1 / (1 + np.exp(-g * (i - max_size / 2))) for i in range(0, max_size)]
 

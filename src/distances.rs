@@ -4,13 +4,13 @@ use crate::{
     matrix::DiagonalMatrix,
     utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore},
 };
+use catch22;
 use core::f64;
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use std::cmp::{max, min};
 use tsdistances_gpu::device::get_best_gpu;
 use tsdistances_gpu::GpuBatchMode;
-use catch22;
 
 const MIN_CHUNK_SIZE: usize = 16;
 const CHUNKS_PER_THREAD: usize = 8;
@@ -226,59 +226,101 @@ pub fn catch_euclidean(
     x2: Option<Vec<Vec<f64>>>,
     n_jobs: i32,
 ) -> PyResult<Vec<Vec<f64>>> {
-    let x1 =  x1.iter().map(|x| {
-        let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
-        for i in 0..catch22::N_CATCH22{
-            let value = catch22::compute(&x, i);
-            if value.is_nan(){
-                transformed_x.push(0.0);
-            } else {
-                transformed_x.push(value);
-            }
-        }
-        return transformed_x;
-    }).collect::<Vec<Vec<_>>>();
-    let x2 = if let Some(x2) = x2 {
-        Some(x2.iter().map(|x| {
+    let x1 = x1
+        .iter()
+        .map(|x| {
             let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
-            for i in 0..catch22::N_CATCH22{
+            for i in 0..catch22::N_CATCH22 {
                 let value = catch22::compute(&x, i);
-                if value.is_finite(){
-                    transformed_x.push(value);
-                } else {
+                if value.is_nan() {
                     transformed_x.push(0.0);
+                } else {
+                    transformed_x.push(value);
                 }
             }
             return transformed_x;
-        }).collect::<Vec<Vec<_>>>())
+        })
+        .collect::<Vec<Vec<_>>>();
+    let x2 = if let Some(x2) = x2 {
+        Some(
+            x2.iter()
+                .map(|x| {
+                    let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
+                    for i in 0..catch22::N_CATCH22 {
+                        let value = catch22::compute(&x, i);
+                        if value.is_finite() {
+                            transformed_x.push(value);
+                        } else {
+                            transformed_x.push(0.0);
+                        }
+                    }
+                    return transformed_x;
+                })
+                .collect::<Vec<Vec<_>>>(),
+        )
     } else {
         None
     };
     // Z-Normalize on the column-wise
-    let mean_x1 = (0..catch22::N_CATCH22).map(|i| {
-        let sum = x1.iter().map(|x| x[i]).sum::<f64>();
-        sum / x1.len() as f64
-    }).collect::<Vec<f64>>();
-    let std_x1 = (0..catch22::N_CATCH22).map(|i| {
-        let sum = x1.iter().map(|x| (x[i] - mean_x1[i]).powi(2)).sum::<f64>();
-        (sum / x1.len() as f64).sqrt()
-    }).collect::<Vec<f64>>();
-    let x1 = x1.iter().map(|x| {
-        x.iter().enumerate().map(|(i, val)| (val - mean_x1[i]) / if std_x1[i].abs() < f64::EPSILON {1.0} else {std_x1[i]}).collect::<Vec<f64>>()
-    }).collect::<Vec<Vec<f64>>>();
-    
+    let mean_x1 = (0..catch22::N_CATCH22)
+        .map(|i| {
+            let sum = x1.iter().map(|x| x[i]).sum::<f64>();
+            sum / x1.len() as f64
+        })
+        .collect::<Vec<f64>>();
+    let std_x1 = (0..catch22::N_CATCH22)
+        .map(|i| {
+            let sum = x1.iter().map(|x| (x[i] - mean_x1[i]).powi(2)).sum::<f64>();
+            (sum / x1.len() as f64).sqrt()
+        })
+        .collect::<Vec<f64>>();
+    let x1 = x1
+        .iter()
+        .map(|x| {
+            x.iter()
+                .enumerate()
+                .map(|(i, val)| {
+                    (val - mean_x1[i])
+                        / if std_x1[i].abs() < f64::EPSILON {
+                            1.0
+                        } else {
+                            std_x1[i]
+                        }
+                })
+                .collect::<Vec<f64>>()
+        })
+        .collect::<Vec<Vec<f64>>>();
+
     let x2 = if let Some(x2) = x2 {
-        let mean_x2 = (0..catch22::N_CATCH22).map(|i| {
-            let sum = x2.iter().map(|x| x[i]).sum::<f64>();
-            sum / x2.len() as f64
-        }).collect::<Vec<f64>>();
-        let std_x2 = (0..catch22::N_CATCH22).map(|i| {
-            let sum = x2.iter().map(|x| (x[i] - mean_x2[i]).powi(2)).sum::<f64>();
-            (sum / x2.len() as f64).sqrt()
-        }).collect::<Vec<f64>>();
-        Some(x2.iter().map(|x| {
-            x.iter().enumerate().map(|(i, val)| (val - mean_x2[i]) / if std_x2[i].abs() < f64::EPSILON {1.0} else {std_x2[i]}).collect::<Vec<f64>>()
-        }).collect::<Vec<Vec<f64>>>())
+        let mean_x2 = (0..catch22::N_CATCH22)
+            .map(|i| {
+                let sum = x2.iter().map(|x| x[i]).sum::<f64>();
+                sum / x2.len() as f64
+            })
+            .collect::<Vec<f64>>();
+        let std_x2 = (0..catch22::N_CATCH22)
+            .map(|i| {
+                let sum = x2.iter().map(|x| (x[i] - mean_x2[i]).powi(2)).sum::<f64>();
+                (sum / x2.len() as f64).sqrt()
+            })
+            .collect::<Vec<f64>>();
+        Some(
+            x2.iter()
+                .map(|x| {
+                    x.iter()
+                        .enumerate()
+                        .map(|(i, val)| {
+                            (val - mean_x2[i])
+                                / if std_x2[i].abs() < f64::EPSILON {
+                                    1.0
+                                } else {
+                                    std_x2[i]
+                                }
+                        })
+                        .collect::<Vec<f64>>()
+                })
+                .collect::<Vec<Vec<f64>>>(),
+        )
     } else {
         None
     };
@@ -951,10 +993,8 @@ fn mean_std_per_windows(a: &[f64], window: usize) -> (Vec<f64>, Vec<f64>) {
     stds.push(var.sqrt());
 
     for i in window..n {
-
         sum += a[i] - a[i - window];
         sum_squares += a[i] * a[i] - a[i - window] * a[i - window];
-
 
         let mean = sum / window as f64;
         means.push(mean);
@@ -974,7 +1014,14 @@ pub fn test_mean() {
     let mut std_a = Vec::new();
     for (i, sw_a) in a.windows(10).enumerate() {
         mean_a.push(sw_a.iter().sum::<f64>() / sw_a.len() as f64);
-        std_a.push((sw_a.iter().map(|val| (val - mean_a[i]).powi(2)).sum::<f64>() / sw_a.len() as f64).sqrt());
+        std_a.push(
+            (sw_a
+                .iter()
+                .map(|val| (val - mean_a[i]).powi(2))
+                .sum::<f64>()
+                / sw_a.len() as f64)
+                .sqrt(),
+        );
     }
 
     let (mean_a_, std_a_) = mean_std_per_windows(&a, 10);
@@ -988,9 +1035,19 @@ pub fn test_mean() {
 
     // Check each value with tolerance
     for (m1, m2) in mean_a.iter().zip(mean_a_) {
-        assert!((m1 - m2).abs() < tolerance, "Mean values differ: {} vs {}", m1, m2);
+        assert!(
+            (m1 - m2).abs() < tolerance,
+            "Mean values differ: {} vs {}",
+            m1,
+            m2
+        );
     }
     for (s1, s2) in std_a.iter().zip(std_a_) {
-        assert!((s1 - s2).abs() < tolerance, "Std values differ: {} vs {}", s1, s2);
+        assert!(
+            (s1 - s2).abs() < tolerance,
+            "Std values differ: {} vs {}",
+            s1,
+            s2
+        );
     }
 }
