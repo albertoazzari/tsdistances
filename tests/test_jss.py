@@ -17,12 +17,12 @@ from tsdistances import (
 )
 import time
 import pathlib
-import pandas as pd
 
 UCR_ARCHIVE_PATH = pathlib.Path('../../DATA/ucr')
 BENCHMARKS_DS = ["ArrowHead", "Beef", "HouseTwenty", "CBF", "DiatomSizeReduction", "ItalyPowerDemand", "FreezerSmallTrain", "CinCECGTorso", "ECG200", "Ham", "ACSF1", "Adiac", "CricketX", "Haptics", "ChlorineConcentration", "FreezerRegularTrain", "MixedShapesSmallTrain", "DistalPhalanxOutlineCorrect", "Strawberry", "ShapesAll", "EthanolLevel", "Wafer", "UWaveGestureLibraryX", "NonInvasiveFetalECGThorax1"]
 DISTANCES = [euclidean_distance, catcheucl_distance, erp_distance, lcss_distance, dtw_distance, ddtw_distance, wdtw_distance, wddtw_distance, adtw_distance, msm_distance, twe_distance, sb_distance, mp_distance]
 MODALITIES = ["", "par", "gpu"]
+
 def load_benchmark():
     benchmark_ds = sorted([x for x in UCR_ARCHIVE_PATH.iterdir() if x.name in BENCHMARKS_DS])
     return benchmark_ds
