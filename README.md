@@ -24,6 +24,21 @@
 
 ## Installation
 
+### Based on [krnl](https://github.com/charles-r-earp/krnl/)
+
+For GPU functionality (kernels), install [Vulkan](https://www.vulkan.org) for your platform.
+
+- For development, it's recomended to install the [LunarG Vulkan SDK](https://www.lunarg.com/vulkan-sdk/), which includes additional tools:
+  - vulkaninfo
+  - Validation layers
+    - DebugPrintf
+  - spirv-tools
+    - This is used by krnlc for spirv validation and optimization.
+      - krnlc builds by default without needing spirv-tools to be installed.
+
+- Check that `vulkaninfo --summary` shows your devices.
+  - Instance version should be >= 1.2.
+
 ### From Source
 
 To install `tsdistances` from source, follow these steps:
