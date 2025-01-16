@@ -36,8 +36,8 @@ def chechk_input(u: np.ndarray, v: Optional[np.ndarray] = None) -> Union[np.ndar
 
 @typechecked
 def euclidean_distance(
-    u: np.ndarray, 
-    v: Optional[np.ndarray] = None, 
+    u: np.ndarray,
+    v: Optional[np.ndarray] = None,
     n_jobs: Optional[int] = 1
 ) -> Union[np.ndarray, float]:
     """
@@ -365,7 +365,7 @@ def ddtw_distance(
                 return np.array(tsd.ddtw(_u, _v, band, n_jobs, device))
             elif _v.shape[0] >= 2:
                 return np.array(tsd.ddtw(_u, _v, band, n_jobs, device))
-            
+
 @typechecked
 def wdtw_distance(
     u: np.ndarray,
@@ -751,12 +751,12 @@ def mp_distance(
     -------
     distance : double or ndarray
     The MP distance(s) between vectors/sets `u` and `v`.
-    
+
     Examples
     --------
     >>> mp_distance([1, 0, 0], [0, 1, 0])
     1.4142135623730951
-    >>> mp_distance([[1, 1, 1], [0, 1, 1]], [[0, 1, 0], [-1, 0, 0]])    
+    >>> mp_distance([[1, 1, 1], [0, 1, 1]], [[0, 1, 0], [-1, 0, 0]])
     array([[1.41421356, 2.44948974], [1.        , 1.73205081]])
     >>> mp_distance([[1, 1, 1], [0, 1, 1]])
     p array([[0.        , 1.        ], [1.        , 0.        ]])

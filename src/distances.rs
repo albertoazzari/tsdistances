@@ -4,11 +4,11 @@ use crate::{
     matrix::DiagonalMatrix,
     utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore},
 };
-use catch22;
 use core::f64;
 use pyo3::prelude::*;
 use rayon::prelude::*;
-use std::cmp::{max, min};
+use std::cmp::max;
+use std::cmp::min;
 use tsdistances_gpu::device::get_best_gpu;
 use tsdistances_gpu::GpuBatchMode;
 
@@ -353,17 +353,21 @@ pub fn erp(
             "cpu" => {
                 distance_matrix = Some(compute_distance(
                     |a, b| {
+                        let erp_cost_func =
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                                (y + (a[i] - b[j]).abs()).min(
+                                    (z + (a[i] - gap_penalty).abs())
+                                        .min(x + (b[j] - gap_penalty).abs()),
+                                )
+                            };
+
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
                             f64::INFINITY,
                             sakoe_chiba_band,
-                            |a, b, i, j, x, y, z| {
-                                (y + (a[i] - b[j]).abs()).min(
-                                    (z + (a[i] - gap_penalty).abs())
-                                        .min(x + (b[j] - gap_penalty).abs()),
-                                )
-                            },
+                            erp_cost_func,
+                            erp_cost_func,
                         )
                     },
                     x1,
@@ -423,16 +427,20 @@ pub fn lcss(
             "cpu" => {
                 distance_matrix = Some(compute_distance(
                     |a, b| {
+                        let lcss_cost_func =
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                                let dist = (a[i] - b[j]).abs();
+                                (dist <= epsilon) as i32 as f64 * (y + 1.0)
+                                    + (dist > epsilon) as i32 as f64 * x.max(z)
+                            };
+
                         let similarity = diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
                             0.0,
                             sakoe_chiba_band,
-                            |a, b, i, j, x, y, z| {
-                                let dist = (a[i] - b[j]).abs();
-                                (dist <= epsilon) as i32 as f64 * (y + 1.0)
-                                    + (dist > epsilon) as i32 as f64 * x.max(z)
-                            },
+                            lcss_cost_func,
+                            lcss_cost_func,
                         );
                         let min_len = a.len().min(b.len()) as f64;
                         1.0 - similarity / min_len
@@ -449,8 +457,9 @@ pub fn lcss(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
                         let similarity =
                             tsdistances_gpu::lcss::<BatchMode>(device_gpu.clone(), a, b, epsilon);
-                        let min_len =
-                            BatchMode::input_seq_len(&a).min(BatchMode::input_seq_len(&b)) as f64;
+                        let min_len = BatchMode::get_sample_length(&a)
+                            .min(BatchMode::get_sample_length(&b))
+                            as f64;
                         BatchMode::apply_fn(similarity, |s| 1.0 - s / min_len)
                     }
                 );
@@ -492,15 +501,18 @@ pub fn dtw(
             "cpu" => {
                 distance_matrix = Some(compute_distance(
                     |a, b| {
+                        let dtw_cost_func =
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                                let dist = (a[i] - b[j]).powi(2);
+                                dist + z.min(x.min(y))
+                            };
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
                             f64::INFINITY,
                             sakoe_chiba_band,
-                            |a, b, i, j, x, y, z| {
-                                let dist = (a[i] - b[j]).powi(2);
-                                dist + z.min(x.min(y))
-                            },
+                            dtw_cost_func,
+                            dtw_cost_func,
                         )
                     },
                     x1,
@@ -575,16 +587,21 @@ pub fn wdtw(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let weights = dtw_weights(a.len().max(b.len()), g);
+
+                        let wdtw_cost_func =
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                                let dist = (a[i] - b[j]).powi(2)
+                                    * weights[(i as i32 - j as i32).abs() as usize];
+                                dist + z.min(x.min(y))
+                            };
+
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
                             f64::INFINITY,
                             sakoe_chiba_band,
-                            |a, b, i, j, x, y, z| {
-                                let dist = (a[i] - b[j]).powi(2)
-                                    * weights[(i as i32 - j as i32).abs() as usize];
-                                dist + z.min(x.min(y))
-                            },
+                            wdtw_cost_func,
+                            wdtw_cost_func,
                         )
                     },
                     x1,
@@ -598,7 +615,7 @@ pub fn wdtw(
                     device_gpu(device_gpu),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
                         let weights = dtw_weights(
-                            BatchMode::input_seq_len(&a).max(BatchMode::input_seq_len(&b)),
+                            BatchMode::get_sample_length(&a).max(BatchMode::get_sample_length(&b)),
                             g,
                         );
                         tsdistances_gpu::wdtw::<BatchMode>(device_gpu.clone(), a, b, &weights)
@@ -662,12 +679,8 @@ pub fn msm(
             "cpu" => {
                 distance_matrix = Some(compute_distance(
                     |a, b| {
-                        diagonal::diagonal_distance::<DiagonalMatrix>(
-                            a,
-                            b,
-                            f64::INFINITY,
-                            sakoe_chiba_band,
-                            |a, b, i, j, x, y, z| {
+                        let msm_cost_func =
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 (y + (a[i] - b[j]).abs())
                                     .min(
                                         z + msm_cost_function(
@@ -683,7 +696,32 @@ pub fn msm(
                                             b.get(j - 1).copied().unwrap_or_default(),
                                         ),
                                     )
-                            },
+                            };
+
+                        diagonal::diagonal_distance::<DiagonalMatrix>(
+                            a,
+                            b,
+                            f64::INFINITY,
+                            sakoe_chiba_band,
+                            // |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                            //     if i == 1 && j == 1 {
+                            //         y + (a[i] - b[j]).abs()
+                            //     } else if j == 1 {
+                            //         x + msm_cost_function(
+                            //             b[j],
+                            //             a[i],
+                            //             b.get(j - 1).copied().unwrap_or(0.0),
+                            //         )
+                            //     } else {
+                            //         z + msm_cost_function(
+                            //             a[i],
+                            //             a.get(i - 1).copied().unwrap_or(0.0),
+                            //             b[j],
+                            //         )
+                            //     }
+                            // },
+                            msm_cost_func,
+                            msm_cost_func,
                         )
                     },
                     x1,
@@ -752,12 +790,8 @@ pub fn twe(
             "cpu" => {
                 distance_matrix = Some(compute_distance(
                     |a, b| {
-                        diagonal::diagonal_distance::<DiagonalMatrix>(
-                            a,
-                            b,
-                            f64::INFINITY,
-                            sakoe_chiba_band,
-                            |a, b, i, j, x, y, z| {
+                        let twe_cost_func =
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 // deletion in a
                                 let del_a: f64 = z
                                     + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs()
@@ -779,7 +813,15 @@ pub fn twe(
                                     + stiffness * (2.0 * (i as isize - j as isize).abs() as f64);
 
                                 del_a.min(del_b.min(match_a_b))
-                            },
+                            };
+
+                        diagonal::diagonal_distance::<DiagonalMatrix>(
+                            a,
+                            b,
+                            f64::INFINITY,
+                            sakoe_chiba_band,
+                            twe_cost_func,
+                            twe_cost_func,
                         )
                     },
                     x1,
@@ -845,15 +887,19 @@ pub fn adtw(
             "cpu" => {
                 distance_matrix = Some(compute_distance(
                     |a, b| {
+                        let adtw_cost_func =
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                                let dist = (a[i] - b[j]).powi(2);
+                                dist + (z + warp_penalty).min((x + warp_penalty).min(y))
+                            };
+
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
                             f64::INFINITY,
                             sakoe_chiba_band,
-                            |a, b, i, j, x, y, z| {
-                                let dist = (a[i] - b[j]).powi(2);
-                                dist + (z + warp_penalty).min((x + warp_penalty).min(y))
-                            },
+                            adtw_cost_func,
+                            adtw_cost_func,
                         )
                     },
                     x1,
