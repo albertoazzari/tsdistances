@@ -14,6 +14,7 @@ fn py_module(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
         println!("\nraise KeyboardInterrupt (Ctrl+C pressed)");
         std::process::exit(1);
     });
+
     m.add_function(wrap_pyfunction!(distances::euclidean, m)?)?;
     m.add_function(wrap_pyfunction!(distances::catch_euclidean, m)?)?;
     m.add_function(wrap_pyfunction!(distances::erp, m)?)?;

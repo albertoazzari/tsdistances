@@ -63,7 +63,7 @@ def test_tsdistances():
                 times[i, j, 2] = end - start
 
     np.save("times_tsdistances.npy", times)
-    
+
 def test_electric_devices_and_starlight_curves_gpu():
     N_DATASETS = 2
     times = np.full((N_DATASETS, len(DISTANCES)), np.nan)

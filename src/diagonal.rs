@@ -5,6 +5,7 @@ pub fn diagonal_distance<M: Matrix>(
     b: &[f64],
     init_val: f64,
     sakoe_chiba_band: f64,
+    init_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
     dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
 ) -> f64 {
     diagonal_distance_::<M>(
@@ -12,6 +13,7 @@ pub fn diagonal_distance<M: Matrix>(
         b.len(),
         init_val,
         sakoe_chiba_band,
+        |i, j, x, y, z| init_lambda(&a, &b, i, j, x, y, z),
         |i, j, x, y, z| dist_lambda(&a, &b, i, j, x, y, z),
     )
 }
@@ -21,6 +23,7 @@ fn diagonal_distance_<M: Matrix>(
     b_len: usize,
     init_val: f64,
     sakoe_chiba_band: f64,
+    init_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
     dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
 ) -> f64 {
     let mut matrix = DiagonalMatrix::new(a_len, b_len, init_val);
@@ -53,29 +56,37 @@ fn diagonal_distance_<M: Matrix>(
         let mut i1: usize = i;
         let mut j1: usize = j;
 
-        let mut s_qualcosa = s;
+        let mut s_step = s;
 
         // Pre init for sakoe chiba band skipped cells
         for k in (s..s_).step_by(2) {
             matrix.set_diagonal_cell(d, k, init_val);
             i1 = i1.wrapping_sub(1);
             j1 += 1;
-            s_qualcosa += 2;
+            s_step += 2;
         }
 
-        for k in (s_qualcosa..e_ + 1).step_by(2) {
+        for k in (s_step..e_ + 1).step_by(2) {
             let dleft = matrix.get_diagonal_cell(d - 1, k - 1);
             let ddiag = matrix.get_diagonal_cell(d - 2, k);
             let dup = matrix.get_diagonal_cell(d - 1, k + 1);
 
-            matrix.set_diagonal_cell(d, k, dist_lambda(i1, j1, dleft, ddiag, dup));
+            matrix.set_diagonal_cell(
+                d,
+                k,
+                if i1 == 1 || j1 == 1 {
+                    init_lambda(i1, j1, dleft, ddiag, dup)
+                } else {
+                    dist_lambda(i1, j1, dleft, ddiag, dup)
+                },
+            );
             i1 = i1.wrapping_sub(1);
             j1 += 1;
-            s_qualcosa += 2;
+            s_step += 2;
         }
 
         // Post init for sakoe chiba band skipped cells
-        for k in (s_qualcosa..(e + 1)).step_by(2) {
+        for k in (s_step..(e + 1)).step_by(2) {
             matrix.set_diagonal_cell(d, k, init_val);
             i1 = i1.wrapping_sub(1);
             j1 += 1;
