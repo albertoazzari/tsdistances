@@ -532,7 +532,7 @@ dependencies = [
  "paste",
  "rspirv",
  "thiserror",
- "vulkano",
+ "vulkano 0.33.0",
 ]
 
 [[package]]
@@ -952,6 +952,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "raw-window-handle"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2ff9a1f06a88b01621b7ae906ef0211290d1c8a168a15542486a8f61c0833b9"
+
+[[package]]
 name = "rayon"
 version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1265,7 +1271,7 @@ dependencies = [
  "lazy_static",
  "rand",
  "rustfft",
- "vulkano",
+ "vulkano 0.34.1",
 ]
 
 [[package]]
@@ -1296,6 +1302,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vk-parse"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81086c28be67a8759cd80cbb3c8f7b520e0874605fc5eb74d5a1c9c2d1878e79"
+dependencies = [
+ "xml-rs",
+]
+
+[[package]]
 name = "vulkano"
 version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1320,15 +1335,44 @@ dependencies = [
  "serde_json",
  "smallvec",
  "thread_local",
- "vk-parse",
+ "vk-parse 0.8.0",
+]
+
+[[package]]
+name = "vulkano"
+version = "0.34.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70f4278f76307b3c388679234b397b4f90de29cdba53873c26b624ed82653d75"
+dependencies = [
+ "ahash",
+ "ash",
+ "bytemuck",
+ "core-graphics-types",
+ "crossbeam-queue",
+ "half",
+ "heck 0.4.1",
+ "indexmap 2.7.0",
+ "libloading 0.8.6",
+ "objc",
+ "once_cell",
+ "parking_lot",
+ "proc-macro2",
+ "quote",
+ "raw-window-handle",
+ "regex",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "thread_local",
+ "vk-parse 0.12.0",
  "vulkano-macros",
 ]
 
 [[package]]
 name = "vulkano-macros"
-version = "0.33.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "895b8a2cac1e7650d2d0552f2392da0970a358515ac11a34adaf19bfdc771b98"
+checksum = "52be622d364272fd77e298e7f68e8547ae66e7687cb86eb85335412cee7e3965"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",

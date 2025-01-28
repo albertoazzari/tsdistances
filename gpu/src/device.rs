@@ -12,7 +12,6 @@ pub fn find_best_device_index() -> usize {
     let instance = Instance::new(
         library,
         InstanceCreateInfo {
-            enumerate_portability: true,
             ..Default::default()
         },
     )
