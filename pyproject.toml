@@ -1,6 +1,6 @@
 [project]
 name = "tsdistances"
-version = "0.0.9"
+version = "0.1."
 authors = [
   { name="Alberto Azzari", email="alberto.azzari@univr.it" },
   { name="Andrea Cracco", email="andrea.cracco@univr.it" },
