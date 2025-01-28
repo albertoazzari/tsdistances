@@ -81,6 +81,11 @@ jobs:
         with:
           python-version: 3.x
           architecture: ${{ matrix.platform.target }}
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -107,6 +112,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
