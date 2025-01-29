@@ -9,7 +9,7 @@ authors = [
 description = "tsdistances is a Python library (with Rust backend) for computing various pairwise distances between sets of time series data. It provides efficient implementations of elastic distance measures such as Dynamic Time Warping (DTW), Longest Common Subsequence (LCSS), and Time Warping Edit (TWE). The library is designed to be fast and scalable, leveraging parallel computation for improved performance."
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.12"
+requires-python = ">=3.10,<3.14"
 
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -25,6 +25,9 @@ dependencies = [
 [build-system]
 requires = ["maturin>=1.6.0"]
 build-backend = "maturin"
+
+[tool.maturin]
+python-versions = ["3.10", "3.11", "3.12", "3.13"]
 
 [project.urls]
 Homepage = "https://github.com/albertoazzari/tsdistances"
