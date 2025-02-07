@@ -23,10 +23,7 @@
 - **GPU Acceleration**: Optional GPU support using Vulkan for even faster computations.
 
 ## Installation
-
-### From Source
-
-#### Based on [krnl](https://github.com/charles-r-earp/krnl/)
+#### GPU functionality based on [krnl](https://github.com/charles-r-earp/krnl/)
 
 For GPU functionality (kernels), install [Vulkan](https://www.vulkan.org) for your platform.
 
@@ -40,6 +37,7 @@ For GPU functionality (kernels), install [Vulkan](https://www.vulkan.org) for yo
 
 - Check that `vulkaninfo --summary` shows your devices.
   - Instance version should be >= 1.2.
+### From Source
 
 To install `tsdistances` from source, follow these steps:
 
