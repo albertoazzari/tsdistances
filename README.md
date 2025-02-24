@@ -44,7 +44,7 @@ The library is designed to be fast and scalable, leveraging parallel computation
 
 ## Installation
 
-### Prerequisites {#prerequisites .unnumbered}
+### Prerequisites
 
 -   Python 3.10 or later
 
@@ -56,9 +56,6 @@ The library is designed to be fast and scalable, leveraging parallel computation
     -   [Linux]( https://sdk.lunarg.com/sdk/download/1.3.283.0/linux/vulkansdk-linux-x86_64-1.3.283.0.tar.xz)
 
     -   [Windows](https://sdk.lunarg.com/sdk/download/1.3.283.0/windows/VulkanSDK-1.3.283.0-Installer.exe)
-
-Automatic GPU driver installation provided in
-[Src/replicate_results.ipynb](Src/replicate_results.ipynb){.uri}.
 
 ### From Source
 
