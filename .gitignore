@@ -9,3 +9,4 @@ compute_ee.py
 requirements*
 .pytest_cache/
 build.sh
+test_ci.yml
