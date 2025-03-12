@@ -14,8 +14,8 @@ from tsdistances import (
 
 def load_ArrowHead():
     print("\nLoading ArrowHead dataset")
-    train = np.loadtxt("../DATA/ucr/ArrowHead/ArrowHead_TRAIN.tsv", delimiter="\t")
-    test = np.loadtxt("../DATA/ucr/ArrowHead/ArrowHead_TEST.tsv", delimiter="\t")
+    train = np.loadtxt("../../DATA/ucr/ArrowHead/ArrowHead_TRAIN.tsv", delimiter="\t")
+    test = np.loadtxt("../../DATA/ucr/ArrowHead/ArrowHead_TEST.tsv", delimiter="\t")
     X_train, _ = train[:, 1:], train[:, 0].astype(int)
     X_test, _ = test[:, 1:], test[:, 0].astype(int)
     X = np.vstack((X_train, X_test))

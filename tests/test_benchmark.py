@@ -15,7 +15,7 @@ from tsdistances import (
     sb_distance,
     mp_distance,
 )
-from aeon import (
+from aeon.distances import (
     euclidean_pairwise_distance,
     erp_pairwise_distance,
     lcss_pairwise_distance,

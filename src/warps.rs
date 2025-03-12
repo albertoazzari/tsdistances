@@ -32,7 +32,7 @@ fn test_diamond_partitioning() {
         time1 += end1.as_micros();
 
         let start2 = std::time::Instant::now();
-        r2 += diagonal_distance::<DiagonalMatrix>(&a, &b, 0.0, 1.0, |a, b, i, j, x, y, z| {
+        r2 += diagonal_distance::<DiagonalMatrix>(&a, &b, 0.0, 1.0, |_a, _b, _c, _d, _e, _f, _g| {0.0}, |a, b, i, j, x, y, z| {
             let dist = (a[i] - b[j]).abs();
             if dist <= epsilon {
                 y + 1.0

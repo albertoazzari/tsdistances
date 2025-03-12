@@ -21,8 +21,8 @@ import stumpy
 
 def load_ArrowHead():
     print("\nLoading ArrowHead dataset")
-    train = np.loadtxt("../DATA/ucr/ArrowHead/ArrowHead_TRAIN.tsv", delimiter="\t")
-    test = np.loadtxt("../DATA/ucr/ArrowHead/ArrowHead_TEST.tsv", delimiter="\t")
+    train = np.loadtxt("../../DATA/ucr/ArrowHead/ArrowHead_TRAIN.tsv", delimiter="\t")
+    test = np.loadtxt("../../DATA/ucr/ArrowHead/ArrowHead_TEST.tsv", delimiter="\t")
     X_train, _ = train[:, 1:], train[:, 0].astype(int)
     X_test, _ = test[:, 1:], test[:, 0].astype(int)
     X = np.vstack((X_train, X_test))
@@ -134,7 +134,11 @@ def test_mp_distance():
     window = int(0.1 * X.shape[1])
     D = mp_distance(X, window, None, n_jobs=-1)
     check_metric(D, X)
-    D_stumpy = np.array([[stumpy.mpdist(X[i], X[j], m=window) for j in range(X.shape[0])] for i in range(X.shape[0])])
+    D_stumpy = np.zeros_like(D)
+    for i in range(X.shape[0]-1):
+        for j in range(i+1, X.shape[0]):
+            D_stumpy[i, j] = stumpy.mpdist(X[i], X[j], m=window)
+            D_stumpy[j, i] = D_stumpy[i, j]
     # Set D_stumpy diagonal to zero
     np.fill_diagonal(D_stumpy, 0)
     assert np.allclose(D, D_stumpy, atol=1e-8)
