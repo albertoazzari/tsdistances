@@ -5,8 +5,15 @@ edition = "2021"
 
 [dependencies]
 dashmap = "6.1.0"
-krnl = {git="https://github.com/albertoazzari/krnl.git"}
 lazy_static = "1.5.0"
 rand = "0.8.5"
 rustfft = "6.2.0"
-vulkano = {git="https://github.com/albertoazzari/vulkano.git"}
+
+[profile.release.build-override]
+opt-level = 3
+codegen-units = 16
+[profile.dev.build-override]
+opt-level = 3
+
+[build-dependencies]
+spirv-builder = "0.9"

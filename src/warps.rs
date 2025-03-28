@@ -1,89 +1,89 @@
 use crate::{matrix::Matrix, utils::next_multiple_of_n};
 const DIAMOND_SIZE: usize = 64;
 
-#[test]
-fn test_diamond_partitioning() {
-    use crate::diagonal::diagonal_distance;
-    use crate::matrix::DiagonalMatrix;
-    use tsdistances_gpu::device::get_best_gpu;
-    use tsdistances_gpu::SingleBatchMode;
+// #[test]
+// fn test_diamond_partitioning() {
+//     use crate::diagonal::diagonal_distance;
+//     use crate::matrix::DiagonalMatrix;
+//     use tsdistances_gpu::device::get_best_gpu;
+//     use tsdistances_gpu::SingleBatchMode;
 
-    let rep = 10;
-    let epsilon = 0.1;
-    let (mut time1, mut time2, mut time3) = (0, 0, 0);
-    let (mut r1, mut r2, mut r3) = (0.0, 0.0, 0.0);
-    let device = get_best_gpu();
-    println!("Device: {:#?}", device.info().unwrap());
+//     let rep = 10;
+//     let epsilon = 0.1;
+//     let (mut time1, mut time2, mut time3) = (0, 0, 0);
+//     let (mut r1, mut r2, mut r3) = (0.0, 0.0, 0.0);
+//     let device = get_best_gpu();
+//     println!("Device: {:#?}", device.info().unwrap());
 
-    for _ in 0..rep {
-        let a: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
-        let b: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
+//     for _ in 0..rep {
+//         let a: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
+//         let b: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
 
-        let start1 = std::time::Instant::now();
-        r1 += diamond_partitioning::<DiagonalMatrix>(&a, &b, 0.0, |a, b, i, j, x, y, z| {
-            let dist = (a[i] - b[j]).abs();
-            if dist <= epsilon {
-                y + 1.0
-            } else {
-                x.max(z)
-            }
-        });
-        let end1 = start1.elapsed();
-        time1 += end1.as_micros();
+//         let start1 = std::time::Instant::now();
+//         r1 += diamond_partitioning::<DiagonalMatrix>(&a, &b, 0.0, |a, b, i, j, x, y, z| {
+//             let dist = (a[i] - b[j]).abs();
+//             if dist <= epsilon {
+//                 y + 1.0
+//             } else {
+//                 x.max(z)
+//             }
+//         });
+//         let end1 = start1.elapsed();
+//         time1 += end1.as_micros();
 
-        let start2 = std::time::Instant::now();
-        r2 += diagonal_distance::<DiagonalMatrix>(&a, &b, 0.0, 1.0, |_a, _b, _c, _d, _e, _f, _g| {0.0}, |a, b, i, j, x, y, z| {
-            let dist = (a[i] - b[j]).abs();
-            if dist <= epsilon {
-                y + 1.0
-            } else {
-                x.max(z)
-            }
-        });
-        let end2 = start2.elapsed();
-        time2 += end2.as_micros();
+//         let start2 = std::time::Instant::now();
+//         r2 += diagonal_distance::<DiagonalMatrix>(&a, &b, 0.0, 1.0, |_a, _b, _c, _d, _e, _f, _g| {0.0}, |a, b, i, j, x, y, z| {
+//             let dist = (a[i] - b[j]).abs();
+//             if dist <= epsilon {
+//                 y + 1.0
+//             } else {
+//                 x.max(z)
+//             }
+//         });
+//         let end2 = start2.elapsed();
+//         time2 += end2.as_micros();
 
-        let start3 = std::time::Instant::now();
-        r3 += tsdistances_gpu::lcss::<SingleBatchMode>(device.clone(), &a, &b, epsilon);
-        let end3 = start3.elapsed();
-        time3 += end3.as_micros();
-    }
+//         let start3 = std::time::Instant::now();
+//         r3 += tsdistances_gpu::lcss::<SingleBatchMode>(device.clone(), &a, &b, epsilon);
+//         let end3 = start3.elapsed();
+//         time3 += end3.as_micros();
+//     }
 
-    println!(
-        "TIME:\n\tDiamond Partitioning: {:.4} ms, \n\tDiagonal Distance: {:.4} ms, \n\tGPU: {:.4} ms",
-        time1 as f64 / rep as f64 / 1000.0,
-        time2 as f64 / rep as f64 / 1000.0,
-        time3 as f64 / rep as f64 / 1000.0
-    );
-    println!(
-        "RES:\n\tDiamond Partitioning: {:.4}, \n\tDiagonal Distance: {:.4}, \n\tGPU: {:.4}",
-        r1 / rep as f64,
-        r2 / rep as f64,
-        r3 / rep as f64
-    );
-}
+//     println!(
+//         "TIME:\n\tDiamond Partitioning: {:.4} ms, \n\tDiagonal Distance: {:.4} ms, \n\tGPU: {:.4} ms",
+//         time1 as f64 / rep as f64 / 1000.0,
+//         time2 as f64 / rep as f64 / 1000.0,
+//         time3 as f64 / rep as f64 / 1000.0
+//     );
+//     println!(
+//         "RES:\n\tDiamond Partitioning: {:.4}, \n\tDiagonal Distance: {:.4}, \n\tGPU: {:.4}",
+//         r1 / rep as f64,
+//         r2 / rep as f64,
+//         r3 / rep as f64
+//     );
+// }
 
-pub fn diamond_partitioning<M: Matrix>(
-    a: &[f64],
-    b: &[f64],
-    init_val: f64,
-    dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
-) -> f64 {
-    let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+// pub fn diamond_partitioning<M: Matrix>(
+//     a: &[f64],
+//     b: &[f64],
+//     init_val: f64,
+//     dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
+// ) -> f64 {
+//     let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
 
-    let new_a_len = next_multiple_of_n(a.len(), DIAMOND_SIZE);
-    let new_b_len = next_multiple_of_n(b.len(), DIAMOND_SIZE);
+//     let new_a_len = next_multiple_of_n(a.len(), DIAMOND_SIZE);
+//     let new_b_len = next_multiple_of_n(b.len(), DIAMOND_SIZE);
 
-    let mut a_padded = vec![0.0; new_a_len];
-    let mut b_padded = vec![0.0; new_b_len];
+//     let mut a_padded = vec![0.0; new_a_len];
+//     let mut b_padded = vec![0.0; new_b_len];
 
-    a_padded[..a.len()].copy_from_slice(a);
-    b_padded[..b.len()].copy_from_slice(b);
+//     a_padded[..a.len()].copy_from_slice(a);
+//     b_padded[..b.len()].copy_from_slice(b);
 
-    diamond_partitioning_::<M>(a.len(), b.len(), init_val, |i, j, x, y, z| {
-        dist_lambda(&a_padded, &b_padded, i, j, x, y, z)
-    })
-}
+//     diamond_partitioning_::<M>(a.len(), b.len(), init_val, |i, j, x, y, z| {
+//         dist_lambda(&a_padded, &b_padded, i, j, x, y, z)
+//     })
+// }
 
 pub fn diamond_partitioning_<M: Matrix>(
     a_len: usize,

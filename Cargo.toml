@@ -1,7 +1,12 @@
+cargo-features = ["edition2024"]
+
 [package]
 name = "tsdistances"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[build-dependencies]
+spirv-builder = { git = "https://github.com/Rust-GPU/rust-gpu.git", version = "0.9.0" }
 
 
 [dependencies]
@@ -13,7 +18,8 @@ pyo3 = { version = "0.23.4", features = ["extension-module"] }
 rand = "0.8.5"
 rayon = "1.10.0"
 rustfft = "6.2.0"
-tsdistances_gpu = { version = "0.1.0", path = "gpu" }
+vulkano = "0.35.1"
+vulkano-shaders = "0.35.0"
 
 [lib]
 crate-type = ["cdylib"]
@@ -24,3 +30,10 @@ debug = true
 
 [profile.release]
 debug = false
+
+[profile.release.build-override]
+opt-level = 3
+
+codegen-units = 16
+[profile.dev.build-override]
+opt-level = 3
