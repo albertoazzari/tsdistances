@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use crate::{
     diagonal,
     matrix::DiagonalMatrix,
@@ -10,190 +9,190 @@ use rayon::prelude::*;
 use std::cmp::max;
 use std::cmp::min;
 
-// const MIN_CHUNK_SIZE: usize = 16;
-// const CHUNKS_PER_THREAD: usize = 8;
+const MIN_CHUNK_SIZE: usize = 16;
+const CHUNKS_PER_THREAD: usize = 8;
 
-// fn compute_distance_batched(
-//     distance: impl (Fn(&[Vec<f64>], &[Vec<f64>], bool) -> Vec<Vec<f64>>) + Sync + Send,
-//     x1: Vec<Vec<f64>>,
-//     x2: Option<Vec<Vec<f64>>>,
-//     chunk_size: usize,
-// ) -> Vec<Vec<f64>> {
-//     let mut result = Vec::with_capacity(x1.len());
+fn compute_distance_batched(
+    distance: impl (Fn(&[Vec<f64>], &[Vec<f64>], bool) -> Vec<Vec<f64>>) + Sync + Send,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    chunk_size: usize,
+) -> Vec<Vec<f64>> {
+    let mut result = Vec::with_capacity(x1.len());
 
-//     let mut x1_offset = 0;
-//     for x1_part in x1.chunks(chunk_size) {
-//         result.resize_with(x1_offset + x1_part.len(), || {
-//             Vec::with_capacity(x2.as_ref().map_or(x1.len(), |x| x.len()))
-//         });
-//         for x2_part in x2.as_ref().unwrap_or(&x1).chunks(chunk_size) {
-//             let distance_matrix = distance(x1_part, x2_part, x2.is_none());
-//             for (x1_idx, row) in distance_matrix.iter().enumerate() {
-//                 result[x1_offset + x1_idx].extend_from_slice(&row[..]);
-//             }
-//         }
-//         x1_offset += x1_part.len();
-//     }
-//     result
-// }
+    let mut x1_offset = 0;
+    for x1_part in x1.chunks(chunk_size) {
+        result.resize_with(x1_offset + x1_part.len(), || {
+            Vec::with_capacity(x2.as_ref().map_or(x1.len(), |x| x.len()))
+        });
+        for x2_part in x2.as_ref().unwrap_or(&x1).chunks(chunk_size) {
+            let distance_matrix = distance(x1_part, x2_part, x2.is_none());
+            for (x1_idx, row) in distance_matrix.iter().enumerate() {
+                result[x1_offset + x1_idx].extend_from_slice(&row[..]);
+            }
+        }
+        x1_offset += x1_part.len();
+    }
+    result
+}
 
-// /// Computes the pairwise distance between two sets of timeseries.
-// ///
-// /// This function computes the distance between each pair of timeseries (one from each set) using the
-// /// provided distance function. The computation is parallelized across multiple threads to improve
-// /// performance. The number of threads used can be controlled via the `n_jobs` parameter.
-// ///
-// fn compute_distance(
-//     distance: impl (Fn(&[f64], &[f64]) -> f64) + Sync + Send,
-//     x1: Vec<Vec<f64>>,
-//     x2: Option<Vec<Vec<f64>>>,
-//     n_jobs: i32,
-// ) -> Vec<Vec<f64>> {
-//     let n_jobs = if n_jobs == -1 {
-//         rayon::current_num_threads() as usize
-//     } else {
-//         n_jobs.max(1) as usize
-//     };
+/// Computes the pairwise distance between two sets of timeseries.
+///
+/// This function computes the distance between each pair of timeseries (one from each set) using the
+/// provided distance function. The computation is parallelized across multiple threads to improve
+/// performance. The number of threads used can be controlled via the `n_jobs` parameter.
+///
+fn compute_distance(
+    distance: impl (Fn(&[f64], &[f64]) -> f64) + Sync + Send,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    n_jobs: i32,
+) -> Vec<Vec<f64>> {
+    let n_jobs = if n_jobs == -1 {
+        rayon::current_num_threads() as usize
+    } else {
+        n_jobs.max(1) as usize
+    };
 
-//     let semaphore = parking_lot::Mutex::new(n_jobs);
-//     let cond_var = parking_lot::Condvar::new();
-//     let x1 = x1.into_iter().enumerate().collect::<Vec<_>>();
-//     let distance_matrix = x1
-//         .par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-//         .map(|a| {
-//             let mut guard = semaphore.lock();
-//             while *guard == 0 {
-//                 cond_var.wait(&mut guard);
-//             }
-//             *guard -= 1;
-//             drop(guard);
-//             let result = a
-//                 .iter()
-//                 .map(|(i, a)| {
-//                     if let Some(x2) = &x2 {
-//                         x2.iter()
-//                             .map(|b| {
-//                                 let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
-//                                 distance(a, b)
-//                             })
-//                             .collect::<Vec<_>>()
-//                     } else {
-//                         x1.iter()
-//                             .take(*i)
-//                             .map(|(_, b)| {
-//                                 let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
-//                                 distance(a, b)
-//                             })
-//                             .collect::<Vec<_>>()
-//                     }
-//                 })
-//                 .collect::<Vec<_>>();
-//             let mut guard = semaphore.lock();
-//             *guard += 1;
-//             cond_var.notify_one();
-//             result
-//         })
-//         .flatten()
-//         .collect::<Vec<_>>();
-//     if x2.is_none() {
-//         let mut distance_matrix = distance_matrix;
-//         for i in 0..distance_matrix.len() {
-//             let row_len = distance_matrix.len();
-//             distance_matrix[i].reserve(row_len - i);
-//             distance_matrix[i].push(0.0);
-//             for j in i + 1..distance_matrix.len() {
-//                 let d = distance_matrix[j][i];
-//                 distance_matrix[i].push(d);
-//             }
-//         }
-//         distance_matrix
-//     } else {
-//         distance_matrix
-//     }
-// }
+    let semaphore = parking_lot::Mutex::new(n_jobs);
+    let cond_var = parking_lot::Condvar::new();
+    let x1 = x1.into_iter().enumerate().collect::<Vec<_>>();
+    let distance_matrix = x1
+        .par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
+        .map(|a| {
+            let mut guard = semaphore.lock();
+            while *guard == 0 {
+                cond_var.wait(&mut guard);
+            }
+            *guard -= 1;
+            drop(guard);
+            let result = a
+                .iter()
+                .map(|(i, a)| {
+                    if let Some(x2) = &x2 {
+                        x2.iter()
+                            .map(|b| {
+                                let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+                                distance(a, b)
+                            })
+                            .collect::<Vec<_>>()
+                    } else {
+                        x1.iter()
+                            .take(*i)
+                            .map(|(_, b)| {
+                                let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+                                distance(a, b)
+                            })
+                            .collect::<Vec<_>>()
+                    }
+                })
+                .collect::<Vec<_>>();
+            let mut guard = semaphore.lock();
+            *guard += 1;
+            cond_var.notify_one();
+            result
+        })
+        .flatten()
+        .collect::<Vec<_>>();
+    if x2.is_none() {
+        let mut distance_matrix = distance_matrix;
+        for i in 0..distance_matrix.len() {
+            let row_len = distance_matrix.len();
+            distance_matrix[i].reserve(row_len - i);
+            distance_matrix[i].push(0.0);
+            for j in i + 1..distance_matrix.len() {
+                let d = distance_matrix[j][i];
+                distance_matrix[i].push(d);
+            }
+        }
+        distance_matrix
+    } else {
+        distance_matrix
+    }
+}
 
-// fn check_same_length(x: &[Vec<f64>]) -> bool {
-//     if x.len() == 0 {
-//         return false;
-//     }
+fn check_same_length(x: &[Vec<f64>]) -> bool {
+    if x.len() == 0 {
+        return false;
+    }
 
-//     let len = x[0].len();
-//     x.iter().all(|a| a.len() == len)
-// }
+    let len = x[0].len();
+    x.iter().all(|a| a.len() == len)
+}
 
-// fn compute_max_group(
-//     count1: usize,
-//     count2: usize,
-//     len1: usize,
-//     len2: usize,
-//     max_threads: usize,
-// ) -> usize {
-//     let threads_per_instance = len1.min(len2) + 1;
-//     let warps_per_instance = threads_per_instance.div_ceil(64);
-//     let max_warps = max_threads / 64;
-//     let max_instances = max_warps / warps_per_instance;
+fn compute_max_group(
+    count1: usize,
+    count2: usize,
+    len1: usize,
+    len2: usize,
+    max_threads: usize,
+) -> usize {
+    let threads_per_instance = len1.min(len2) + 1;
+    let warps_per_instance = threads_per_instance.div_ceil(64);
+    let max_warps = max_threads / 64;
+    let max_instances = max_warps / warps_per_instance;
 
-//     let max_group = if count1 * count2 <= max_instances {
-//         count1.max(count2)
-//     } else {
-//         let max_sqrt = (max_instances as f64).sqrt().floor() as usize;
-//         if count1 < max_sqrt {
-//             count2 / count1
-//         } else if count2 < max_sqrt {
-//             count1 / count2
-//         } else {
-//             max_sqrt
-//         }
-//     };
+    let max_group = if count1 * count2 <= max_instances {
+        count1.max(count2)
+    } else {
+        let max_sqrt = (max_instances as f64).sqrt().floor() as usize;
+        if count1 < max_sqrt {
+            count2 / count1
+        } else if count2 < max_sqrt {
+            count1 / count2
+        } else {
+            max_sqrt
+        }
+    };
 
-//     max_group.max(1)
-// }
+    max_group.max(1)
+}
 
-// macro_rules! gpu_call {
-//     (
-//         device_gpu($device_gpu:expr),
-//         $distance_matrix:ident = |$x1:ident($a:ident), $x2:ident($b:ident), $BatchMode:ident| {
-//         $($body:tt)*
-//     }) => {
-//         let max_threads = $device_gpu
-//             .info()
-//             .map(|i| i.max_groups() as usize * i.max_threads() as usize)
-//             .unwrap_or(65536);
+macro_rules! gpu_call {
+    (
+        device_gpu($device_gpu:expr),
+        $distance_matrix:ident = |$x1:ident($a:ident), $x2:ident($b:ident), $BatchMode:ident| {
+        $($body:tt)*
+    }) => {
+        let max_threads = $device_gpu
+            .info()
+            .map(|i| i.max_groups() as usize * i.max_threads() as usize)
+            .unwrap_or(65536);
 
-//         $distance_matrix = Some(
-//             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
-//                 type $BatchMode = tsdistances_gpu::MultiBatchMode;
+        $distance_matrix = Some(
+            if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
+                type $BatchMode = tsdistances_gpu::MultiBatchMode;
 
-//                 let batch_size = compute_max_group(
-//                     $x1.len(),
-//                     $x2.as_ref().map_or($x1.len(), |x| x.len()),
-//                     $x1[0].len(),
-//                     $x2.as_ref().map_or($x1[0].len(), |x| x[0].len()),
-//                     max_threads,
-//                 );
+                let batch_size = compute_max_group(
+                    $x1.len(),
+                    $x2.as_ref().map_or($x1.len(), |x| x.len()),
+                    $x1[0].len(),
+                    $x2.as_ref().map_or($x1[0].len(), |x| x[0].len()),
+                    max_threads,
+                );
 
-//                 compute_distance_batched(
-//                     |$a, $b, _| {
-//                         $($body)*
-//                     },
-//                     $x1,
-//                     $x2,
-//                     batch_size,
-//                 )
-//             } else {
-//                 type $BatchMode = tsdistances_gpu::SingleBatchMode;
-//                 compute_distance(
-//                     |$a, $b| {
-//                         $($body)*
-//                     },
-//                     $x1,
-//                     $x2,
-//                     1,
-//                 )
-//             }
-//         );
-//     };
-// }
+                compute_distance_batched(
+                    |$a, $b, _| {
+                        $($body)*
+                    },
+                    $x1,
+                    $x2,
+                    batch_size,
+                )
+            } else {
+                type $BatchMode = tsdistances_gpu::SingleBatchMode;
+                compute_distance(
+                    |$a, $b| {
+                        $($body)*
+                    },
+                    $x1,
+                    $x2,
+                    1,
+                )
+            }
+        );
+    };
+}
 
 // #[pyfunction]
 // #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
