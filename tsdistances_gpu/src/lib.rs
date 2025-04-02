@@ -1,5 +1,6 @@
 #![cfg_attr(target_arch = "spirv", no_std)]
-#![deny(warnings)]
+#![allow(warnings)]
+use spirv_std::num_traits::Float;
 use spirv_std::{glam, spirv};
 
 pub fn euclidean_distance(a: &f32, b: &f32) -> f32 {
@@ -9,21 +10,22 @@ pub fn euclidean_distance(a: &f32, b: &f32) -> f32 {
 #[spirv(compute(threads(64)))]
 pub fn main_cs(
     #[spirv(global_invocation_id)] id: glam::UVec3,
-    #[spirv(storage_buffer, descriptor_set = 0, binding = 0)] input_a: &[f32],
-    #[spirv(storage_buffer, descriptor_set = 0, binding = 1)] input_b: &[f32],
-    #[spirv(storage_buffer, descriptor_set = 0, binding = 2)] output: &mut [f32],
+    #[spirv(storage_buffer, descriptor_set = 0, binding = 0)] output: &mut [f32],
+    #[spirv(storage_buffer, descriptor_set = 0, binding = 1)] input_a: &[f32],
+    #[spirv(storage_buffer, descriptor_set = 0, binding = 2)] input_b: &[f32],
 ) {
     let index = id.x as usize;
-    
+
     // Only the first thread calculates the total distance
-    if index == 0 {
-        // Calculate total squared distance
-        let mut total_distance = 0.0f32;
-        for i in 0..input_a.len() {
-            total_distance += euclidean_distance(&input_a[i], &input_b[i]);
-        }
-        
-        // Take square root of total distance
-        output[0] = total_distance.sqrt();
-    }
+    // if index == 0 {
+    //     // Calculate total squared distance
+    //     let mut total_distance = 0.0f32;
+    //     for i in 0..input_b.len() {
+    //         total_distance += input_a[i] + input_b[i]; //euclidean_distance(&input_a[i], &input_b[i]);
+    //     }
+
+    //     // Take square root of total distance
+    //     output[0] = total_distance + 1000.0; // .sqrt();
+    // }
+    output[index] = input_a[index] + input_b[index];
 }

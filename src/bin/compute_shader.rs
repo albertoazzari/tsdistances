@@ -1,9 +1,10 @@
 use std::sync::Arc;
 use vulkano::{
     VulkanLibrary,
-    buffer::{Buffer, BufferCreateInfo, BufferUsage},
+    buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
     command_buffer::{
-        AutoCommandBufferBuilder, CommandBufferUsage, allocator::StandardCommandBufferAllocator,
+        AutoCommandBufferBuilder, CommandBufferUsage, CopyBufferInfo,
+        allocator::StandardCommandBufferAllocator,
     },
     descriptor_set::{
         DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator,
@@ -13,7 +14,9 @@ use vulkano::{
         physical::PhysicalDeviceType,
     },
     instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
-    memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator},
+    memory::allocator::{
+        AllocationCreateInfo, MemoryAllocatePreference, MemoryTypeFilter, StandardMemoryAllocator,
+    },
     pipeline::{
         ComputePipeline, Pipeline, PipelineBindPoint, PipelineLayout,
         PipelineShaderStageCreateInfo, compute::ComputePipelineCreateInfo,
@@ -129,24 +132,39 @@ fn main() {
     ));
 
     // We start by creating the buffer that will store the data.
-    let a = (0..100i32).collect::<Vec<i32>>();
-    let a_buffer = Buffer::from_iter(
+    let a = (0..100i32).map(|i| i as f32).collect::<Vec<f32>>();
+    let a_buffer_host = Buffer::from_iter(
         memory_allocator.clone(),
         BufferCreateInfo {
-            usage: BufferUsage::STORAGE_BUFFER,
+            usage: BufferUsage::TRANSFER_SRC,
             ..Default::default()
         },
         AllocationCreateInfo {
-            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+            memory_type_filter: MemoryTypeFilter::PREFER_HOST
                 | MemoryTypeFilter::HOST_RANDOM_ACCESS,
             ..Default::default()
         },
         // Iterator that produces the data.
-        a,
+        a.iter().copied(),
     )
     .unwrap();
 
-    let b = (1..101i32).collect::<Vec<i32>>();
+    let a_buffer_device: Subbuffer<[f32]> = Buffer::new_slice(
+        memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::TRANSFER_DST | BufferUsage::STORAGE_BUFFER,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
+            allocate_preference: MemoryAllocatePreference::AlwaysAllocate,
+            ..Default::default()
+        },
+        a.len() as u64,
+    )
+    .unwrap();
+
+    let b = (1..101i32).map(|i| i as f32).collect::<Vec<f32>>();
     let b_buffer = Buffer::from_iter(
         memory_allocator.clone(),
         BufferCreateInfo {
@@ -163,7 +181,7 @@ fn main() {
     )
     .unwrap();
 
-    let output = (0..1).map(|_| 0.0f32).collect::<Vec<f32>>();
+    let output = (0..100).map(|_| 0.0f32).collect::<Vec<f32>>();
     let output_buffer = Buffer::from_iter(
         memory_allocator.clone(),
         BufferCreateInfo {
@@ -177,7 +195,8 @@ fn main() {
         },
         // Iterator that produces the data.
         output,
-    ).unwrap();
+    )
+    .unwrap();
 
     // In order to let the shader access the buffer, we need to build a *descriptor set* that
     // contains the buffer.
@@ -192,9 +211,9 @@ fn main() {
         descriptor_set_allocator,
         layout.clone(),
         [
-            WriteDescriptorSet::buffer(0, a_buffer.clone()),
-            WriteDescriptorSet::buffer(1, b_buffer.clone()),
-            WriteDescriptorSet::buffer(2, output_buffer.clone()),
+            WriteDescriptorSet::buffer(0, output_buffer.clone()),
+            WriteDescriptorSet::buffer(1, a_buffer_device.clone()),
+            WriteDescriptorSet::buffer(2, b_buffer.clone()),
         ],
         [],
     )
@@ -207,6 +226,10 @@ fn main() {
         CommandBufferUsage::OneTimeSubmit,
     )
     .unwrap();
+
+    builder
+        .copy_buffer(CopyBufferInfo::buffers(a_buffer_host, a_buffer_device))
+        .unwrap();
 
     // Note that we clone the pipeline and the set. Since they are both wrapped in an `Arc`,
     // this only clones the `Arc` and not the whole pipeline or set (which aren't cloneable
@@ -258,7 +281,7 @@ fn main() {
     // it out. The call to `read()` would return an error if the buffer was still in use by the
     // GPU.
     let data_buffer_content = output_buffer.read().unwrap();
-    assert_eq!(data_buffer_content[0], (100 as f32).sqrt());
+    assert_eq!(data_buffer_content[50], (100 as f32).sqrt());
 
     println!("Success");
 }
