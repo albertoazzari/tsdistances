@@ -164,7 +164,7 @@ fn main() {
     )
     .unwrap();
 
-    let b = (1..101i32).map(|i| i as f32).collect::<Vec<f32>>();
+    let b = (0..100i32).map(|i| i as f32).collect::<Vec<f32>>();
     let b_buffer = Buffer::from_iter(
         memory_allocator.clone(),
         BufferCreateInfo {
@@ -281,7 +281,7 @@ fn main() {
     // it out. The call to `read()` would return an error if the buffer was still in use by the
     // GPU.
     let data_buffer_content = output_buffer.read().unwrap();
-    assert_eq!(data_buffer_content[50], (100 as f32).sqrt());
+    assert_eq!(data_buffer_content[50], 100.0f32);
 
     println!("Success");
 }

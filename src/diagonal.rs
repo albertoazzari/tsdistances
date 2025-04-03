@@ -107,7 +107,7 @@ fn diagonal_distance_<M: Matrix>(
             e -= 1;
         }
     }
-    
+
     let (rx, cx) = M::index_mat_to_diag(a_len, b_len);
     matrix.get_diagonal_cell(rx, cx)
 }

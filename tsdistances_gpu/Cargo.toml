@@ -10,3 +10,4 @@ crate-type = ["dylib"]
 
 [dependencies]
 spirv-std = { version = "0.9" }
+vulkano = "0.35.1"

@@ -194,208 +194,208 @@ macro_rules! gpu_call {
     };
 }
 
-// #[pyfunction]
-// #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-// pub fn euclidean(
-//     x1: Vec<Vec<f64>>,
-//     x2: Option<Vec<Vec<f64>>>,
-//     n_jobs: i32,
-// ) -> PyResult<Vec<Vec<f64>>> {
-//     let distance_matrix = compute_distance(
-//         |a, b| {
-//             a.iter()
-//                 .zip(b.iter())
-//                 .map(|(x, y)| (x - y).powi(2))
-//                 .sum::<f64>()
-//                 .sqrt()
-//         },
-//         x1,
-//         x2,
-//         n_jobs,
-//     );
-//     Ok(distance_matrix)
-// }
+#[pyfunction]
+#[pyo3(signature = (x1, x2=None, n_jobs=-1))]
+pub fn euclidean(
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    n_jobs: i32,
+) -> PyResult<Vec<Vec<f64>>> {
+    let distance_matrix = compute_distance(
+        |a, b| {
+            a.iter()
+                .zip(b.iter())
+                .map(|(x, y)| (x - y).powi(2))
+                .sum::<f64>()
+                .sqrt()
+        },
+        x1,
+        x2,
+        n_jobs,
+    );
+    Ok(distance_matrix)
+}
 
-// #[pyfunction]
-// #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-// pub fn catch_euclidean(
-//     x1: Vec<Vec<f64>>,
-//     x2: Option<Vec<Vec<f64>>>,
-//     n_jobs: i32,
-// ) -> PyResult<Vec<Vec<f64>>> {
-//     let x1 = x1
-//         .iter()
-//         .map(|x| {
-//             let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
-//             for i in 0..catch22::N_CATCH22 {
-//                 let value = catch22::compute(&x, i);
-//                 if value.is_nan() {
-//                     transformed_x.push(0.0);
-//                 } else {
-//                     transformed_x.push(value);
-//                 }
-//             }
-//             return transformed_x;
-//         })
-//         .collect::<Vec<Vec<_>>>();
-//     let x2 = if let Some(x2) = x2 {
-//         Some(
-//             x2.iter()
-//                 .map(|x| {
-//                     let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
-//                     for i in 0..catch22::N_CATCH22 {
-//                         let value = catch22::compute(&x, i);
-//                         if value.is_finite() {
-//                             transformed_x.push(value);
-//                         } else {
-//                             transformed_x.push(0.0);
-//                         }
-//                     }
-//                     return transformed_x;
-//                 })
-//                 .collect::<Vec<Vec<_>>>(),
-//         )
-//     } else {
-//         None
-//     };
-//     // Z-Normalize on the column-wise
-//     let mean_x1 = (0..catch22::N_CATCH22)
-//         .map(|i| {
-//             let sum = x1.iter().map(|x| x[i]).sum::<f64>();
-//             sum / x1.len() as f64
-//         })
-//         .collect::<Vec<f64>>();
-//     let std_x1 = (0..catch22::N_CATCH22)
-//         .map(|i| {
-//             let sum = x1.iter().map(|x| (x[i] - mean_x1[i]).powi(2)).sum::<f64>();
-//             (sum / x1.len() as f64).sqrt()
-//         })
-//         .collect::<Vec<f64>>();
-//     let x1 = x1
-//         .iter()
-//         .map(|x| {
-//             x.iter()
-//                 .enumerate()
-//                 .map(|(i, val)| {
-//                     (val - mean_x1[i])
-//                         / if std_x1[i].abs() < f64::EPSILON {
-//                             1.0
-//                         } else {
-//                             std_x1[i]
-//                         }
-//                 })
-//                 .collect::<Vec<f64>>()
-//         })
-//         .collect::<Vec<Vec<f64>>>();
+#[pyfunction]
+#[pyo3(signature = (x1, x2=None, n_jobs=-1))]
+pub fn catch_euclidean(
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    n_jobs: i32,
+) -> PyResult<Vec<Vec<f64>>> {
+    let x1 = x1
+        .iter()
+        .map(|x| {
+            let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
+            for i in 0..catch22::N_CATCH22 {
+                let value = catch22::compute(&x, i);
+                if value.is_nan() {
+                    transformed_x.push(0.0);
+                } else {
+                    transformed_x.push(value);
+                }
+            }
+            return transformed_x;
+        })
+        .collect::<Vec<Vec<_>>>();
+    let x2 = if let Some(x2) = x2 {
+        Some(
+            x2.iter()
+                .map(|x| {
+                    let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
+                    for i in 0..catch22::N_CATCH22 {
+                        let value = catch22::compute(&x, i);
+                        if value.is_finite() {
+                            transformed_x.push(value);
+                        } else {
+                            transformed_x.push(0.0);
+                        }
+                    }
+                    return transformed_x;
+                })
+                .collect::<Vec<Vec<_>>>(),
+        )
+    } else {
+        None
+    };
+    // Z-Normalize on the column-wise
+    let mean_x1 = (0..catch22::N_CATCH22)
+        .map(|i| {
+            let sum = x1.iter().map(|x| x[i]).sum::<f64>();
+            sum / x1.len() as f64
+        })
+        .collect::<Vec<f64>>();
+    let std_x1 = (0..catch22::N_CATCH22)
+        .map(|i| {
+            let sum = x1.iter().map(|x| (x[i] - mean_x1[i]).powi(2)).sum::<f64>();
+            (sum / x1.len() as f64).sqrt()
+        })
+        .collect::<Vec<f64>>();
+    let x1 = x1
+        .iter()
+        .map(|x| {
+            x.iter()
+                .enumerate()
+                .map(|(i, val)| {
+                    (val - mean_x1[i])
+                        / if std_x1[i].abs() < f64::EPSILON {
+                            1.0
+                        } else {
+                            std_x1[i]
+                        }
+                })
+                .collect::<Vec<f64>>()
+        })
+        .collect::<Vec<Vec<f64>>>();
 
-//     let x2 = if let Some(x2) = x2 {
-//         let mean_x2 = (0..catch22::N_CATCH22)
-//             .map(|i| {
-//                 let sum = x2.iter().map(|x| x[i]).sum::<f64>();
-//                 sum / x2.len() as f64
-//             })
-//             .collect::<Vec<f64>>();
-//         let std_x2 = (0..catch22::N_CATCH22)
-//             .map(|i| {
-//                 let sum = x2.iter().map(|x| (x[i] - mean_x2[i]).powi(2)).sum::<f64>();
-//                 (sum / x2.len() as f64).sqrt()
-//             })
-//             .collect::<Vec<f64>>();
-//         Some(
-//             x2.iter()
-//                 .map(|x| {
-//                     x.iter()
-//                         .enumerate()
-//                         .map(|(i, val)| {
-//                             (val - mean_x2[i])
-//                                 / if std_x2[i].abs() < f64::EPSILON {
-//                                     1.0
-//                                 } else {
-//                                     std_x2[i]
-//                                 }
-//                         })
-//                         .collect::<Vec<f64>>()
-//                 })
-//                 .collect::<Vec<Vec<f64>>>(),
-//         )
-//     } else {
-//         None
-//     };
-//     euclidean(x1, x2, n_jobs)
-// }
+    let x2 = if let Some(x2) = x2 {
+        let mean_x2 = (0..catch22::N_CATCH22)
+            .map(|i| {
+                let sum = x2.iter().map(|x| x[i]).sum::<f64>();
+                sum / x2.len() as f64
+            })
+            .collect::<Vec<f64>>();
+        let std_x2 = (0..catch22::N_CATCH22)
+            .map(|i| {
+                let sum = x2.iter().map(|x| (x[i] - mean_x2[i]).powi(2)).sum::<f64>();
+                (sum / x2.len() as f64).sqrt()
+            })
+            .collect::<Vec<f64>>();
+        Some(
+            x2.iter()
+                .map(|x| {
+                    x.iter()
+                        .enumerate()
+                        .map(|(i, val)| {
+                            (val - mean_x2[i])
+                                / if std_x2[i].abs() < f64::EPSILON {
+                                    1.0
+                                } else {
+                                    std_x2[i]
+                                }
+                        })
+                        .collect::<Vec<f64>>()
+                })
+                .collect::<Vec<Vec<f64>>>(),
+        )
+    } else {
+        None
+    };
+    euclidean(x1, x2, n_jobs)
+}
 
-// #[pyfunction]
-// #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, gap_penalty=0.0, n_jobs=-1, device="cpu"))]
-// pub fn erp(
-//     x1: Vec<Vec<f64>>,
-//     x2: Option<Vec<Vec<f64>>>,
-//     sakoe_chiba_band: f64,
-//     gap_penalty: f64,
-//     n_jobs: i32,
-//     device: Option<&str>,
-// ) -> PyResult<Vec<Vec<f64>>> {
-//     if gap_penalty < 0.0 {
-//         return Err(pyo3::exceptions::PyValueError::new_err(
-//             "Gap penalty must be non-negative",
-//         ));
-//     }
-//     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
-//         return Err(pyo3::exceptions::PyValueError::new_err(
-//             "Sakoe-Chiba band must be non-negative and less than 1.0",
-//         ));
-//     }
-//     let mut distance_matrix = None;
-//     if let Some(device) = device {
-//         match device {
-//             "cpu" => {
-//                 distance_matrix = Some(compute_distance(
-//                     |a, b| {
-//                         let erp_cost_func =
-//                             |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
-//                                 (y + (a[i] - b[j]).abs()).min(
-//                                     (z + (a[i] - gap_penalty).abs())
-//                                         .min(x + (b[j] - gap_penalty).abs()),
-//                                 )
-//                             };
+#[pyfunction]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, gap_penalty=0.0, n_jobs=-1, device="cpu"))]
+pub fn erp(
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
+    gap_penalty: f64,
+    n_jobs: i32,
+    device: Option<&str>,
+) -> PyResult<Vec<Vec<f64>>> {
+    if gap_penalty < 0.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Gap penalty must be non-negative",
+        ));
+    }
+    if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Sakoe-Chiba band must be non-negative and less than 1.0",
+        ));
+    }
+    let mut distance_matrix = None;
+    if let Some(device) = device {
+        match device {
+            "cpu" => {
+                distance_matrix = Some(compute_distance(
+                    |a, b| {
+                        let erp_cost_func =
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                                (y + (a[i] - b[j]).abs()).min(
+                                    (z + (a[i] - gap_penalty).abs())
+                                        .min(x + (b[j] - gap_penalty).abs()),
+                                )
+                            };
 
-//                         diagonal::diagonal_distance::<DiagonalMatrix>(
-//                             a,
-//                             b,
-//                             f64::INFINITY,
-//                             sakoe_chiba_band,
-//                             erp_cost_func,
-//                             erp_cost_func,
-//                         )
-//                     },
-//                     x1,
-//                     x2,
-//                     n_jobs,
-//                 ));
-//             }
-//             "gpu" => {
-//                 let device_gpu = get_best_gpu();
-//                 gpu_call!(
-//                     device_gpu(device_gpu),
-//                     distance_matrix = |x1(a), x2(b), BatchMode| {
-//                         tsdistances_gpu::erp::<BatchMode>(device_gpu.clone(), a, b, gap_penalty)
-//                     }
-//                 );
-//             }
-//             _ => {
-//                 return Err(pyo3::exceptions::PyValueError::new_err(
-//                     "Device must be either 'cpu' or 'gpu'",
-//                 ));
-//             }
-//         }
-//     }
-//     if let Some(distance_matrix) = distance_matrix {
-//         return Ok(distance_matrix);
-//     } else {
-//         return Err(pyo3::exceptions::PyValueError::new_err(
-//             "Error computing ERP distance",
-//         ));
-//     }
-// }
+                        diagonal::diagonal_distance::<DiagonalMatrix>(
+                            a,
+                            b,
+                            f64::INFINITY,
+                            sakoe_chiba_band,
+                            erp_cost_func,
+                            erp_cost_func,
+                        )
+                    },
+                    x1,
+                    x2,
+                    n_jobs,
+                ));
+            }
+            "gpu" => {
+                let device_gpu = get_device();
+                gpu_call!(
+                    device_gpu(device_gpu),
+                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                        tsdistances_gpu::erp::<BatchMode>(device_gpu.clone(), a, b, gap_penalty)
+                    }
+                );
+            }
+            _ => {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "Device must be either 'cpu' or 'gpu'",
+                ));
+            }
+        }
+    }
+    if let Some(distance_matrix) = distance_matrix {
+        return Ok(distance_matrix);
+    } else {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Error computing ERP distance",
+        ));
+    }
+}
 
 // #[pyfunction]
 // #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, epsilon=1.0, n_jobs=-1, device="cpu"))]
