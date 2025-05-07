@@ -8,7 +8,7 @@ pub trait GpuBatchMode {
     const IS_BATCH: bool;
 
     type ReturnType;
-    type InputType<'a>;
+    type InputType<'a>: Copy;
 
     fn get_samples_count(input: &Self::InputType<'_>) -> usize;
     fn new_return(alen: usize, blen: usize) -> Self::ReturnType;
@@ -73,13 +73,13 @@ impl GpuBatchMode for SingleBatchMode {
     }
 }
 
+
 pub struct MultiBatchMode;
 
 impl GpuBatchMode for MultiBatchMode {
     const IS_BATCH: bool = true;
 
     type ReturnType = Vec<Vec<f64>>;
-
     type InputType<'a> = &'a [Vec<f64>];
 
     fn get_samples_count(input: &Self::InputType<'_>) -> usize {
@@ -175,7 +175,6 @@ pub fn diamond_partitioning_gpu<'a, G: GpuKernelImpl, M: GpuBatchMode>(
 
     while start < a_len {
         let len = a_batch_size.min(a_len - start);
-        // println!("start: {}, len: {}, a_len: {}", start, len, a_len);
         let a = M::get_subslice(&a, start, len);
         let a_padded = M::build_padded(&a, max_subgroup_threads);
         let b_padded = M::build_padded(&b, max_subgroup_threads);
@@ -295,6 +294,8 @@ fn diamond_partitioning_gpu_<G: GpuKernelImpl, M: GpuBatchMode>(
     }
 
     let diagonal = diagonal.into_vec().unwrap();
+
+    // println!("Diagonal: {:?}", diagonal);
 
     fn index_mat_to_diag(i: usize, j: usize) -> (usize, isize) {
         (i + j, (j as isize) - (i as isize))

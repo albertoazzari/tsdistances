@@ -2,9 +2,8 @@
 use crate::{
     diagonal,
     matrix::DiagonalMatrix,
-    utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore},
+    utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore}, Number,
 };
-use core::f64;
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use std::cmp::max;
@@ -16,11 +15,11 @@ const MIN_CHUNK_SIZE: usize = 16;
 const CHUNKS_PER_THREAD: usize = 8;
 
 fn compute_distance_batched(
-    distance: impl (Fn(&[Vec<f64>], &[Vec<f64>], bool) -> Vec<Vec<f64>>) + Sync + Send,
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
+    distance: impl (Fn(&[Vec<Number>], &[Vec<Number>], bool) -> Vec<Vec<Number>>) + Sync + Send,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
     chunk_size: usize,
-) -> Vec<Vec<f64>> {
+) -> Vec<Vec<Number>> {
     let mut result = Vec::with_capacity(x1.len());
 
     let mut x1_offset = 0;
@@ -46,11 +45,11 @@ fn compute_distance_batched(
 /// performance. The number of threads used can be controlled via the `n_jobs` parameter.
 ///
 fn compute_distance(
-    distance: impl (Fn(&[f64], &[f64]) -> f64) + Sync + Send,
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
+    distance: impl (Fn(&[Number], &[Number]) -> Number) + Sync + Send,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
     n_jobs: i32,
-) -> Vec<Vec<f64>> {
+) -> Vec<Vec<Number>> {
     let n_jobs = if n_jobs == -1 {
         rayon::current_num_threads() as usize
     } else {
@@ -114,7 +113,7 @@ fn compute_distance(
     }
 }
 
-fn check_same_length(x: &[Vec<f64>]) -> bool {
+fn check_same_length(x: &[Vec<Number>]) -> bool {
     if x.len() == 0 {
         return false;
     }
@@ -138,7 +137,7 @@ fn compute_max_group(
     let max_group = if count1 * count2 <= max_instances {
         count1.max(count2)
     } else {
-        let max_sqrt = (max_instances as f64).sqrt().floor() as usize;
+        let max_sqrt = (max_instances as Number).sqrt().floor() as usize;
         if count1 < max_sqrt {
             count2 / count1
         } else if count2 < max_sqrt {
@@ -200,16 +199,16 @@ macro_rules! gpu_call {
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
 pub fn euclidean(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
     n_jobs: i32,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     let distance_matrix = compute_distance(
         |a, b| {
             a.iter()
                 .zip(b.iter())
                 .map(|(x, y)| (x - y).powi(2))
-                .sum::<f64>()
+                .sum::<Number>()
                 .sqrt()
         },
         x1,
@@ -219,124 +218,124 @@ pub fn euclidean(
     Ok(distance_matrix)
 }
 
-#[pyfunction]
-#[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-pub fn catch_euclidean(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    n_jobs: i32,
-) -> PyResult<Vec<Vec<f64>>> {
-    let x1 = x1
-        .iter()
-        .map(|x| {
-            let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
-            for i in 0..catch22::N_CATCH22 {
-                let value = catch22::compute(&x, i);
-                if value.is_nan() {
-                    transformed_x.push(0.0);
-                } else {
-                    transformed_x.push(value);
-                }
-            }
-            return transformed_x;
-        })
-        .collect::<Vec<Vec<_>>>();
-    let x2 = if let Some(x2) = x2 {
-        Some(
-            x2.iter()
-                .map(|x| {
-                    let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
-                    for i in 0..catch22::N_CATCH22 {
-                        let value = catch22::compute(&x, i);
-                        if value.is_finite() {
-                            transformed_x.push(value);
-                        } else {
-                            transformed_x.push(0.0);
-                        }
-                    }
-                    return transformed_x;
-                })
-                .collect::<Vec<Vec<_>>>(),
-        )
-    } else {
-        None
-    };
-    // Z-Normalize on the column-wise
-    let mean_x1 = (0..catch22::N_CATCH22)
-        .map(|i| {
-            let sum = x1.iter().map(|x| x[i]).sum::<f64>();
-            sum / x1.len() as f64
-        })
-        .collect::<Vec<f64>>();
-    let std_x1 = (0..catch22::N_CATCH22)
-        .map(|i| {
-            let sum = x1.iter().map(|x| (x[i] - mean_x1[i]).powi(2)).sum::<f64>();
-            (sum / x1.len() as f64).sqrt()
-        })
-        .collect::<Vec<f64>>();
-    let x1 = x1
-        .iter()
-        .map(|x| {
-            x.iter()
-                .enumerate()
-                .map(|(i, val)| {
-                    (val - mean_x1[i])
-                        / if std_x1[i].abs() < f64::EPSILON {
-                            1.0
-                        } else {
-                            std_x1[i]
-                        }
-                })
-                .collect::<Vec<f64>>()
-        })
-        .collect::<Vec<Vec<f64>>>();
+// #[pyfunction]
+// #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
+// pub fn catch_euclidean(
+//     x1: Vec<Vec<Number>>,
+//     x2: Option<Vec<Vec<Number>>>,
+//     n_jobs: i32,
+// ) -> PyResult<Vec<Vec<Number>>> {
+//     let x1 = x1
+//         .iter()
+//         .map(|x| {
+//             let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
+//             for i in 0..catch22::N_CATCH22 {
+//                 let value = catch22::compute(&x, i);
+//                 if value.is_nan() {
+//                     transformed_x.push(0.0);
+//                 } else {
+//                     transformed_x.push(value);
+//                 }
+//             }
+//             return transformed_x;
+//         })
+//         .collect::<Vec<Vec<_>>>();
+//     let x2 = if let Some(x2) = x2 {
+//         Some(
+//             x2.iter()
+//                 .map(|x| {
+//                     let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
+//                     for i in 0..catch22::N_CATCH22 {
+//                         let value = catch22::compute(&x, i);
+//                         if value.is_finite() {
+//                             transformed_x.push(value);
+//                         } else {
+//                             transformed_x.push(0.0);
+//                         }
+//                     }
+//                     return transformed_x;
+//                 })
+//                 .collect::<Vec<Vec<_>>>(),
+//         )
+//     } else {
+//         None
+//     };
+//     // Z-Normalize on the column-wise
+//     let mean_x1 = (0..catch22::N_CATCH22)
+//         .map(|i| {
+//             let sum = x1.iter().map(|x| x[i]).sum::<Number>();
+//             sum / x1.len() as Number
+//         })
+//         .collect::<Vec<Number>>();
+//     let std_x1 = (0..catch22::N_CATCH22)
+//         .map(|i| {
+//             let sum = x1.iter().map(|x| (x[i] - mean_x1[i]).powi(2)).sum::<Number>();
+//             (sum / x1.len() as Number).sqrt()
+//         })
+//         .collect::<Vec<Number>>();
+//     let x1 = x1
+//         .iter()
+//         .map(|x| {
+//             x.iter()
+//                 .enumerate()
+//                 .map(|(i, val)| {
+//                     (val - mean_x1[i])
+//                         / if std_x1[i].abs() < Number::EPSILON {
+//                             1.0
+//                         } else {
+//                             std_x1[i]
+//                         }
+//                 })
+//                 .collect::<Vec<Number>>()
+//         })
+//         .collect::<Vec<Vec<Number>>>();
 
-    let x2 = if let Some(x2) = x2 {
-        let mean_x2 = (0..catch22::N_CATCH22)
-            .map(|i| {
-                let sum = x2.iter().map(|x| x[i]).sum::<f64>();
-                sum / x2.len() as f64
-            })
-            .collect::<Vec<f64>>();
-        let std_x2 = (0..catch22::N_CATCH22)
-            .map(|i| {
-                let sum = x2.iter().map(|x| (x[i] - mean_x2[i]).powi(2)).sum::<f64>();
-                (sum / x2.len() as f64).sqrt()
-            })
-            .collect::<Vec<f64>>();
-        Some(
-            x2.iter()
-                .map(|x| {
-                    x.iter()
-                        .enumerate()
-                        .map(|(i, val)| {
-                            (val - mean_x2[i])
-                                / if std_x2[i].abs() < f64::EPSILON {
-                                    1.0
-                                } else {
-                                    std_x2[i]
-                                }
-                        })
-                        .collect::<Vec<f64>>()
-                })
-                .collect::<Vec<Vec<f64>>>(),
-        )
-    } else {
-        None
-    };
-    euclidean(x1, x2, n_jobs)
-}
+//     let x2 = if let Some(x2) = x2 {
+//         let mean_x2 = (0..catch22::N_CATCH22)
+//             .map(|i| {
+//                 let sum = x2.iter().map(|x| x[i]).sum::<Number>();
+//                 sum / x2.len() as Number
+//             })
+//             .collect::<Vec<Number>>();
+//         let std_x2 = (0..catch22::N_CATCH22)
+//             .map(|i| {
+//                 let sum = x2.iter().map(|x| (x[i] - mean_x2[i]).powi(2)).sum::<Number>();
+//                 (sum / x2.len() as Number).sqrt()
+//             })
+//             .collect::<Vec<Number>>();
+//         Some(
+//             x2.iter()
+//                 .map(|x| {
+//                     x.iter()
+//                         .enumerate()
+//                         .map(|(i, val)| {
+//                             (val - mean_x2[i])
+//                                 / if std_x2[i].abs() < Number::EPSILON {
+//                                     1.0
+//                                 } else {
+//                                     std_x2[i]
+//                                 }
+//                         })
+//                         .collect::<Vec<Number>>()
+//                 })
+//                 .collect::<Vec<Vec<Number>>>(),
+//         )
+//     } else {
+//         None
+//     };
+//     euclidean(x1, x2, n_jobs)
+// }
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, gap_penalty=0.0, n_jobs=-1, device="cpu"))]
 pub fn erp(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    gap_penalty: f64,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
+    sakoe_chiba_band: Number,
+    gap_penalty: Number,
     n_jobs: i32,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     if gap_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Gap penalty must be non-negative",
@@ -354,7 +353,7 @@ pub fn erp(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let erp_cost_func =
-                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
                                 (y + (a[i] - b[j]).abs()).min(
                                     (z + (a[i] - gap_penalty).abs())
                                         .min(x + (b[j] - gap_penalty).abs()),
@@ -364,7 +363,7 @@ pub fn erp(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            f64::INFINITY,
+                            Number::INFINITY,
                             sakoe_chiba_band,
                             erp_cost_func,
                             erp_cost_func,
@@ -375,15 +374,15 @@ pub fn erp(
                     n_jobs,
                 ));
             }
-            "gpu" => {
-                let device_gpu = get_best_gpu();
-                gpu_call!(
-                    device_gpu(device_gpu),
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
-                        tsdistances_gpu::erp::<BatchMode>(device_gpu.clone(), a, b, gap_penalty)
-                    }
-                );
-            }
+            // "gpu" => {
+            //     let device_gpu = get_best_gpu();
+            //     gpu_call!(
+            //         device_gpu(device_gpu),
+            //         distance_matrix = |x1(a), x2(b), BatchMode| {
+            //             tsdistances_gpu::erp::<BatchMode>(device_gpu.clone(), a, b, gap_penalty)
+            //         }
+            //     );
+            // }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -403,13 +402,13 @@ pub fn erp(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, epsilon=1.0, n_jobs=-1, device="cpu"))]
 pub fn lcss(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    epsilon: f64,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
+    sakoe_chiba_band: Number,
+    epsilon: Number,
     n_jobs: i32,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     if epsilon < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Epsilon must be non-negative",
@@ -428,10 +427,10 @@ pub fn lcss(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let lcss_cost_func =
-                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
                                 let dist = (a[i] - b[j]).abs();
-                                (dist <= epsilon) as i32 as f64 * (y + 1.0)
-                                    + (dist > epsilon) as i32 as f64 * x.max(z)
+                                (dist <= epsilon) as i32 as Number * (y + 1.0)
+                                    + (dist > epsilon) as i32 as Number * x.max(z)
                             };
 
                         let similarity = diagonal::diagonal_distance::<DiagonalMatrix>(
@@ -442,7 +441,7 @@ pub fn lcss(
                             lcss_cost_func,
                             lcss_cost_func,
                         );
-                        let min_len = a.len().min(b.len()) as f64;
+                        let min_len = a.len().min(b.len()) as Number;
                         1.0 - similarity / min_len
                     },
                     x1,
@@ -450,20 +449,20 @@ pub fn lcss(
                     n_jobs,
                 ));
             }
-            "gpu" => {
-                let device_gpu = get_best_gpu();
-                gpu_call!(
-                    device_gpu(device_gpu),
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
-                        let similarity =
-                            tsdistances_gpu::lcss::<BatchMode>(device_gpu.clone(), a, b, epsilon);
-                        let min_len = BatchMode::get_sample_length(&a)
-                            .min(BatchMode::get_sample_length(&b))
-                            as f64;
-                        BatchMode::apply_fn(similarity, |s| 1.0 - s / min_len)
-                    }
-                );
-            }
+            // "gpu" => {
+            //     let device_gpu = get_best_gpu();
+            //     gpu_call!(
+            //         device_gpu(device_gpu),
+            //         distance_matrix = |x1(a), x2(b), BatchMode| {
+            //             let similarity =
+            //                 tsdistances_gpu::lcss::<BatchMode>(device_gpu.clone(), a, b, epsilon);
+            //             let min_len = BatchMode::get_sample_length(&a)
+            //                 .min(BatchMode::get_sample_length(&b))
+            //                 as Number;
+            //             BatchMode::apply_fn(similarity, |s| 1.0 - s / min_len)
+            //         }
+            //     );
+            // }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -483,12 +482,12 @@ pub fn lcss(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu"))]
 pub fn dtw(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
+    sakoe_chiba_band: Number,
     n_jobs: i32,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -502,14 +501,14 @@ pub fn dtw(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let dtw_cost_func =
-                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
                                 let dist = (a[i] - b[j]).powi(2);
                                 dist + z.min(x.min(y))
                             };
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            f64::INFINITY,
+                            Number::INFINITY,
                             sakoe_chiba_band,
                             dtw_cost_func,
                             dtw_cost_func,
@@ -520,15 +519,15 @@ pub fn dtw(
                     n_jobs,
                 ));
             }
-            "gpu" => {
-                let device_gpu = get_best_gpu();
-                gpu_call!(
-                    device_gpu(device_gpu),
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
-                        tsdistances_gpu::dtw::<BatchMode>(device_gpu.clone(), a, b)
-                    }
-                );
-            }
+            // "gpu" => {
+            //     let device_gpu = get_best_gpu();
+            //     gpu_call!(
+            //         device_gpu(device_gpu),
+            //         distance_matrix = |x1(a), x2(b), BatchMode| {
+            //             tsdistances_gpu::dtw::<BatchMode>(device_gpu.clone(), a, b)
+            //         }
+            //     );
+            // }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -549,12 +548,12 @@ pub fn dtw(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu"))]
 pub fn ddtw(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
+    sakoe_chiba_band: Number,
     n_jobs: i32,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     let x1_d = derivate(&x1);
     let x2_d = if let Some(x2) = &x2 {
         Some(derivate(&x2))
@@ -567,13 +566,13 @@ pub fn ddtw(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, g=0.05, n_jobs=-1, device="cpu"))]
 pub fn wdtw(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    g: f64, //constant that controls the curvature (slope) of the function
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
+    sakoe_chiba_band: Number,
+    g: Number, //constant that controls the curvature (slope) of the function
     n_jobs: i32,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -589,7 +588,7 @@ pub fn wdtw(
                         let weights = dtw_weights(a.len().max(b.len()), g);
 
                         let wdtw_cost_func =
-                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
                                 let dist = (a[i] - b[j]).powi(2)
                                     * weights[(i as i32 - j as i32).abs() as usize];
                                 dist + z.min(x.min(y))
@@ -598,7 +597,7 @@ pub fn wdtw(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            f64::INFINITY,
+                            Number::INFINITY,
                             sakoe_chiba_band,
                             wdtw_cost_func,
                             wdtw_cost_func,
@@ -609,19 +608,19 @@ pub fn wdtw(
                     n_jobs,
                 ));
             }
-            "gpu" => {
-                let device_gpu = get_best_gpu();
-                gpu_call!(
-                    device_gpu(device_gpu),
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
-                        let weights = dtw_weights(
-                            BatchMode::get_sample_length(&a).max(BatchMode::get_sample_length(&b)),
-                            g,
-                        );
-                        tsdistances_gpu::wdtw::<BatchMode>(device_gpu.clone(), a, b, &weights)
-                    }
-                );
-            }
+            // "gpu" => {
+            //     let device_gpu = get_best_gpu();
+            //     gpu_call!(
+            //         device_gpu(device_gpu),
+            //         distance_matrix = |x1(a), x2(b), BatchMode| {
+            //             let weights = dtw_weights(
+            //                 BatchMode::get_sample_length(&a).max(BatchMode::get_sample_length(&b)),
+            //                 g,
+            //             );
+            //             tsdistances_gpu::wdtw::<BatchMode>(device_gpu.clone(), a, b, &weights)
+            //         }
+            //     );
+            // }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -642,13 +641,13 @@ pub fn wdtw(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, g=0.05, n_jobs=-1, device="cpu"))]
 pub fn wddtw(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    g: f64,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
+    sakoe_chiba_band: Number,
+    g: Number,
     n_jobs: i32,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     let x1_d = derivate(&x1);
     let x2_d = if let Some(x2) = &x2 {
         Some(derivate(&x2))
@@ -661,12 +660,12 @@ pub fn wddtw(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu"))]
 pub fn msm(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
+    sakoe_chiba_band: Number,
     n_jobs: i32,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -680,7 +679,7 @@ pub fn msm(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let msm_cost_func =
-                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
                                 (y + (a[i] - b[j]).abs())
                                     .min(
                                         z + msm_cost_function(
@@ -701,9 +700,9 @@ pub fn msm(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            f64::INFINITY,
+                            Number::INFINITY,
                             sakoe_chiba_band,
-                            // |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                            // |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
                             //     if i == 1 && j == 1 {
                             //         y + (a[i] - b[j]).abs()
                             //     } else if j == 1 {
@@ -729,15 +728,15 @@ pub fn msm(
                     n_jobs,
                 ));
             }
-            "gpu" => {
-                let device_gpu = get_best_gpu();
-                gpu_call!(
-                    device_gpu(device_gpu),
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
-                        tsdistances_gpu::msm::<BatchMode>(device_gpu.clone(), a, b)
-                    }
-                );
-            }
+            // "gpu" => {
+            //     let device_gpu = get_best_gpu();
+            //     gpu_call!(
+            //         device_gpu(device_gpu),
+            //         distance_matrix = |x1(a), x2(b), BatchMode| {
+            //             tsdistances_gpu::msm::<BatchMode>(device_gpu.clone(), a, b)
+            //         }
+            //     );
+            // }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -758,14 +757,14 @@ pub fn msm(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, stiffness=0.001, penalty=1.0, n_jobs=-1, device="cpu"))]
 pub fn twe(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    stiffness: f64,
-    penalty: f64,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
+    sakoe_chiba_band: Number,
+    stiffness: Number,
+    penalty: Number,
     n_jobs: i32,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     if stiffness < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Stiffness (nu) must be non-negative",
@@ -791,9 +790,9 @@ pub fn twe(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let twe_cost_func =
-                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
                                 // deletion in a
-                                let del_a: f64 = z
+                                let del_a: Number = z
                                     + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs()
                                     + delete_addition;
 
@@ -810,7 +809,7 @@ pub fn twe(
                                 let match_a_b = y
                                     + match_current
                                     + match_previous
-                                    + stiffness * (2.0 * (i as isize - j as isize).abs() as f64);
+                                    + stiffness * (2.0 * (i as isize - j as isize).abs() as Number);
 
                                 del_a.min(del_b.min(match_a_b))
                             };
@@ -818,7 +817,7 @@ pub fn twe(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            f64::INFINITY,
+                            Number::INFINITY,
                             sakoe_chiba_band,
                             twe_cost_func,
                             twe_cost_func,
@@ -829,21 +828,21 @@ pub fn twe(
                     n_jobs,
                 ));
             }
-            "gpu" => {
-                let device_gpu = get_best_gpu();
-                gpu_call!(
-                    device_gpu(device_gpu),
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
-                        tsdistances_gpu::twe::<BatchMode>(
-                            device_gpu.clone(),
-                            a,
-                            b,
-                            stiffness,
-                            penalty,
-                        )
-                    }
-                );
-            }
+            // "gpu" => {
+            //     let device_gpu = get_best_gpu();
+            //     gpu_call!(
+            //         device_gpu(device_gpu),
+            //         distance_matrix = |x1(a), x2(b), BatchMode| {
+            //             tsdistances_gpu::twe::<BatchMode>(
+            //                 device_gpu.clone(),
+            //                 a,
+            //                 b,
+            //                 stiffness,
+            //                 penalty,
+            //             )
+            //         }
+            //     );
+            // }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -864,13 +863,13 @@ pub fn twe(
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, warp_penalty=0.1, n_jobs=-1, device="cpu"))]
 pub fn adtw(
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    warp_penalty: f64,
+    x1: Vec<Vec<Number>>,
+    x2: Option<Vec<Vec<Number>>>,
+    sakoe_chiba_band: Number,
+    warp_penalty: Number,
     n_jobs: i32,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     if warp_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Weight must be non-negative",
@@ -888,7 +887,7 @@ pub fn adtw(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let adtw_cost_func =
-                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
                                 let dist = (a[i] - b[j]).powi(2);
                                 dist + (z + warp_penalty).min((x + warp_penalty).min(y))
                             };
@@ -896,7 +895,7 @@ pub fn adtw(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            f64::INFINITY,
+                            Number::INFINITY,
                             sakoe_chiba_band,
                             adtw_cost_func,
                             adtw_cost_func,
@@ -907,15 +906,15 @@ pub fn adtw(
                     n_jobs,
                 ));
             }
-            "gpu" => {
-                let device_gpu = get_best_gpu();
-                gpu_call!(
-                    device_gpu(device_gpu),
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
-                        tsdistances_gpu::adtw::<BatchMode>(device_gpu.clone(), a, b, warp_penalty)
-                    }
-                );
-            }
+            // "gpu" => {
+            //     let device_gpu = get_best_gpu();
+            //     gpu_call!(
+            //         device_gpu(device_gpu),
+            //         distance_matrix = |x1(a), x2(b), BatchMode| {
+            //             tsdistances_gpu::adtw::<BatchMode>(device_gpu.clone(), a, b, warp_penalty)
+            //         }
+            //     );
+            // }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -935,7 +934,7 @@ pub fn adtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult<Vec<Vec<f64>>> {
+pub fn sb(x1: Vec<Vec<Number>>, x2: Option<Vec<Vec<Number>>>, n_jobs: i32) -> PyResult<Vec<Vec<Number>>> {
     let distance_matrix = compute_distance(
         |a, b| {
             let a = zscore(&a);
@@ -954,11 +953,11 @@ pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, n_jobs: i32) -> PyResult
 #[pyfunction]
 #[pyo3(signature = (x1, window, x2=None, n_jobs=-1))]
 pub fn mp(
-    x1: Vec<Vec<f64>>,
+    x1: Vec<Vec<Number>>,
     window: i32,
-    x2: Option<Vec<Vec<f64>>>,
+    x2: Option<Vec<Vec<Number>>>,
     n_jobs: i32,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<Vec<Vec<Number>>> {
     let threshold = 0.05;
     let window = window as usize;
     let distance_matrix = compute_distance(
@@ -967,7 +966,7 @@ pub fn mp(
             let n_b = b.len();
             let mut p_abba = mp_(&a, &b, window as usize);
             let n = min(
-                (threshold * (n_a + n_b) as f64).ceil() as usize,
+                (threshold * (n_a + n_b) as Number).ceil() as usize,
                 n_a - window + 1 + n_b - window + 1 - 1,
             );
             *p_abba
@@ -981,14 +980,14 @@ pub fn mp(
     Ok(distance_matrix)
 }
 
-fn mp_(a: &[f64], b: &[f64], window: usize) -> Vec<f64> {
+fn mp_(a: &[Number], b: &[Number], window: usize) -> Vec<Number> {
     let n_a = a.len();
     let n_b = b.len();
 
     let window = window.min(n_a).min(n_b);
 
-    let mut p_ab = vec![f64::INFINITY; n_a - window + 1];
-    let mut p_ba = vec![f64::INFINITY; n_b - window + 1];
+    let mut p_ab = vec![Number::INFINITY; n_a - window + 1];
+    let mut p_ba = vec![Number::INFINITY; n_b - window + 1];
 
     let (mean_a, std_a) = mean_std_per_windows(&a, window);
     let (mean_b, std_b) = mean_std_per_windows(&b, window);
@@ -1014,27 +1013,27 @@ fn mp_(a: &[f64], b: &[f64], window: usize) -> Vec<f64> {
     }
 }
 
-fn mean_std_per_windows(a: &[f64], window: usize) -> (Vec<f64>, Vec<f64>) {
+fn mean_std_per_windows(a: &[Number], window: usize) -> (Vec<Number>, Vec<Number>) {
     let n = a.len();
 
     let mut means = Vec::with_capacity(n - window + 1);
     let mut stds = Vec::with_capacity(n - window + 1);
 
-    let mut sum: f64 = a[0..window].iter().sum();
-    let mut sum_squares: f64 = a[0..window].iter().map(|&x| x * x).sum();
+    let mut sum: Number = a[0..window].iter().sum();
+    let mut sum_squares: Number = a[0..window].iter().map(|&x| x * x).sum();
 
-    means.push(sum / window as f64);
-    let var = (sum_squares / window as f64) - (means[0] * means[0]);
+    means.push(sum / window as Number);
+    let var = (sum_squares / window as Number) - (means[0] * means[0]);
     stds.push(var.sqrt());
 
     for i in window..n {
         sum += a[i] - a[i - window];
         sum_squares += a[i] * a[i] - a[i - window] * a[i - window];
 
-        let mean = sum / window as f64;
+        let mean = sum / window as Number;
         means.push(mean);
 
-        let var = (sum_squares / window as f64) - (mean * mean);
+        let var = (sum_squares / window as Number) - (mean * mean);
         stds.push(var.sqrt());
     }
 

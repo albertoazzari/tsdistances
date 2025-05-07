@@ -7,6 +7,8 @@ pub mod warps;
 use ctrlc;
 use pyo3::prelude::*;
 
+pub type Number = f32;
+
 #[pymodule]
 #[pyo3(name = "tsdistances")]
 fn py_module(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
@@ -16,7 +18,7 @@ fn py_module(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     });
 
     m.add_function(wrap_pyfunction!(distances::euclidean, m)?)?;
-    m.add_function(wrap_pyfunction!(distances::catch_euclidean, m)?)?;
+    // m.add_function(wrap_pyfunction!(distances::catch_euclidean, m)?)?;
     m.add_function(wrap_pyfunction!(distances::erp, m)?)?;
     m.add_function(wrap_pyfunction!(distances::lcss, m)?)?;
     m.add_function(wrap_pyfunction!(distances::dtw, m)?)?;

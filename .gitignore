@@ -10,3 +10,5 @@ requirements*
 .pytest_cache/
 build.sh
 test_ci.yml
+.DS_Store
+*.lock

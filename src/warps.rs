@@ -1,4 +1,4 @@
-use crate::{matrix::Matrix, utils::next_multiple_of_n};
+use crate::{matrix::Matrix, utils::next_multiple_of_n, Number};
 const DIAMOND_SIZE: usize = 64;
 
 #[test]
@@ -16,8 +16,8 @@ fn test_diamond_partitioning() {
     println!("Device: {:#?}", device.info().unwrap());
 
     for _ in 0..rep {
-        let a: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
-        let b: Vec<f64> = (0..20000).map(|_| rand::random::<f64>()).collect();
+        let a: Vec<Number> = (0..20000).map(|_| rand::random::<Number>()).collect();
+        let b: Vec<Number> = (0..20000).map(|_| rand::random::<Number>()).collect();
 
         let start1 = std::time::Instant::now();
         r1 += diamond_partitioning::<DiagonalMatrix>(&a, &b, 0.0, |a, b, i, j, x, y, z| {
@@ -43,32 +43,32 @@ fn test_diamond_partitioning() {
         let end2 = start2.elapsed();
         time2 += end2.as_micros();
 
-        let start3 = std::time::Instant::now();
-        r3 += tsdistances_gpu::lcss::<SingleBatchMode>(device.clone(), &a, &b, epsilon);
-        let end3 = start3.elapsed();
-        time3 += end3.as_micros();
+        // let start3 = std::time::Instant::now();
+        // r3 += tsdistances_gpu::lcss::<SingleBatchMode>(device.clone(), &a, &b, epsilon);
+        // let end3 = start3.elapsed();
+        // time3 += end3.as_micros();
     }
 
     println!(
         "TIME:\n\tDiamond Partitioning: {:.4} ms, \n\tDiagonal Distance: {:.4} ms, \n\tGPU: {:.4} ms",
-        time1 as f64 / rep as f64 / 1000.0,
-        time2 as f64 / rep as f64 / 1000.0,
-        time3 as f64 / rep as f64 / 1000.0
+        time1 as Number / rep as Number / 1000.0,
+        time2 as Number / rep as Number / 1000.0,
+        time3 as Number / rep as Number / 1000.0
     );
     println!(
         "RES:\n\tDiamond Partitioning: {:.4}, \n\tDiagonal Distance: {:.4}, \n\tGPU: {:.4}",
-        r1 / rep as f64,
-        r2 / rep as f64,
-        r3 / rep as f64
+        r1 / rep as Number,
+        r2 / rep as Number,
+        r3 / rep as Number
     );
 }
 
 pub fn diamond_partitioning<M: Matrix>(
-    a: &[f64],
-    b: &[f64],
-    init_val: f64,
-    dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
-) -> f64 {
+    a: &[Number],
+    b: &[Number],
+    init_val: Number,
+    dist_lambda: impl Fn(&[Number], &[Number], usize, usize, Number, Number, Number) -> Number + Copy,
+) -> Number {
     let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
 
     let new_a_len = next_multiple_of_n(a.len(), DIAMOND_SIZE);
@@ -88,9 +88,9 @@ pub fn diamond_partitioning<M: Matrix>(
 pub fn diamond_partitioning_<M: Matrix>(
     a_len: usize,
     b_len: usize,
-    init_val: f64,
-    dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64 + Copy,
-) -> f64 {
+    init_val: Number,
+    dist_lambda: impl Fn(usize, usize, Number, Number, Number) -> Number + Copy,
+) -> Number {
     let padded_a_len = next_multiple_of_n(a_len, DIAMOND_SIZE);
     let padded_b_len = next_multiple_of_n(b_len, DIAMOND_SIZE);
 
@@ -153,7 +153,7 @@ pub fn diagonal_distance_v2<M: Matrix>(
     b_start: usize,
     diag_mid: isize,
     diag_count: usize,
-    dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
+    dist_lambda: impl Fn(usize, usize, Number, Number, Number) -> Number,
 ) {
     let mut i = a_start;
     let mut j = b_start;

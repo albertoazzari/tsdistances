@@ -1257,6 +1257,7 @@ dependencies = [
 name = "tsdistances_gpu"
 version = "0.1.0"
 dependencies = [
+ "csv",
  "dashmap 6.1.0",
  "krnl",
  "lazy_static",

@@ -1,3 +1,7 @@
+use std::error::Error;
+
+use csv::ReaderBuilder;
+use device::get_best_gpu;
 use kernels::warp::{
     adtw_distance::ADTWImpl, dtw_distance::DTWImpl, erp_distance::ERPImpl, lcss_distance::LCSSImpl,
     msm_distance::MSMImpl, twe_distance::TWEImpl, wdtw_distance::WDTWImpl,
@@ -10,16 +14,65 @@ mod warps;
 
 pub use warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode};
 
-#[test]
-fn list_gpus() {
-    let devices: Vec<_> = [Device::builder().build().unwrap()]
-        .into_iter()
-        .chain((1..).map_while(|i| Device::builder().index(i).build().ok()))
-        .collect();
+fn read_csv<T>(file_path: &str) -> Result<Vec<Vec<T>>, Box<dyn Error>>
+where
+    T: std::str::FromStr,
+    T::Err: 'static + Error, // needed to convert parsing error into Box<dyn Error>
+{
+    let mut reader = ReaderBuilder::new()
+        .has_headers(false)
+        .from_path(file_path)?;
 
-    for device in devices {
-        println!("{:#?}", device.info());
+    let mut records = Vec::new();
+    for result in reader.records() {
+        let record = result?;
+        let row: Vec<T> = record
+            .iter()
+            .map(|s| s.parse::<T>())
+            .collect::<Result<Vec<_>, _>>()?;
+        records.push(row);
     }
+    Ok(records)
+}
+
+fn write_csv<T>(file_path: &str, data: &[Vec<T>]) -> Result<(), Box<dyn Error>>
+where
+    T: std::fmt::Display,
+{
+    let mut writer = csv::Writer::from_path(file_path)?;
+
+    for row in data {
+        writer.write_record(row.iter().map(|s| s.to_string()))?;
+    }
+    writer.flush()?;
+    Ok(())
+}
+
+#[test]
+pub fn test_erp() {
+    let device = get_best_gpu();
+    let data = read_csv("ts.csv").unwrap();
+    let gap_penalty = 1.0;
+    let start_time = std::time::Instant::now();
+    let result = erp::<MultiBatchMode>(
+        device.clone(),
+        data.as_slice(),
+        data.as_slice(),
+        gap_penalty,
+    );
+    println!("Time taken: {:?}", start_time.elapsed());
+    write_csv("erp_ts.csv", &result).unwrap();
+}
+
+#[test]
+pub fn test_lcss() {
+    let device = get_best_gpu();
+    let data = read_csv("ts.csv").unwrap();
+    let epsilon = 1.0;
+    let start_time = std::time::Instant::now();
+    let result = lcss::<MultiBatchMode>(device.clone(), data.as_slice(), data.as_slice(), epsilon);
+    println!("Time taken: {:?}", start_time.elapsed());
+    write_csv("lcss_ts.csv", &result).unwrap();
 }
 
 pub fn erp<'a, M: GpuBatchMode>(
@@ -45,7 +98,7 @@ pub fn lcss<'a, M: GpuBatchMode>(
     b: M::InputType<'a>,
     epsilon: f64,
 ) -> M::ReturnType {
-    diamond_partitioning_gpu::<_, M>(
+    let similarity = diamond_partitioning_gpu::<_, M>(
         device,
         LCSSImpl {
             epsilon: epsilon as f32,
@@ -53,7 +106,9 @@ pub fn lcss<'a, M: GpuBatchMode>(
         a,
         b,
         0.0,
-    )
+    );
+    let min_len = M::get_sample_length(&a.clone()).min(M::get_sample_length(&b.clone())) as f64;
+    M::apply_fn(similarity, |s| 1.0 - s / min_len)
 }
 
 pub fn dtw<'a, M: GpuBatchMode>(

@@ -1,10 +1,12 @@
 use rustfft::{algorithm::Radix4, num_complex::Complex, Fft, FftDirection};
 
+use crate::Number;
+
 pub fn next_multiple_of_n(x: usize, n: usize) -> usize {
     (x + n - 1) / n * n
 }
 
-pub fn derivate(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+pub fn derivate(x: &Vec<Vec<Number>>) -> Vec<Vec<Number>> {
     let mut x_d = Vec::with_capacity(x.len());
     for i in 0..x.len() {
         x_d.push(vec![0.0; x[i].len() - 2]);
@@ -17,25 +19,25 @@ pub fn derivate(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     x_d
 }
 
-const WEIGHT_MAX: f64 = 1.0;
-pub fn dtw_weights(len: usize, g: f64) -> Vec<f64> {
+const WEIGHT_MAX: Number = 1.0;
+pub fn dtw_weights(len: usize, g: Number) -> Vec<Number> {
     let mut weights = vec![0.0; len];
-    let half_len = len as f64 / 2.0;
+    let half_len = len as Number / 2.0;
     for i in 0..len {
         weights[i] =
-            WEIGHT_MAX / (1.0 + std::f64::consts::E.powf(-g * (i as f64 - half_len as f64)));
+            WEIGHT_MAX / (1.0 + (std::f64::consts::E as Number).powf(-g * (i as Number - half_len as Number)));
     }
     weights
 }
 // [1 / (1 + np.exp(-g * (i - max_size / 2))) for i in range(0, max_size)]
 
-const MSM_C: f64 = 1.0;
+const MSM_C: Number = 1.0;
 #[inline(always)]
-pub fn msm_cost_function(x: f64, y: f64, z: f64) -> f64 {
+pub fn msm_cost_function(x: Number, y: Number, z: Number) -> Number {
     MSM_C + (y.min(z) - x).max(x - y.max(z)).max(0.0)
 }
 
-pub fn cross_correlation(a: &[f64], b: &[f64]) -> Vec<f64> {
+pub fn cross_correlation(a: &[Number], b: &[Number]) -> Vec<Number> {
     // zero-pad the input signals a and b (add zeros to the end of each. The zero padding should fill the vectors until they reach a size of at least N = size(a)+size(b)-1
     let fft_len = (a.len() + b.len() - 1).next_power_of_two();
     let fft = Radix4::new(fft_len, FftDirection::Forward);
@@ -61,17 +63,17 @@ pub fn cross_correlation(a: &[f64], b: &[f64]) -> Vec<f64> {
     let ifft = Radix4::new(fft_len, FftDirection::Inverse);
     ifft.process(&mut c_fft);
     for i in 0..fft_len {
-        c[i] = c_fft[i].re / fft_len as f64;
+        c[i] = c_fft[i].re / fft_len as Number;
     }
     c
 }
 
-pub fn zscore(x: &[f64]) -> Vec<f64> {
-    let mean = x.iter().sum::<f64>() / x.len() as f64;
-    let std = (x.iter().map(|val| (val - mean).powi(2)).sum::<f64>() / x.len() as f64).sqrt();
+pub fn zscore(x: &[Number]) -> Vec<Number> {
+    let mean = x.iter().sum::<Number>() / x.len() as Number;
+    let std = (x.iter().map(|val| (val - mean).powi(2)).sum::<Number>() / x.len() as Number).sqrt();
     x.iter().map(|val| (val - mean) / std).collect()
 }
 
-pub fn l2_norm(x: &[f64]) -> f64 {
-    x.iter().map(|val| val.powi(2)).sum::<f64>().sqrt()
+pub fn l2_norm(x: &[Number]) -> Number {
+    x.iter().map(|val| val.powi(2)).sum::<Number>().sqrt()
 }
