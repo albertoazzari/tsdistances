@@ -929,6 +929,7 @@ name = "tsdistances_gpu"
 version = "0.1.0"
 dependencies = [
  "dashmap 6.1.0",
+ "half",
  "krnl",
  "lazy_static",
  "rand",

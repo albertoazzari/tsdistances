@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 dashmap = "6.1.0"
+half = "2.4.1"
 krnl = {git="https://github.com/albertoazzari/krnl.git"}
 lazy_static = "1.5.0"
 rand = "0.8.5"

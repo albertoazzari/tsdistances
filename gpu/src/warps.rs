@@ -144,6 +144,8 @@ pub fn diamond_partitioning_gpu<'a, G: GpuKernelImpl, M: GpuBatchMode>(
     b: M::InputType<'a>,
     init_val: f32,
 ) -> M::ReturnType {
+    println!("Start");
+
     let (a, b) = if M::get_sample_length(&a) > M::get_sample_length(&b) {
         (b, a)
     } else {
@@ -173,6 +175,8 @@ pub fn diamond_partitioning_gpu<'a, G: GpuKernelImpl, M: GpuBatchMode>(
     let a_len = M::get_samples_count(&a);
     let mut distances = Vec::new();
 
+    let start_time = std::time::Instant::now();
+
     while start < a_len {
         let len = a_batch_size.min(a_len - start);
         // println!("start: {}, len: {}, a_len: {}", start, len, a_len);
@@ -191,9 +195,12 @@ pub fn diamond_partitioning_gpu<'a, G: GpuKernelImpl, M: GpuBatchMode>(
             init_val,
             M::IS_BATCH,
         ));
+        println!("PARTIAL ELAPSED: {:?}", start_time.elapsed());
         start += len;
     }
-    M::join_results(distances)
+    let x = M::join_results(distances);
+    println!("TOTAL ELAPSED: {:?}", start_time.elapsed());
+    x
 }
 
 #[inline(always)]
@@ -208,6 +215,7 @@ fn diamond_partitioning_gpu_<G: GpuKernelImpl, M: GpuBatchMode>(
     init_val: f32,
     is_batch: bool,
 ) -> M::ReturnType {
+    let start_time = std::time::Instant::now();
     let a_gpu = Buffer::from(a.clone()).into_device(device.clone()).unwrap();
     let b_gpu = Buffer::from(b.clone()).into_device(device.clone()).unwrap();
 
@@ -224,6 +232,8 @@ fn diamond_partitioning_gpu_<G: GpuKernelImpl, M: GpuBatchMode>(
     for i in 0..(a_count * b_count) {
         diagonal[i * diag_len] = 0.0;
     }
+
+    println!("ELAPSED PART1: {:?}", start_time.elapsed());
 
     let mut diagonal = Buffer::from(diagonal)
         .into_device(device.clone())
@@ -243,6 +253,8 @@ fn diamond_partitioning_gpu_<G: GpuKernelImpl, M: GpuBatchMode>(
     let mut first_coord = -(max_subgroup_threads as isize);
     let mut a_start = 0;
     let mut b_start = 0;
+
+    println!("ELAPSED PART2: {:?}", start_time.elapsed());
 
     // Number of kernel calls
     for i in 0..rows_count {
@@ -279,6 +291,7 @@ fn diamond_partitioning_gpu_<G: GpuKernelImpl, M: GpuBatchMode>(
                 diagonal.as_slice_mut(),
             );
         }
+        println!("ELAPSED CYCLE {}: {:?}", i, start_time.elapsed());
 
         if i < (a_diamonds - 1) {
             diamonds_count += 1;
@@ -293,8 +306,10 @@ fn diamond_partitioning_gpu_<G: GpuKernelImpl, M: GpuBatchMode>(
             b_start += max_subgroup_threads;
         }
     }
+    println!("EXEC TIME: {:?}", start_time.elapsed());
 
     let diagonal = diagonal.into_vec().unwrap();
+    println!("FINAL TIME: {:?}", start_time.elapsed());
 
     fn index_mat_to_diag(i: usize, j: usize) -> (usize, isize) {
         (i + j, (j as isize) - (i as isize))

@@ -853,6 +853,12 @@ pub fn twe(
     }
 
     if let Some(distance_matrix) = distance_matrix {
+        let sum = distance_matrix
+            .iter()
+            .map(|v| v.iter().copied().sum::<f64>())
+            .sum::<f64>();
+        println!("SUM: {}", sum);
+
         return Ok(distance_matrix);
     } else {
         return Err(pyo3::exceptions::PyValueError::new_err(

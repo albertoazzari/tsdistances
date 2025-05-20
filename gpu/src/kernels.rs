@@ -232,6 +232,7 @@ pub mod warp {
                         ) {
                             let a_count = a.len() as u64 / padded_a_len;
                             let b_count = b.len() as u64 / padded_b_len;
+                            println!("THREAD COUNT: {}", (a_count * b_count * diamonds_count * max_subgroup_threads) as u32);
                             batch_call::builder()
                                 .unwrap()
                                 .build(device)
