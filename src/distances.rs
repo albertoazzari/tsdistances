@@ -7,7 +7,7 @@ use core::f64;
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use std::cmp::max;
-use tsdistances_gpu::utils::get_device;
+use tsdistances_gpu::{utils::get_device, warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode}};
 
 const MIN_CHUNK_SIZE: usize = 16;
 const CHUNKS_PER_THREAD: usize = 8;
@@ -161,7 +161,7 @@ macro_rules! gpu_call {
 
         $distance_matrix = Some(
             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
-                type $BatchMode = tsdistances_gpu::MultiBatchMode;
+                type $BatchMode = MultiBatchMode;
 
                 let batch_size = compute_max_group(
                     $x1.len(),
@@ -180,7 +180,7 @@ macro_rules! gpu_call {
                     batch_size,
                 )
             } else {
-                type $BatchMode = tsdistances_gpu::SingleBatchMode;
+                type $BatchMode = SingleBatchMode;
                 compute_distance(
                     |$a, $b| {
                         $($body)*
@@ -448,7 +448,7 @@ pub fn lcss(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_best_gpu();
+                let (device_gpu, _, _, _, _) = get_device();
                 gpu_call!(
                     device_gpu(device_gpu),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
@@ -518,7 +518,7 @@ pub fn dtw(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_best_gpu();
+                let (device_gpu, _, _, _, _) = get_device();
                 gpu_call!(
                     device_gpu(device_gpu),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
@@ -607,7 +607,7 @@ pub fn wdtw(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_best_gpu();
+                let (device_gpu, _, _, _, _) = get_device();
                 gpu_call!(
                     device_gpu(device_gpu),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
@@ -727,7 +727,7 @@ pub fn msm(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_best_gpu();
+                let (device_gpu, _, _, _, _) = get_device();
                 gpu_call!(
                     device_gpu(device_gpu),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
@@ -827,7 +827,7 @@ pub fn twe(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_best_gpu();
+                let (device_gpu, _, _, _, _) = get_device();
                 gpu_call!(
                     device_gpu(device_gpu),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
@@ -905,7 +905,7 @@ pub fn adtw(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_best_gpu();
+                let (device_gpu, _, _, _, _) = get_device();
                 gpu_call!(
                     device_gpu(device_gpu),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
