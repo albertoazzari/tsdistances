@@ -18,19 +18,8 @@ from tsdistances import (
 from aeon import distances as aeon
 import stumpy
 
-
-def load_ArrowHead():
-    print("\nLoading ArrowHead dataset")
-    train = np.loadtxt("../../DATA/ucr/ArrowHead/ArrowHead_TRAIN.tsv", delimiter="\t")
-    test = np.loadtxt("../../DATA/ucr/ArrowHead/ArrowHead_TEST.tsv", delimiter="\t")
-    X_train, _ = train[:, 1:], train[:, 0].astype(int)
-    X_test, _ = test[:, 1:], test[:, 0].astype(int)
-    X = np.vstack((X_train, X_test))
-    print(f"Shape: {X.shape}")
-    return X
-
-
-X = load_ArrowHead()
+np.random.seed(42)
+X = np.random.rand(100, 150)
 band = 1.0
 
 
