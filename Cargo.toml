@@ -8,13 +8,13 @@ edition = "2024"
 
 [dependencies]
 catch22 = { git = "https://github.com/albertoazzari/catch22_rs.git", version = "0.1.0" }
-ctrlc = "3.4.4"
-lazy_static = "1.4.0"
-parking_lot = "0.12.3"
-pyo3 = { version = "0.23.4", features = ["extension-module"] }
+ctrlc = "3.4.7"
+lazy_static = "1.5.0"
+parking_lot = "0.12.4"
+pyo3 = { version = "0.23.5", features = ["extension-module"] }
 rand = "0.8.5"
 rayon = "1.10.0"
-rustfft = "6.2.0"
+rustfft = "6.3.0"
 tsdistances_gpu = { path = "tsdistances_gpu" }
 
 [lib]
