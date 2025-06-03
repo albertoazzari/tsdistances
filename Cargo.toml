@@ -5,9 +5,6 @@ name = "tsdistances"
 version = "0.1.0"
 edition = "2024"
 
-[build-dependencies]
-spirv-builder = { git = "https://github.com/Rust-GPU/rust-gpu.git", version = "0.9.0" }
-
 
 [dependencies]
 catch22 = { git = "https://github.com/albertoazzari/catch22_rs.git", version = "0.1.0" }
@@ -18,8 +15,6 @@ pyo3 = { version = "0.23.4", features = ["extension-module"] }
 rand = "0.8.5"
 rayon = "1.10.0"
 rustfft = "6.2.0"
-vulkano = "0.35.1"
-vulkano-shaders = "0.35.0"
 
 [lib]
 crate-type = ["cdylib"]
@@ -30,10 +25,3 @@ debug = true
 
 [profile.release]
 debug = false
-
-[profile.release.build-override]
-opt-level = 3
-
-codegen-units = 16
-[profile.dev.build-override]
-opt-level = 3
