@@ -6,18 +6,22 @@ use crate::{
 use core::f64;
 use pyo3::prelude::*;
 use rayon::prelude::*;
+use rustfft::num_traits;
 use std::cmp::max;
-use tsdistances_gpu::{utils::get_device, warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode}};
+use tsdistances_gpu::{
+    utils::get_device,
+    warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode},
+};
 
 const MIN_CHUNK_SIZE: usize = 16;
 const CHUNKS_PER_THREAD: usize = 8;
 
-fn compute_distance_batched(
-    distance: impl (Fn(&[Vec<f64>], &[Vec<f64>], bool) -> Vec<Vec<f64>>) + Sync + Send,
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
+fn compute_distance_batched<T: Copy>(
+    distance: impl (Fn(&[Vec<T>], &[Vec<T>], bool) -> Vec<Vec<T>>) + Sync + Send,
+    x1: Vec<Vec<T>>,
+    x2: Option<Vec<Vec<T>>>,
     chunk_size: usize,
-) -> Vec<Vec<f64>> {
+) -> Vec<Vec<T>> {
     let mut result = Vec::with_capacity(x1.len());
 
     let mut x1_offset = 0;
@@ -42,12 +46,12 @@ fn compute_distance_batched(
 /// provided distance function. The computation is parallelized across multiple threads to improve
 /// performance. The number of threads used can be controlled via the `n_jobs` parameter.
 ///
-fn compute_distance(
-    distance: impl (Fn(&[f64], &[f64]) -> f64) + Sync + Send,
-    x1: Vec<Vec<f64>>,
-    x2: Option<Vec<Vec<f64>>>,
+fn compute_distance<T: Copy + Sync + Send + num_traits::Num>(
+    distance: impl (Fn(&[T], &[T]) -> T) + Sync + Send,
+    x1: Vec<Vec<T>>,
+    x2: Option<Vec<Vec<T>>>,
     n_jobs: i32,
-) -> Vec<Vec<f64>> {
+) -> Vec<Vec<T>> {
     let n_jobs = if n_jobs == -1 {
         rayon::current_num_threads() as usize
     } else {
@@ -99,7 +103,7 @@ fn compute_distance(
         for i in 0..distance_matrix.len() {
             let row_len = distance_matrix.len();
             distance_matrix[i].reserve(row_len - i);
-            distance_matrix[i].push(0.0);
+            distance_matrix[i].push(T::zero());
             for j in i + 1..distance_matrix.len() {
                 let d = distance_matrix[j][i];
                 distance_matrix[i].push(d);
@@ -111,7 +115,7 @@ fn compute_distance(
     }
 }
 
-fn check_same_length(x: &[Vec<f64>]) -> bool {
+fn check_same_length<T>(x: &[Vec<T>]) -> bool {
     if x.len() == 0 {
         return false;
     }
@@ -159,6 +163,9 @@ macro_rules! gpu_call {
         .properties()
         .max_compute_work_group_size[0] as usize;
 
+        let $x1 = $x1.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>();
+        let $x2 = $x2.map(|x2| x2.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>());
+
         $distance_matrix = Some(
             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
                 type $BatchMode = MultiBatchMode;
@@ -171,24 +178,30 @@ macro_rules! gpu_call {
                     max_threads,
                 );
 
-                compute_distance_batched(
+                let result = compute_distance_batched(
                     |$a, $b, _| {
                         $($body)*
                     },
                     $x1,
                     $x2,
                     batch_size,
-                )
+                );
+                result.into_iter()
+                    .map(|v| v.into_iter().map(|f| f as f64).collect())
+                    .collect()
             } else {
                 type $BatchMode = SingleBatchMode;
-                compute_distance(
+                let result = compute_distance(
                     |$a, $b| {
                         $($body)*
                     },
                     $x1,
                     $x2,
                     1,
-                )
+                );
+                result.into_iter()
+                    .map(|v| v.into_iter().map(|f| f as f64).collect())
+                    .collect()
             }
         );
     };
@@ -457,7 +470,7 @@ pub fn lcss(
                         let min_len = BatchMode::get_sample_length(&a)
                             .min(BatchMode::get_sample_length(&b))
                             as f64;
-                        BatchMode::apply_fn(similarity, |s| 1.0 - s / min_len)
+                        BatchMode::apply_fn(similarity, |s| 1.0 - s / (min_len as f32))
                     }
                 );
             }
