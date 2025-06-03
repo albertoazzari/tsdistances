@@ -7,7 +7,7 @@ use core::f64;
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use rustfft::num_traits;
-use std::cmp::max;
+use std::cmp::{max, min};
 use tsdistances_gpu::{
     utils::get_device,
     warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode},
@@ -386,11 +386,20 @@ pub fn erp(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_device();
+                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device_gpu),
+                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        tsdistances_gpu::erp::<BatchMode>(device_gpu.clone(), a, b, gap_penalty)
+                        tsdistances_gpu::cpu::erp::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                            gap_penalty as f32,
+                        )
                     }
                 );
             }
@@ -461,12 +470,20 @@ pub fn lcss(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_device();
+                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device_gpu),
+                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        let similarity =
-                            tsdistances_gpu::lcss::<BatchMode>(device_gpu.clone(), a, b, epsilon);
+                        let similarity = tsdistances_gpu::cpu::lcss::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                            epsilon as f32,
+                        );
                         let min_len = BatchMode::get_sample_length(&a)
                             .min(BatchMode::get_sample_length(&b))
                             as f64;
@@ -531,11 +548,19 @@ pub fn dtw(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_device();
+                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device_gpu),
+                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        tsdistances_gpu::dtw::<BatchMode>(device_gpu.clone(), a, b)
+                        tsdistances_gpu::cpu::dtw::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                        )
                     }
                 );
             }
@@ -620,15 +645,24 @@ pub fn wdtw(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_device();
+                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device_gpu),
+                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
                         let weights = dtw_weights(
                             BatchMode::get_sample_length(&a).max(BatchMode::get_sample_length(&b)),
                             g,
                         );
-                        tsdistances_gpu::wdtw::<BatchMode>(device_gpu.clone(), a, b, &weights)
+                        tsdistances_gpu::cpu::wdtw::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                            &weights.iter().map(|x| *x as f32).collect::<Vec<f32>>(),
+                        )
                     }
                 );
             }
@@ -740,11 +774,19 @@ pub fn msm(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_device();
+                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device_gpu),
+                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        tsdistances_gpu::msm::<BatchMode>(device_gpu.clone(), a, b)
+                        tsdistances_gpu::cpu::msm::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                        )
                     }
                 );
             }
@@ -840,16 +882,20 @@ pub fn twe(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_device();
+                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device_gpu),
+                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        tsdistances_gpu::twe::<BatchMode>(
-                            device_gpu.clone(),
+                        tsdistances_gpu::cpu::twe::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
                             a,
                             b,
-                            stiffness,
-                            penalty,
+                            stiffness as f32,
+                            penalty as f32,
                         )
                     }
                 );
@@ -918,11 +964,20 @@ pub fn adtw(
                 ));
             }
             "gpu" => {
-                let (device_gpu, _, _, _, _) = get_device();
+                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device_gpu),
+                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        tsdistances_gpu::adtw::<BatchMode>(device_gpu.clone(), a, b, warp_penalty)
+                        tsdistances_gpu::cpu::adtw::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                            warp_penalty as f32,
+                        )
                     }
                 );
             }
