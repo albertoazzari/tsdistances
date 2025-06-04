@@ -3,8 +3,13 @@ cargo-features = ["edition2024"]
 [package]
 name = "tsdistances"
 version = "0.1.0"
+description = "tsdistances is a Python library (with Rust backend) for computing various pairwise distances between sets of time series data."
 edition = "2024"
-
+authors = [
+ "Alberto Azzari alberto.azzari@univr.it", 
+ "Andrea Cracco andrea.cracco@univr.it", 
+ "Francesco Masillo francesco.masillo@univr.it", 
+]
 
 [dependencies]
 catch22 = { git = "https://github.com/albertoazzari/catch22_rs.git", version = "0.1.0" }
@@ -18,8 +23,10 @@ tsdistances_gpu = { path = "tsdistances_gpu/" }
 
 [lib]
 crate-type = ["cdylib"]
-name = "tsdistances"
+name = "tsdistances_rs"
 
 [profile.release]
 lto = true
+opt-level = 3
 codegen-units = 1
+strip = true

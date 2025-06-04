@@ -1,33 +1,25 @@
-[project]
-name = "tsdistances"
-version = "0.1.1"
-authors = [
-  { name="Alberto Azzari", email="alberto.azzari@univr.it" },
-  { name="Andrea Cracco", email="andrea.cracco@univr.it" },
-  { name="Francesco Masillo", email="francesco.masillo@univr.it" },
-]
-description = "tsdistances is a Python library (with Rust backend) for computing various pairwise distances between sets of time series data. It provides efficient implementations of elastic distance measures such as Dynamic Time Warping (DTW), Longest Common Subsequence (LCSS), and Time Warping Edit (TWE). The library is designed to be fast and scalable, leveraging parallel computation for improved performance."
-readme = "README.md"
-license = {file = "LICENSE"}
-requires-python = ">=3.10,<3.14"
-
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-]
-
-dependencies = [
-    "numpy",
-    "maturin",
-    "typeguard",
-]
-
 [build-system]
 requires = ["maturin>=1.6.0"]
 build-backend = "maturin"
 
+[project]
+name = "tsdistances"
+requires-python = ">=3.10"
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "typeguard",
+]
+dynamic = ["authors", "description", "version"]
+
 [tool.maturin]
-python-versions = ["3.10", "3.11", "3.12", "3.13"]
+features = ["pyo3/extension-module"]
+strip = true
 
 [project.urls]
 Homepage = "https://github.com/albertoazzari/tsdistances"

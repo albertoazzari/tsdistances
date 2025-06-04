@@ -13,7 +13,7 @@ from tsdistances import (
     msm_distance,
     twe_distance,
     sb_distance,
-    mp_distance
+    mp_distance,
 )
 from aeon import distances as aeon
 import stumpy

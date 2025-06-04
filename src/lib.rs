@@ -8,7 +8,7 @@ use ctrlc;
 use pyo3::prelude::*;
 
 #[pymodule]
-#[pyo3(name = "tsdistances")]
+#[pyo3(name = "tsdistances_rs")]
 fn py_module(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     let _ = ctrlc::set_handler(move || {
         println!("\nraise KeyboardInterrupt (Ctrl+C pressed)");
@@ -30,5 +30,3 @@ fn py_module(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(distances::mp, m)?)?;
     Ok(())
 }
-
-const SHADER: &[u8] = include_bytes!(env!("tsdistances_gpu.spv"));

@@ -13,7 +13,7 @@ from tsdistances import (
 )
 
 np.random.seed(42)
-X = np.random.rand(100, 150)
+X = np.random.rand(2, 5)
 band = 1.0
 
 

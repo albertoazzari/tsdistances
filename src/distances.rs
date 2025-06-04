@@ -31,6 +31,7 @@ fn compute_distance_batched<T: Copy>(
         });
         for x2_part in x2.as_ref().unwrap_or(&x1).chunks(chunk_size) {
             let distance_matrix = distance(x1_part, x2_part, x2.is_none());
+
             for (x1_idx, row) in distance_matrix.iter().enumerate() {
                 result[x1_offset + x1_idx].extend_from_slice(&row[..]);
             }
@@ -124,45 +125,11 @@ fn check_same_length<T>(x: &[Vec<T>]) -> bool {
     x.iter().all(|a| a.len() == len)
 }
 
-fn compute_max_group(
-    count1: usize,
-    count2: usize,
-    len1: usize,
-    len2: usize,
-    max_threads: usize,
-) -> usize {
-    let threads_per_instance = len1.min(len2) + 1;
-    let warps_per_instance = threads_per_instance.div_ceil(64);
-    let max_warps = max_threads / 64;
-    let max_instances = max_warps / warps_per_instance;
-
-    let max_group = if count1 * count2 <= max_instances {
-        count1.max(count2)
-    } else {
-        let max_sqrt = (max_instances as f64).sqrt().floor() as usize;
-        if count1 < max_sqrt {
-            count2 / count1
-        } else if count2 < max_sqrt {
-            count1 / count2
-        } else {
-            max_sqrt
-        }
-    };
-
-    max_group.max(1)
-}
-
 macro_rules! gpu_call {
     (
-        device_gpu($device_gpu:expr),
         $distance_matrix:ident = |$x1:ident($a:ident), $x2:ident($b:ident), $BatchMode:ident| {
         $($body:tt)*
     }) => {
-        let max_threads = $device_gpu
-        .physical_device()
-        .properties()
-        .max_compute_work_group_size[0] as usize;
-
         let $x1 = $x1.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>();
         let $x2 = $x2.map(|x2| x2.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>());
 
@@ -170,21 +137,13 @@ macro_rules! gpu_call {
             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
                 type $BatchMode = MultiBatchMode;
 
-                let batch_size = compute_max_group(
-                    $x1.len(),
-                    $x2.as_ref().map_or($x1.len(), |x| x.len()),
-                    $x1[0].len(),
-                    $x2.as_ref().map_or($x1[0].len(), |x| x[0].len()),
-                    max_threads,
-                );
-
                 let result = compute_distance_batched(
                     |$a, $b, _| {
                         $($body)*
                     },
                     $x1,
                     $x2,
-                    batch_size,
+                    usize::MAX,
                 );
                 result.into_iter()
                     .map(|v| v.into_iter().map(|f| f as f64).collect())
@@ -386,10 +345,9 @@ pub fn erp(
                 ));
             }
             "gpu" => {
-                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::erp::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -470,10 +428,9 @@ pub fn lcss(
                 ));
             }
             "gpu" => {
-                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
                         let similarity = tsdistances_gpu::cpu::lcss::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -548,10 +505,9 @@ pub fn dtw(
                 ));
             }
             "gpu" => {
-                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::dtw::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -645,10 +601,9 @@ pub fn wdtw(
                 ));
             }
             "gpu" => {
-                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
                         let weights = dtw_weights(
                             BatchMode::get_sample_length(&a).max(BatchMode::get_sample_length(&b)),
                             g,
@@ -774,10 +729,9 @@ pub fn msm(
                 ));
             }
             "gpu" => {
-                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::msm::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -882,10 +836,9 @@ pub fn twe(
                 ));
             }
             "gpu" => {
-                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::twe::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -964,10 +917,9 @@ pub fn adtw(
                 ));
             }
             "gpu" => {
-                let (device, queue, sba, sda, ma) = get_device();
                 gpu_call!(
-                    device_gpu(device),
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::adtw::<BatchMode>(
                             device.clone(),
                             queue.clone(),
