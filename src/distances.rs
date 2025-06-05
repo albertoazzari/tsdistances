@@ -443,8 +443,8 @@ pub fn lcss(
                         );
                         let min_len = BatchMode::get_sample_length(&a)
                             .min(BatchMode::get_sample_length(&b))
-                            as f64;
-                        BatchMode::apply_fn(similarity, |s| 1.0 - s / (min_len as f32))
+                            as f32;
+                        BatchMode::apply_fn(similarity, |s| 1.0 - s /min_len)
                     }
                 );
             }
@@ -836,9 +836,12 @@ pub fn twe(
                 ));
             }
             "gpu" => {
+                println!("X1: {:?}", x1);
+                println!("X2: {:?}", x2);
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
                         let (device, queue, sba, sda, ma) = get_device();
+
                         tsdistances_gpu::cpu::twe::<BatchMode>(
                             device.clone(),
                             queue.clone(),
