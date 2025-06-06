@@ -12,8 +12,7 @@ from tsdistances import (
     twe_distance,
 )
 
-np.random.seed(42)
-X = np.random.rand(2, 5)
+X = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')
 band = 1.0
 
 

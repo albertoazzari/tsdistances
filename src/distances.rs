@@ -130,8 +130,8 @@ macro_rules! gpu_call {
         $distance_matrix:ident = |$x1:ident($a:ident), $x2:ident($b:ident), $BatchMode:ident| {
         $($body:tt)*
     }) => {
-        let $x1 = $x1.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>();
-        let $x2 = $x2.map(|x2| x2.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>());
+        let $x1 = $x1.into_iter().map(|v| v.into_iter().map(|f| f as f64).collect()).collect::<Vec<_>>();
+        let $x2 = $x2.map(|x2| x2.into_iter().map(|v| v.into_iter().map(|f| f as f64).collect()).collect::<Vec<_>>());
 
         $distance_matrix = Some(
             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
@@ -356,7 +356,7 @@ pub fn erp(
                             ma.clone(),
                             a,
                             b,
-                            gap_penalty as f32,
+                            gap_penalty as f64,
                         )
                     }
                 );
@@ -439,11 +439,11 @@ pub fn lcss(
                             ma.clone(),
                             a,
                             b,
-                            epsilon as f32,
+                            epsilon as f64,
                         );
                         let min_len = BatchMode::get_sample_length(&a)
                             .min(BatchMode::get_sample_length(&b))
-                            as f32;
+                            as f64;
                         BatchMode::apply_fn(similarity, |s| 1.0 - s /min_len)
                     }
                 );
@@ -616,7 +616,7 @@ pub fn wdtw(
                             ma.clone(),
                             a,
                             b,
-                            &weights.iter().map(|x| *x as f32).collect::<Vec<f32>>(),
+                            &weights.iter().map(|x| *x as f64).collect::<Vec<f64>>(),
                         )
                     }
                 );
@@ -850,8 +850,8 @@ pub fn twe(
                             ma.clone(),
                             a,
                             b,
-                            stiffness as f32,
-                            penalty as f32,
+                            stiffness as f64,
+                            penalty as f64,
                         )
                     }
                 );
@@ -931,7 +931,7 @@ pub fn adtw(
                             ma.clone(),
                             a,
                             b,
-                            warp_penalty as f32,
+                            warp_penalty as f64,
                         )
                     }
                 );
