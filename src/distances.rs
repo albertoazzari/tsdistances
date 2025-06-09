@@ -431,7 +431,7 @@ pub fn lcss(
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
                         let (device, queue, sba, sda, ma) = get_device();
-                        let similarity = tsdistances_gpu::cpu::lcss::<BatchMode>(
+                        tsdistances_gpu::cpu::lcss::<BatchMode>(
                             device.clone(),
                             queue.clone(),
                             sba.clone(),
@@ -440,11 +440,7 @@ pub fn lcss(
                             a,
                             b,
                             epsilon as f64,
-                        );
-                        let min_len = BatchMode::get_sample_length(&a)
-                            .min(BatchMode::get_sample_length(&b))
-                            as f64;
-                        BatchMode::apply_fn(similarity, |s| 1.0 - s /min_len)
+                        )
                     }
                 );
             }
