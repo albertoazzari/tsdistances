@@ -19,7 +19,7 @@ pyo3 = { version = "0.23.5", features = ["extension-module"] }
 rand = "0.8.5"
 rayon = "1.10.0"
 rustfft = "6.3.0"
-tsdistances_gpu = { path = "tsdistances_gpu/"}
+tsdistances_gpu = { git = "https://github.com/albertoazzari/tsdistances_gpu.git"}
 
 [lib]
 crate-type = ["cdylib"]
