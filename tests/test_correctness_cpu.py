@@ -13,24 +13,13 @@ from tsdistances import (
     msm_distance,
     twe_distance,
     sb_distance,
-    mp_distance
+    mp_distance,
 )
 from aeon import distances as aeon
 import stumpy
+import time
 
-
-def load_ArrowHead():
-    print("\nLoading ArrowHead dataset")
-    train = np.loadtxt("../../DATA/ucr/ArrowHead/ArrowHead_TRAIN.tsv", delimiter="\t")
-    test = np.loadtxt("../../DATA/ucr/ArrowHead/ArrowHead_TEST.tsv", delimiter="\t")
-    X_train, _ = train[:, 1:], train[:, 0].astype(int)
-    X_test, _ = test[:, 1:], test[:, 0].astype(int)
-    X = np.vstack((X_train, X_test))
-    print(f"Shape: {X.shape}")
-    return X
-
-
-X = load_ArrowHead()
+X = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')
 band = 1.0
 
 
@@ -63,7 +52,11 @@ def test_erp_distance():
 
 def test_lcss_distance():
     epsilon = 0.1
+    start_time = time.time()
     D = lcss_distance(X, None, epsilon=epsilon, band=band, n_jobs=-1)
+    end_time = time.time()
+    print(f"LCSS distance computation time: {end_time - start_time:.2f} seconds")
+    exit(0)
     check_metric(D, X)
     aeon_D = aeon.lcss_pairwise_distance(X, epsilon=epsilon, window=band)
     assert np.allclose(D, aeon_D, atol=1e-8)

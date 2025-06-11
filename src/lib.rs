@@ -10,7 +10,7 @@ use pyo3::prelude::*;
 pub type Number = f32;
 
 #[pymodule]
-#[pyo3(name = "tsdistances")]
+#[pyo3(name = "tsdistances_rs")]
 fn py_module(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     let _ = ctrlc::set_handler(move || {
         println!("\nraise KeyboardInterrupt (Ctrl+C pressed)");

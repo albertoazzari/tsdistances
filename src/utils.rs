@@ -1,4 +1,4 @@
-use rustfft::{algorithm::Radix4, num_complex::Complex, Fft, FftDirection};
+use rustfft::{Fft, FftDirection, algorithm::Radix4, num_complex::Complex};
 
 use crate::Number;
 

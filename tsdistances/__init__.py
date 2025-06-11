@@ -1,10 +1,10 @@
 from typing import List, Optional, Union
 from typeguard import TypeCheckError, typechecked, check_type
-from tsdistances import tsdistances as tsd
+import tsdistances_rs as tsd
 import numpy as np
 
 
-def chechk_input(u: np.ndarray, v: Optional[np.ndarray] = None) -> Union[np.ndarray, Optional[np.ndarray]]:
+def check_input(u: np.ndarray, v: Optional[np.ndarray] = None) -> Union[np.ndarray, Optional[np.ndarray]]:
     if u.ndim == 1:
         if v is None:
             raise ValueError("If `u` is 1-D, `v` must be not None.")
@@ -71,6 +71,10 @@ def euclidean_distance(
            [1.        , 0.        ]])
 
     """
+
+    print("euclidean_distance *******************")
+    print(dir(tsd))
+    # exit(0)
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))
@@ -175,7 +179,7 @@ def erp_distance(
     >>> erp_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 1.0], [1.0, 0.0]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
@@ -234,7 +238,7 @@ def lcss_distance(
     >>> lcss_distance([[1, 1, 1], [0, 1, 1]], epsilon=0.5)
     array([[0.0, 0.3333333333333333], [0.3333333333333333, 0.0]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
@@ -292,7 +296,7 @@ def dtw_distance(
     >>> dtw_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.        , 1.        ], [1.        , 0.        ]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
@@ -350,7 +354,7 @@ def ddtw_distance(
     >>> ddtw_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 1.6875], [1.6875, 0.0]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
@@ -408,7 +412,7 @@ def wdtw_distance(
     >>> wdtw_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 0.18242552380635635], [0.18242552380635635, 0.0]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
@@ -466,7 +470,7 @@ def wddtw_distance(
     >>> wddtw_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 0.3078430714232263], [0.3078430714232263, 0.0]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
@@ -527,7 +531,7 @@ def adtw_distance(
     >>> adtw_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 0.0], [0.0, 0.0]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
@@ -585,7 +589,7 @@ def msm_distance(
     >>> msm_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 1.0], [1.0, 0.0]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
@@ -649,7 +653,7 @@ def twe_distance(
     >>> twe_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.0, 2.0], [2.0, 0.0]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
@@ -703,7 +707,7 @@ def sb_distance(
     >>> sb_distance([[1, 1, 1], [0, 1, 1]])
     array([[0.        , 1.        ], [1.        , 0.        ]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
@@ -761,7 +765,7 @@ def mp_distance(
     >>> mp_distance([[1, 1, 1], [0, 1, 1]])
     p array([[0.        , 1.        ], [1.        , 0.        ]])
     """
-    _u, _v = chechk_input(u, v)
+    _u, _v = check_input(u, v)
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:

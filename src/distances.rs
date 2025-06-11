@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use crate::{
     diagonal,
     matrix::DiagonalMatrix,
@@ -6,20 +5,22 @@ use crate::{
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
-use std::cmp::max;
-use std::cmp::min;
-use tsdistances_gpu::device::get_best_gpu;
-use tsdistances_gpu::GpuBatchMode;
+use rustfft::num_traits;
+use std::cmp::{max, min};
+use tsdistances_gpu::{
+    utils::get_device,
+    warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode},
+};
 
 const MIN_CHUNK_SIZE: usize = 16;
 const CHUNKS_PER_THREAD: usize = 8;
 
-fn compute_distance_batched(
-    distance: impl (Fn(&[Vec<Number>], &[Vec<Number>], bool) -> Vec<Vec<Number>>) + Sync + Send,
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
+fn compute_distance_batched<T: Copy>(
+    distance: impl (Fn(&[Vec<T>], &[Vec<T>], bool) -> Vec<Vec<T>>) + Sync + Send,
+    x1: Vec<Vec<T>>,
+    x2: Option<Vec<Vec<T>>>,
     chunk_size: usize,
-) -> Vec<Vec<Number>> {
+) -> Vec<Vec<T>> {
     let mut result = Vec::with_capacity(x1.len());
 
     let mut x1_offset = 0;
@@ -29,6 +30,7 @@ fn compute_distance_batched(
         });
         for x2_part in x2.as_ref().unwrap_or(&x1).chunks(chunk_size) {
             let distance_matrix = distance(x1_part, x2_part, x2.is_none());
+
             for (x1_idx, row) in distance_matrix.iter().enumerate() {
                 result[x1_offset + x1_idx].extend_from_slice(&row[..]);
             }
@@ -44,12 +46,12 @@ fn compute_distance_batched(
 /// provided distance function. The computation is parallelized across multiple threads to improve
 /// performance. The number of threads used can be controlled via the `n_jobs` parameter.
 ///
-fn compute_distance(
-    distance: impl (Fn(&[Number], &[Number]) -> Number) + Sync + Send,
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
+fn compute_distance<T: Copy + Sync + Send + num_traits::Num>(
+    distance: impl (Fn(&[T], &[T]) -> T) + Sync + Send,
+    x1: Vec<Vec<T>>,
+    x2: Option<Vec<Vec<T>>>,
     n_jobs: i32,
-) -> Vec<Vec<Number>> {
+) -> Vec<Vec<T>> {
     let n_jobs = if n_jobs == -1 {
         rayon::current_num_threads() as usize
     } else {
@@ -101,7 +103,7 @@ fn compute_distance(
         for i in 0..distance_matrix.len() {
             let row_len = distance_matrix.len();
             distance_matrix[i].reserve(row_len - i);
-            distance_matrix[i].push(0.0);
+            distance_matrix[i].push(T::zero());
             for j in i + 1..distance_matrix.len() {
                 let d = distance_matrix[j][i];
                 distance_matrix[i].push(d);
@@ -113,7 +115,7 @@ fn compute_distance(
     }
 }
 
-fn check_same_length(x: &[Vec<Number>]) -> bool {
+fn check_same_length<T>(x: &[Vec<T>]) -> bool {
     if x.len() == 0 {
         return false;
     }
@@ -122,75 +124,42 @@ fn check_same_length(x: &[Vec<Number>]) -> bool {
     x.iter().all(|a| a.len() == len)
 }
 
-fn compute_max_group(
-    count1: usize,
-    count2: usize,
-    len1: usize,
-    len2: usize,
-    max_threads: usize,
-) -> usize {
-    let threads_per_instance = len1.min(len2) + 1;
-    let warps_per_instance = threads_per_instance.div_ceil(64);
-    let max_warps = max_threads / 64;
-    let max_instances = max_warps / warps_per_instance;
-
-    let max_group = if count1 * count2 <= max_instances {
-        count1.max(count2)
-    } else {
-        let max_sqrt = (max_instances as Number).sqrt().floor() as usize;
-        if count1 < max_sqrt {
-            count2 / count1
-        } else if count2 < max_sqrt {
-            count1 / count2
-        } else {
-            max_sqrt
-        }
-    };
-
-    max_group.max(1)
-}
-
 macro_rules! gpu_call {
     (
-        device_gpu($device_gpu:expr),
         $distance_matrix:ident = |$x1:ident($a:ident), $x2:ident($b:ident), $BatchMode:ident| {
         $($body:tt)*
     }) => {
-        let max_threads = $device_gpu
-            .info()
-            .map(|i| i.max_groups() as usize * i.max_threads() as usize)
-            .unwrap_or(65536);
+        let $x1 = $x1.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>();
+        let $x2 = $x2.map(|x2| x2.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>());
 
         $distance_matrix = Some(
             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
-                type $BatchMode = tsdistances_gpu::MultiBatchMode;
+                type $BatchMode = MultiBatchMode;
 
-                let batch_size = compute_max_group(
-                    $x1.len(),
-                    $x2.as_ref().map_or($x1.len(), |x| x.len()),
-                    $x1[0].len(),
-                    $x2.as_ref().map_or($x1[0].len(), |x| x[0].len()),
-                    max_threads,
-                );
-
-                compute_distance_batched(
+                let result = compute_distance_batched(
                     |$a, $b, _| {
                         $($body)*
                     },
                     $x1,
                     $x2,
-                    batch_size,
-                )
+                    usize::MAX,
+                );
+                result.into_iter()
+                    .map(|v| v.into_iter().map(|f| f as f64).collect())
+                    .collect()
             } else {
-                type $BatchMode = tsdistances_gpu::SingleBatchMode;
-                compute_distance(
+                type $BatchMode = SingleBatchMode;
+                let result = compute_distance(
                     |$a, $b| {
                         $($body)*
                     },
                     $x1,
                     $x2,
                     1,
-                )
+                );
+                result.into_iter()
+                    .map(|v| v.into_iter().map(|f| f as f64).collect())
+                    .collect()
             }
         );
     };
@@ -374,15 +343,23 @@ pub fn erp(
                     n_jobs,
                 ));
             }
-            // "gpu" => {
-            //     let device_gpu = get_best_gpu();
-            //     gpu_call!(
-            //         device_gpu(device_gpu),
-            //         distance_matrix = |x1(a), x2(b), BatchMode| {
-            //             tsdistances_gpu::erp::<BatchMode>(device_gpu.clone(), a, b, gap_penalty)
-            //         }
-            //     );
-            // }
+            "gpu" => {
+                gpu_call!(
+                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
+                        tsdistances_gpu::cpu::erp::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                            gap_penalty as f32,
+                        )
+                    }
+                );
+            }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -449,20 +426,23 @@ pub fn lcss(
                     n_jobs,
                 ));
             }
-            // "gpu" => {
-            //     let device_gpu = get_best_gpu();
-            //     gpu_call!(
-            //         device_gpu(device_gpu),
-            //         distance_matrix = |x1(a), x2(b), BatchMode| {
-            //             let similarity =
-            //                 tsdistances_gpu::lcss::<BatchMode>(device_gpu.clone(), a, b, epsilon);
-            //             let min_len = BatchMode::get_sample_length(&a)
-            //                 .min(BatchMode::get_sample_length(&b))
-            //                 as Number;
-            //             BatchMode::apply_fn(similarity, |s| 1.0 - s / min_len)
-            //         }
-            //     );
-            // }
+            "gpu" => {
+                gpu_call!(
+                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
+                        tsdistances_gpu::cpu::lcss::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                            epsilon as f32,
+                        )
+                    }
+                );
+            }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -519,15 +499,22 @@ pub fn dtw(
                     n_jobs,
                 ));
             }
-            // "gpu" => {
-            //     let device_gpu = get_best_gpu();
-            //     gpu_call!(
-            //         device_gpu(device_gpu),
-            //         distance_matrix = |x1(a), x2(b), BatchMode| {
-            //             tsdistances_gpu::dtw::<BatchMode>(device_gpu.clone(), a, b)
-            //         }
-            //     );
-            // }
+            "gpu" => {
+                gpu_call!(
+                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
+                        tsdistances_gpu::cpu::dtw::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                        )
+                    }
+                );
+            }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -608,19 +595,27 @@ pub fn wdtw(
                     n_jobs,
                 ));
             }
-            // "gpu" => {
-            //     let device_gpu = get_best_gpu();
-            //     gpu_call!(
-            //         device_gpu(device_gpu),
-            //         distance_matrix = |x1(a), x2(b), BatchMode| {
-            //             let weights = dtw_weights(
-            //                 BatchMode::get_sample_length(&a).max(BatchMode::get_sample_length(&b)),
-            //                 g,
-            //             );
-            //             tsdistances_gpu::wdtw::<BatchMode>(device_gpu.clone(), a, b, &weights)
-            //         }
-            //     );
-            // }
+            "gpu" => {
+                gpu_call!(
+                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
+                        let weights = dtw_weights(
+                            BatchMode::get_sample_length(&a).max(BatchMode::get_sample_length(&b)),
+                            g,
+                        );
+                        tsdistances_gpu::cpu::wdtw::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                            &weights.iter().map(|x| *x as f32).collect::<Vec<_>>(),
+                        )
+                    }
+                );
+            }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -728,15 +723,22 @@ pub fn msm(
                     n_jobs,
                 ));
             }
-            // "gpu" => {
-            //     let device_gpu = get_best_gpu();
-            //     gpu_call!(
-            //         device_gpu(device_gpu),
-            //         distance_matrix = |x1(a), x2(b), BatchMode| {
-            //             tsdistances_gpu::msm::<BatchMode>(device_gpu.clone(), a, b)
-            //         }
-            //     );
-            // }
+            "gpu" => {
+                gpu_call!(
+                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
+                        tsdistances_gpu::cpu::msm::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                        )
+                    }
+                );
+            }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -828,21 +830,27 @@ pub fn twe(
                     n_jobs,
                 ));
             }
-            // "gpu" => {
-            //     let device_gpu = get_best_gpu();
-            //     gpu_call!(
-            //         device_gpu(device_gpu),
-            //         distance_matrix = |x1(a), x2(b), BatchMode| {
-            //             tsdistances_gpu::twe::<BatchMode>(
-            //                 device_gpu.clone(),
-            //                 a,
-            //                 b,
-            //                 stiffness,
-            //                 penalty,
-            //             )
-            //         }
-            //     );
-            // }
+            "gpu" => {
+                println!("X1: {:?}", x1);
+                println!("X2: {:?}", x2);
+                gpu_call!(
+                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
+
+                        tsdistances_gpu::cpu::twe::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                            stiffness as f32,
+                            penalty as f32,
+                        )
+                    }
+                );
+            }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",
@@ -906,15 +914,23 @@ pub fn adtw(
                     n_jobs,
                 ));
             }
-            // "gpu" => {
-            //     let device_gpu = get_best_gpu();
-            //     gpu_call!(
-            //         device_gpu(device_gpu),
-            //         distance_matrix = |x1(a), x2(b), BatchMode| {
-            //             tsdistances_gpu::adtw::<BatchMode>(device_gpu.clone(), a, b, warp_penalty)
-            //         }
-            //     );
-            // }
+            "gpu" => {
+                gpu_call!(
+                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (device, queue, sba, sda, ma) = get_device();
+                        tsdistances_gpu::cpu::adtw::<BatchMode>(
+                            device.clone(),
+                            queue.clone(),
+                            sba.clone(),
+                            sda.clone(),
+                            ma.clone(),
+                            a,
+                            b,
+                            warp_penalty as f32,
+                        )
+                    }
+                );
+            }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "Device must be either 'cpu' or 'gpu'",

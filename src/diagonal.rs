@@ -32,6 +32,7 @@ fn diagonal_distance_<M: Matrix>(
     let mut j = 0;
     let mut s = 0;
     let mut e = 0;
+
     matrix.set_diagonal_cell(0, 0, 0.0);
 
     let start_coord = M::index_mat_to_diag(0, 0).1;
@@ -106,6 +107,7 @@ fn diagonal_distance_<M: Matrix>(
             e -= 1;
         }
     }
+
     let (rx, cx) = M::index_mat_to_diag(a_len, b_len);
     matrix.get_diagonal_cell(rx, cx)
 }

@@ -12,18 +12,7 @@ from tsdistances import (
     twe_distance,
 )
 
-def load_ArrowHead():
-    print("\nLoading ArrowHead dataset")
-    train = np.loadtxt("../../DATA/ucr/ArrowHead/ArrowHead_TRAIN.tsv", delimiter="\t")
-    test = np.loadtxt("../../DATA/ucr/ArrowHead/ArrowHead_TEST.tsv", delimiter="\t")
-    X_train, _ = train[:, 1:], train[:, 0].astype(int)
-    X_test, _ = test[:, 1:], test[:, 0].astype(int)
-    X = np.vstack((X_train, X_test))
-    print(f"Shape: {X.shape}")
-    return X
-
-
-X = load_ArrowHead()
+X = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')
 band = 1.0
 
 
@@ -39,7 +28,8 @@ def test_erp_distance():
     D = erp_distance(X, None, gap_penalty=gap_penalty, band=band, n_jobs=-1)
     D_gpu = erp_distance(X, None, gap_penalty=gap_penalty, band=band, device='gpu')
     check_metric(D_gpu, X)
-    assert np.allclose(D, D_gpu, atol=1e-8)
+    # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
+    assert np.allclose(D, D_gpu, rtol=1e-5, atol=1e-7)
 
 
 def test_lcss_distance():
@@ -47,21 +37,24 @@ def test_lcss_distance():
     D = lcss_distance(X, None, epsilon=epsilon, band=band, n_jobs=-1)
     D_gpu = lcss_distance(X, None, epsilon=epsilon, band=band, device='gpu')
     check_metric(D_gpu, X)
-    assert np.allclose(D, D_gpu, atol=1e-8)
+    # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
+    assert np.allclose(D, D_gpu, rtol=1e-5, atol=1e-7)
 
 
 def test_dtw_distance():
     D = dtw_distance(X, None, band=band, n_jobs=-1)
     D_gpu = dtw_distance(X, None, band=band, device='gpu')
     check_metric(D_gpu, X)
-    assert np.allclose(D, D_gpu, atol=1e-8)
+    # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
+    assert np.allclose(D, D_gpu, rtol=1e-5, atol=1e-7)
 
 
 def test_ddtw_distance():
     D = ddtw_distance(X, None, band=band, n_jobs=-1)
     D_gpu =  ddtw_distance(X, None, band=band, device='gpu')
     check_metric(D_gpu, X)
-    assert np.allclose(D, D_gpu, atol=1e-8)
+    # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
+    assert np.allclose(D, D_gpu, rtol=1e-5, atol=1e-7)
 
 
 def test_wdtw_distance():
@@ -69,7 +62,8 @@ def test_wdtw_distance():
     D = wdtw_distance(X, None, g=g, band=band, n_jobs=-1)
     D_gpu = wdtw_distance(X, None, g=g, band=band, device='gpu')
     check_metric(D_gpu, X)
-    assert np.allclose(D, D_gpu, atol=1e-8)
+    # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
+    assert np.allclose(D, D_gpu, rtol=1e-5, atol=1e-7)
 
 
 def test_wddtw_distance():
@@ -77,7 +71,8 @@ def test_wddtw_distance():
     D = wddtw_distance(X, None, g=g, band=band, n_jobs=-1)
     D_gpu = wddtw_distance(X, None, g=g, band=band, device='gpu')
     check_metric(D_gpu, X)
-    assert np.allclose(D, D_gpu, atol=1e-8)
+    # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
+    assert np.allclose(D, D_gpu, rtol=1e-5, atol=1e-7)
 
 
 def test_adtw_distance():
@@ -85,14 +80,16 @@ def test_adtw_distance():
     D = adtw_distance(X, None, band=band, warp_penalty=warp_penalty, n_jobs=-1)
     D_gpu = adtw_distance(X, None, band=band, warp_penalty=warp_penalty, device='gpu')
     check_metric(D_gpu, X)
-    assert np.allclose(D, D_gpu, atol=1e-8)
+    # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
+    assert np.allclose(D, D_gpu, rtol=1e-5, atol=1e-7)
 
 
 def test_msm_distance():
     D = msm_distance(X, None, band=band, n_jobs=-1)
     D_gpu = msm_distance(X, None, band=band, n_jobs=-1, device='gpu')
     check_metric(D_gpu, X)
-    assert np.allclose(D, D_gpu, atol=1e-8)
+    # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
+    assert np.allclose(D, D_gpu, rtol=1e-5, atol=1e-7)
 
 
 def test_twe_distance():
@@ -101,4 +98,5 @@ def test_twe_distance():
     D = twe_distance(X, None, band=band, stifness=stiffness, penalty=penalty, n_jobs=-1)
     D_gpu = twe_distance(X, None, band=band, stifness=stiffness, penalty=penalty, device='gpu')
     check_metric(D_gpu, X)
-    assert np.allclose(D, D_gpu, atol=1e-8)
+    # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
+    assert np.allclose(D, D_gpu, rtol=1e-5, atol=1e-7)
