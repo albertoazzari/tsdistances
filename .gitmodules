@@ -1,3 +1,0 @@
-[submodule "tsdistances_gpu"]
-	path = tsdistances_gpu
-	url = https://github.com/albertoazzari/tsdistances_gpu.git

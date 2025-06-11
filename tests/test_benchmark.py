@@ -43,62 +43,62 @@ def load_benchmark():
 
 DATASETS_PATH = load_benchmark()
 
-def test_draw_scatter_ucr():
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    import pandas as pd
+# def test_draw_scatter_ucr():
+#     import matplotlib.pyplot as plt
+#     import seaborn as sns
+#     import pandas as pd
 
-    ucr_datasets = sorted([x for x in UCR_ARCHIVE_PATH.iterdir() if x.is_dir()])
-    ucr_info = np.zeros((len(ucr_datasets), 2))
-    is_benchmark = np.empty(len(ucr_datasets), dtype=str)
+#     ucr_datasets = sorted([x for x in UCR_ARCHIVE_PATH.iterdir() if x.is_dir()])
+#     ucr_info = np.zeros((len(ucr_datasets), 2))
+#     is_benchmark = np.empty(len(ucr_datasets), dtype=str)
 
-    for i, dataset in enumerate(ucr_datasets):
-        train = np.loadtxt(dataset / f"{dataset.name}_TRAIN.tsv", delimiter="\t")
-        test = np.loadtxt(dataset / f"{dataset.name}_TEST.tsv", delimiter="\t")
-        X_train, _ = train[:, 1:], train[:, 0]
-        X_test, _ = test[:, 1:], test[:, 0]
+#     for i, dataset in enumerate(ucr_datasets):
+#         train = np.loadtxt(dataset / f"{dataset.name}_TRAIN.tsv", delimiter="\t")
+#         test = np.loadtxt(dataset / f"{dataset.name}_TEST.tsv", delimiter="\t")
+#         X_train, _ = train[:, 1:], train[:, 0]
+#         X_test, _ = test[:, 1:], test[:, 0]
 
-        X = np.vstack((X_train, X_test))
-        ucr_info[i] = X.shape
-        is_benchmark[i] = "Benchmarked" if dataset.name in BENCHMARKS_DS else "Non-benchmarked"
+#         X = np.vstack((X_train, X_test))
+#         ucr_info[i] = X.shape
+#         is_benchmark[i] = "Benchmarked" if dataset.name in BENCHMARKS_DS else "Non-benchmarked"
 
-    # Create the scatter plot
-    data = pd.DataFrame({"Dataset size": ucr_info[:, 0], "Time-series Length": ucr_info[:, 1], "Benchmark Status": is_benchmark})
+#     # Create the scatter plot
+#     data = pd.DataFrame({"Dataset size": ucr_info[:, 0], "Time-series Length": ucr_info[:, 1], "Benchmark Status": is_benchmark})
     
-    sns.scatterplot(data=data[data["Benchmark Status"]=="N"], x='Dataset size', y='Time-series Length', label='Non-Benchmarked', marker='o')
-    sns.scatterplot(data=data[data["Benchmark Status"]=="B"], x='Dataset size', y='Time-series Length', label='Benchmarked', marker='x', linewidth=2)
+#     sns.scatterplot(data=data[data["Benchmark Status"]=="N"], x='Dataset size', y='Time-series Length', label='Non-Benchmarked', marker='o')
+#     sns.scatterplot(data=data[data["Benchmark Status"]=="B"], x='Dataset size', y='Time-series Length', label='Benchmarked', marker='x', linewidth=2)
 
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.xlabel("Dataset size (log scale)")
-    plt.ylabel("Time-series Length (log scale)")
-    plt.legend()
-    plt.title("UCR Datasets")
+#     plt.xscale("log")
+#     plt.yscale("log")
+#     plt.xlabel("Dataset size (log scale)")
+#     plt.ylabel("Time-series Length (log scale)")
+#     plt.legend()
+#     plt.title("UCR Datasets")
 
-    for i in range(len(ucr_datasets)):
-        if is_benchmark[i] == "B":
-            if i != 43:
-                plt.text(
-                    ucr_info[i, 0], 
-                    ucr_info[i, 1],
-                    str(i+1),
-                    ha = 'center',
-                    va = 'top',
-                    color = 'black',
-                    fontsize=6,
-                )
-            else:
-                plt.text(
-                    ucr_info[i, 0], 
-                    ucr_info[i, 1],
-                    f"[{44}-{45}]",
-                    ha = 'center',
-                    va = 'top',
-                    color = 'black',
-                    fontsize=6,
-                )
+#     for i in range(len(ucr_datasets)):
+#         if is_benchmark[i] == "B":
+#             if i != 43:
+#                 plt.text(
+#                     ucr_info[i, 0], 
+#                     ucr_info[i, 1],
+#                     str(i+1),
+#                     ha = 'center',
+#                     va = 'top',
+#                     color = 'black',
+#                     fontsize=6,
+#                 )
+#             else:
+#                 plt.text(
+#                     ucr_info[i, 0], 
+#                     ucr_info[i, 1],
+#                     f"[{44}-{45}]",
+#                     ha = 'center',
+#                     va = 'top',
+#                     color = 'black',
+#                     fontsize=6,
+#                 )
 
-    plt.savefig("ucr_scatter_log_scaled.pdf", dpi=300)
+#     plt.savefig("ucr_scatter_log_scaled.pdf", dpi=300)
 
 
 def test_tsdistances():
