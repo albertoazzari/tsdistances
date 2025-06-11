@@ -6,14 +6,11 @@ use crate::{
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use rustfft::num_traits;
-use std::cmp::{max, min};
+use std::cmp::min;
 use tsdistances_gpu::{
     utils::get_device,
     warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode},
 };
-
-const MIN_CHUNK_SIZE: usize = 16;
-const CHUNKS_PER_THREAD: usize = 8;
 
 fn compute_distance_batched<T: Copy>(
     distance: impl (Fn(&[Vec<T>], &[Vec<T>], bool) -> Vec<Vec<T>>) + Sync + Send,
@@ -44,60 +41,59 @@ fn compute_distance_batched<T: Copy>(
 ///
 /// This function computes the distance between each pair of timeseries (one from each set) using the
 /// provided distance function. The computation is parallelized across multiple threads to improve
-/// performance. The number of threads used can be controlled via the `n_jobs` parameter.
+/// performance. The number of threads used can be controlled via the `par` parameter.
 ///
 fn compute_distance<T: Copy + Sync + Send + num_traits::Num>(
     distance: impl (Fn(&[T], &[T]) -> T) + Sync + Send,
     x1: Vec<Vec<T>>,
     x2: Option<Vec<Vec<T>>>,
-    n_jobs: i32,
+    par: bool,
 ) -> Vec<Vec<T>> {
-    let n_jobs = if n_jobs == -1 {
-        rayon::current_num_threads() as usize
+    let x1 = x1.into_iter().enumerate().collect::<Vec<_>>();
+    let distance_matrix = if par {
+        x1.par_iter()
+            .map(|(i, a)| {
+                if let Some(x2) = &x2 {
+                    x2.iter()
+                        .map(|b| {
+                            let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+                            distance(a, b)
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    x1.iter()
+                        .take(*i)
+                        .map(|(_, b)| {
+                            let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+                            distance(a, b)
+                        })
+                        .collect::<Vec<_>>()
+                }
+            })
+            .collect::<Vec<_>>()
     } else {
-        n_jobs.max(1) as usize
+        x1.iter()
+            .map(|(i, a)| {
+                if let Some(x2) = &x2 {
+                    x2.iter()
+                        .map(|b| {
+                            let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+                            distance(a, b)
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    x1.iter()
+                        .take(*i)
+                        .map(|(_, b)| {
+                            let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
+                            distance(a, b)
+                        })
+                        .collect::<Vec<_>>()
+                }
+            })
+            .collect::<Vec<_>>()
     };
 
-    let semaphore = parking_lot::Mutex::new(n_jobs);
-    let cond_var = parking_lot::Condvar::new();
-    let x1 = x1.into_iter().enumerate().collect::<Vec<_>>();
-    let distance_matrix = x1
-        .par_chunks(max(MIN_CHUNK_SIZE, x1.len() / n_jobs / CHUNKS_PER_THREAD))
-        .map(|a| {
-            let mut guard = semaphore.lock();
-            while *guard == 0 {
-                cond_var.wait(&mut guard);
-            }
-            *guard -= 1;
-            drop(guard);
-            let result = a
-                .iter()
-                .map(|(i, a)| {
-                    if let Some(x2) = &x2 {
-                        x2.iter()
-                            .map(|b| {
-                                let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
-                                distance(a, b)
-                            })
-                            .collect::<Vec<_>>()
-                    } else {
-                        x1.iter()
-                            .take(*i)
-                            .map(|(_, b)| {
-                                let (a, b) = if a.len() > b.len() { (b, a) } else { (a, b) };
-                                distance(a, b)
-                            })
-                            .collect::<Vec<_>>()
-                    }
-                })
-                .collect::<Vec<_>>();
-            let mut guard = semaphore.lock();
-            *guard += 1;
-            cond_var.notify_one();
-            result
-        })
-        .flatten()
-        .collect::<Vec<_>>();
     if x2.is_none() {
         let mut distance_matrix = distance_matrix;
         for i in 0..distance_matrix.len() {
@@ -128,7 +124,8 @@ macro_rules! gpu_call {
     (
         $distance_matrix:ident = |$x1:ident($a:ident), $x2:ident($b:ident), $BatchMode:ident| {
         $($body:tt)*
-    }) => {
+    },
+    $par:expr) => {
         let $x1 = $x1.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>();
         let $x2 = $x2.map(|x2| x2.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>());
 
@@ -155,7 +152,7 @@ macro_rules! gpu_call {
                     },
                     $x1,
                     $x2,
-                    1,
+                    $par,
                 );
                 result.into_iter()
                     .map(|v| v.into_iter().map(|f| f as f64).collect())
@@ -166,12 +163,12 @@ macro_rules! gpu_call {
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, n_jobs=-1))]
+#[pyo3(signature = (x1, x2=None, par=true))]
 pub fn euclidean(
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
-    n_jobs: i32,
-) -> PyResult<Vec<Vec<Number>>> {
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    par: bool,
+) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
             a.iter()
@@ -182,127 +179,127 @@ pub fn euclidean(
         },
         x1,
         x2,
-        n_jobs,
+        par,
     );
     Ok(distance_matrix)
 }
 
-// #[pyfunction]
-// #[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-// pub fn catch_euclidean(
-//     x1: Vec<Vec<Number>>,
-//     x2: Option<Vec<Vec<Number>>>,
-//     n_jobs: i32,
-// ) -> PyResult<Vec<Vec<Number>>> {
-//     let x1 = x1
-//         .iter()
-//         .map(|x| {
-//             let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
-//             for i in 0..catch22::N_CATCH22 {
-//                 let value = catch22::compute(&x, i);
-//                 if value.is_nan() {
-//                     transformed_x.push(0.0);
-//                 } else {
-//                     transformed_x.push(value);
-//                 }
-//             }
-//             return transformed_x;
-//         })
-//         .collect::<Vec<Vec<_>>>();
-//     let x2 = if let Some(x2) = x2 {
-//         Some(
-//             x2.iter()
-//                 .map(|x| {
-//                     let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
-//                     for i in 0..catch22::N_CATCH22 {
-//                         let value = catch22::compute(&x, i);
-//                         if value.is_finite() {
-//                             transformed_x.push(value);
-//                         } else {
-//                             transformed_x.push(0.0);
-//                         }
-//                     }
-//                     return transformed_x;
-//                 })
-//                 .collect::<Vec<Vec<_>>>(),
-//         )
-//     } else {
-//         None
-//     };
-//     // Z-Normalize on the column-wise
-//     let mean_x1 = (0..catch22::N_CATCH22)
-//         .map(|i| {
-//             let sum = x1.iter().map(|x| x[i]).sum::<Number>();
-//             sum / x1.len() as Number
-//         })
-//         .collect::<Vec<Number>>();
-//     let std_x1 = (0..catch22::N_CATCH22)
-//         .map(|i| {
-//             let sum = x1.iter().map(|x| (x[i] - mean_x1[i]).powi(2)).sum::<Number>();
-//             (sum / x1.len() as Number).sqrt()
-//         })
-//         .collect::<Vec<Number>>();
-//     let x1 = x1
-//         .iter()
-//         .map(|x| {
-//             x.iter()
-//                 .enumerate()
-//                 .map(|(i, val)| {
-//                     (val - mean_x1[i])
-//                         / if std_x1[i].abs() < Number::EPSILON {
-//                             1.0
-//                         } else {
-//                             std_x1[i]
-//                         }
-//                 })
-//                 .collect::<Vec<Number>>()
-//         })
-//         .collect::<Vec<Vec<Number>>>();
+#[pyfunction]
+#[pyo3(signature = (x1, x2=None, par=true))]
+pub fn catch_euclidean(
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    par: bool,
+) -> PyResult<Vec<Vec<f64>>> {
+    let x1 = x1
+        .iter()
+        .map(|x| {
+            let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
+            for i in 0..catch22::N_CATCH22 {
+                let value = catch22::compute(&x, i);
+                if value.is_nan() {
+                    transformed_x.push(0.0);
+                } else {
+                    transformed_x.push(value);
+                }
+            }
+            return transformed_x;
+        })
+        .collect::<Vec<Vec<_>>>();
+    let x2 = if let Some(x2) = x2 {
+        Some(
+            x2.iter()
+                .map(|x| {
+                    let mut transformed_x = Vec::with_capacity(catch22::N_CATCH22);
+                    for i in 0..catch22::N_CATCH22 {
+                        let value = catch22::compute(&x, i);
+                        if value.is_finite() {
+                            transformed_x.push(value);
+                        } else {
+                            transformed_x.push(0.0);
+                        }
+                    }
+                    return transformed_x;
+                })
+                .collect::<Vec<Vec<_>>>(),
+        )
+    } else {
+        None
+    };
+    // Z-Normalize on the column-wise
+    let mean_x1 = (0..catch22::N_CATCH22)
+        .map(|i| {
+            let sum = x1.iter().map(|x| x[i]).sum::<f64>();
+            sum / x1.len() as f64
+        })
+        .collect::<Vec<f64>>();
+    let std_x1 = (0..catch22::N_CATCH22)
+        .map(|i| {
+            let sum = x1.iter().map(|x| (x[i] - mean_x1[i]).powi(2)).sum::<f64>();
+            (sum / x1.len() as f64).sqrt()
+        })
+        .collect::<Vec<f64>>();
+    let x1 = x1
+        .iter()
+        .map(|x| {
+            x.iter()
+                .enumerate()
+                .map(|(i, val)| {
+                    (val - mean_x1[i])
+                        / if std_x1[i].abs() < f64::EPSILON {
+                            1.0
+                        } else {
+                            std_x1[i]
+                        }
+                })
+                .collect::<Vec<f64>>()
+        })
+        .collect::<Vec<Vec<f64>>>();
 
-//     let x2 = if let Some(x2) = x2 {
-//         let mean_x2 = (0..catch22::N_CATCH22)
-//             .map(|i| {
-//                 let sum = x2.iter().map(|x| x[i]).sum::<Number>();
-//                 sum / x2.len() as Number
-//             })
-//             .collect::<Vec<Number>>();
-//         let std_x2 = (0..catch22::N_CATCH22)
-//             .map(|i| {
-//                 let sum = x2.iter().map(|x| (x[i] - mean_x2[i]).powi(2)).sum::<Number>();
-//                 (sum / x2.len() as Number).sqrt()
-//             })
-//             .collect::<Vec<Number>>();
-//         Some(
-//             x2.iter()
-//                 .map(|x| {
-//                     x.iter()
-//                         .enumerate()
-//                         .map(|(i, val)| {
-//                             (val - mean_x2[i])
-//                                 / if std_x2[i].abs() < Number::EPSILON {
-//                                     1.0
-//                                 } else {
-//                                     std_x2[i]
-//                                 }
-//                         })
-//                         .collect::<Vec<Number>>()
-//                 })
-//                 .collect::<Vec<Vec<Number>>>(),
-//         )
-//     } else {
-//         None
-//     };
-//     euclidean(x1, x2, n_jobs)
-// }
+    let x2 = if let Some(x2) = x2 {
+        let mean_x2 = (0..catch22::N_CATCH22)
+            .map(|i| {
+                let sum = x2.iter().map(|x| x[i]).sum::<f64>();
+                sum / x2.len() as f64
+            })
+            .collect::<Vec<f64>>();
+        let std_x2 = (0..catch22::N_CATCH22)
+            .map(|i| {
+                let sum = x2.iter().map(|x| (x[i] - mean_x2[i]).powi(2)).sum::<f64>();
+                (sum / x2.len() as f64).sqrt()
+            })
+            .collect::<Vec<f64>>();
+        Some(
+            x2.iter()
+                .map(|x| {
+                    x.iter()
+                        .enumerate()
+                        .map(|(i, val)| {
+                            (val - mean_x2[i])
+                                / if std_x2[i].abs() < f64::EPSILON {
+                                    1.0
+                                } else {
+                                    std_x2[i]
+                                }
+                        })
+                        .collect::<Vec<f64>>()
+                })
+                .collect::<Vec<Vec<f64>>>(),
+        )
+    } else {
+        None
+    };
+    euclidean(x1, x2, par)
+}
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, gap_penalty=0.0, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, gap_penalty=0.0, par=true, device="cpu"))]
 pub fn erp(
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
-    sakoe_chiba_band: Number,
-    gap_penalty: Number,
-    n_jobs: i32,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
+    gap_penalty: f64,
+    par: bool,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<Number>>> {
     if gap_penalty < 0.0 {
@@ -340,7 +337,7 @@ pub fn erp(
                     },
                     x1,
                     x2,
-                    n_jobs,
+                    par,
                 ));
             }
             "gpu" => {
@@ -357,7 +354,8 @@ pub fn erp(
                             b,
                             gap_penalty as f32,
                         )
-                    }
+                    },
+                    par
                 );
             }
             _ => {
@@ -377,13 +375,13 @@ pub fn erp(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, epsilon=1.0, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, epsilon=1.0, par=true, device="cpu"))]
 pub fn lcss(
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
-    sakoe_chiba_band: Number,
-    epsilon: Number,
-    n_jobs: i32,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
+    epsilon: f64,
+    par: bool,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<Number>>> {
     if epsilon < 0.0 {
@@ -423,7 +421,7 @@ pub fn lcss(
                     },
                     x1,
                     x2,
-                    n_jobs,
+                    par,
                 ));
             }
             "gpu" => {
@@ -440,7 +438,8 @@ pub fn lcss(
                             b,
                             epsilon as f32,
                         )
-                    }
+                    },
+                    par
                 );
             }
             _ => {
@@ -460,12 +459,12 @@ pub fn lcss(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, par=true, device="cpu"))]
 pub fn dtw(
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
-    sakoe_chiba_band: Number,
-    n_jobs: i32,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
+    par: bool,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<Number>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
@@ -496,7 +495,7 @@ pub fn dtw(
                     },
                     x1,
                     x2,
-                    n_jobs,
+                    par,
                 ));
             }
             "gpu" => {
@@ -512,7 +511,8 @@ pub fn dtw(
                             a,
                             b,
                         )
-                    }
+                    },
+                    par
                 );
             }
             _ => {
@@ -533,12 +533,12 @@ pub fn dtw(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, par=true, device="cpu"))]
 pub fn ddtw(
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
-    sakoe_chiba_band: Number,
-    n_jobs: i32,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
+    par: bool,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<Number>>> {
     let x1_d = derivate(&x1);
@@ -547,17 +547,17 @@ pub fn ddtw(
     } else {
         None
     };
-    dtw(x1_d, x2_d, sakoe_chiba_band, n_jobs, device)
+    dtw(x1_d, x2_d, sakoe_chiba_band, par, device)
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, g=0.05, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, g=0.05, par=true, device="cpu"))]
 pub fn wdtw(
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
-    sakoe_chiba_band: Number,
-    g: Number, //constant that controls the curvature (slope) of the function
-    n_jobs: i32,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
+    g: f64, //constant that controls the curvature (slope) of the function
+    par: bool,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<Number>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
@@ -592,7 +592,7 @@ pub fn wdtw(
                     },
                     x1,
                     x2,
-                    n_jobs,
+                    par,
                 ));
             }
             "gpu" => {
@@ -613,7 +613,8 @@ pub fn wdtw(
                             b,
                             &weights.iter().map(|x| *x as f32).collect::<Vec<_>>(),
                         )
-                    }
+                    },
+                    par
                 );
             }
             _ => {
@@ -634,13 +635,13 @@ pub fn wdtw(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, g=0.05, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, g=0.05, par=true, device="cpu"))]
 pub fn wddtw(
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
-    sakoe_chiba_band: Number,
-    g: Number,
-    n_jobs: i32,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
+    g: f64,
+    par: bool,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<Number>>> {
     let x1_d = derivate(&x1);
@@ -649,16 +650,16 @@ pub fn wddtw(
     } else {
         None
     };
-    wdtw(x1_d, x2_d, sakoe_chiba_band, g, n_jobs, device)
+    wdtw(x1_d, x2_d, sakoe_chiba_band, g, par, device)
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, par=true, device="cpu"))]
 pub fn msm(
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
-    sakoe_chiba_band: Number,
-    n_jobs: i32,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
+    par: bool,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<Number>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
@@ -720,7 +721,7 @@ pub fn msm(
                     },
                     x1,
                     x2,
-                    n_jobs,
+                    par,
                 ));
             }
             "gpu" => {
@@ -736,7 +737,8 @@ pub fn msm(
                             a,
                             b,
                         )
-                    }
+                    },
+                    par
                 );
             }
             _ => {
@@ -757,14 +759,14 @@ pub fn msm(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, stiffness=0.001, penalty=1.0, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, stiffness=0.001, penalty=1.0, par=true, device="cpu"))]
 pub fn twe(
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
-    sakoe_chiba_band: Number,
-    stiffness: Number,
-    penalty: Number,
-    n_jobs: i32,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
+    stiffness: f64,
+    penalty: f64,
+    par: bool,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<Number>>> {
     if stiffness < 0.0 {
@@ -827,7 +829,7 @@ pub fn twe(
                     },
                     x1,
                     x2,
-                    n_jobs,
+                    par,
                 ));
             }
             "gpu" => {
@@ -848,7 +850,8 @@ pub fn twe(
                             stiffness as f32,
                             penalty as f32,
                         )
-                    }
+                    },
+                    par
                 );
             }
             _ => {
@@ -869,13 +872,13 @@ pub fn twe(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, warp_penalty=0.1, n_jobs=-1, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, warp_penalty=0.1, par=true, device="cpu"))]
 pub fn adtw(
-    x1: Vec<Vec<Number>>,
-    x2: Option<Vec<Vec<Number>>>,
-    sakoe_chiba_band: Number,
-    warp_penalty: Number,
-    n_jobs: i32,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    sakoe_chiba_band: f64,
+    warp_penalty: f64,
+    par: bool,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<Number>>> {
     if warp_penalty < 0.0 {
@@ -911,7 +914,7 @@ pub fn adtw(
                     },
                     x1,
                     x2,
-                    n_jobs,
+                    par,
                 ));
             }
             "gpu" => {
@@ -928,7 +931,8 @@ pub fn adtw(
                             b,
                             warp_penalty as f32,
                         )
-                    }
+                    },
+                    par
                 );
             }
             _ => {
@@ -949,8 +953,8 @@ pub fn adtw(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, n_jobs=-1))]
-pub fn sb(x1: Vec<Vec<Number>>, x2: Option<Vec<Vec<Number>>>, n_jobs: i32) -> PyResult<Vec<Vec<Number>>> {
+#[pyo3(signature = (x1, x2=None, par=true))]
+pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, par: bool) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
             let a = zscore(&a);
@@ -961,19 +965,19 @@ pub fn sb(x1: Vec<Vec<Number>>, x2: Option<Vec<Vec<Number>>>, n_jobs: i32) -> Py
         },
         x1,
         x2,
-        n_jobs,
+        par,
     );
     Ok(distance_matrix)
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, window, x2=None, n_jobs=-1))]
+#[pyo3(signature = (x1, window, x2=None, par=true))]
 pub fn mp(
     x1: Vec<Vec<Number>>,
     window: i32,
-    x2: Option<Vec<Vec<Number>>>,
-    n_jobs: i32,
-) -> PyResult<Vec<Vec<Number>>> {
+    x2: Option<Vec<Vec<f64>>>,
+    par: bool,
+) -> PyResult<Vec<Vec<f64>>> {
     let threshold = 0.05;
     let window = window as usize;
     let distance_matrix = compute_distance(
@@ -991,7 +995,7 @@ pub fn mp(
         },
         x1,
         x2,
-        n_jobs,
+        par,
     );
     Ok(distance_matrix)
 }

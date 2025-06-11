@@ -38,7 +38,7 @@ def check_input(u: np.ndarray, v: Optional[np.ndarray] = None) -> Union[np.ndarr
 def euclidean_distance(
     u: np.ndarray,
     v: Optional[np.ndarray] = None,
-    n_jobs: Optional[int] = 1
+    par: Optional[int] = 1
 ) -> Union[np.ndarray, float]:
     """
     Computes the Euclidean distance between two 1-D arrays or between two sets of 1-D arrays.
@@ -51,7 +51,7 @@ def euclidean_distance(
     v : (N,) array_like or (M, N) array_like, optional
     Input array. If provided, `v` should have the same shape as `u`.
     If `v` is None, pairwise distances within `u` are computed.
-    n_jobs : int, optional
+    par : int, optional
         Number of jobs to use for computation (default is 1).
 
     Returns
@@ -82,15 +82,15 @@ def euclidean_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.euclidean(_u, None, n_jobs))
+            return np.array(tsd.euclidean(_u, None, par))
         if v.ndim == 2:
             _v = v
 
-    return np.array(tsd.euclidean(_u, _v, n_jobs))
+    return np.array(tsd.euclidean(_u, _v, par))
 
 @typechecked
 def catcheucl_distance(
-    u: np.ndarray, v: Optional[np.ndarray] = None, n_jobs: Optional[int] = 1
+    u: np.ndarray, v: Optional[np.ndarray] = None, par: Optional[int] = 1
 ) -> Union[np.ndarray, float]:
     """
     Computes the Catch22-Euclidean distance between two 1-D arrays or between two sets of 1-D arrays.
@@ -103,7 +103,7 @@ def catcheucl_distance(
     v : (N,) array_like or (M, N) array_like, optional
     Input array. If provided, `v` should have the same shape as `u`.
     If `v` is None, pairwise distances within `u` are computed.
-    n_jobs : int, optional
+    par : int, optional
         Number of jobs to use for computation (default is 1).
 
     Returns
@@ -128,11 +128,11 @@ def catcheucl_distance(
     if u.ndim == 2:
         _u = u
         if v is None:
-            return np.array(tsd.catch_euclidean(_u, None, n_jobs))
+            return np.array(tsd.catch_euclidean(_u, None, par))
         if v.ndim == 2:
             _v = v
 
-    return np.array(tsd.catch_euclidean(_u, _v, n_jobs))
+    return np.array(tsd.catch_euclidean(_u, _v, par))
 
 
 @typechecked
@@ -141,7 +141,7 @@ def erp_distance(
     v: Optional[np.ndarray] = None,
     band: Optional[float] = 1.0,
     gap_penalty: Optional[float] = 1.0,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
     device: Optional[str] = "cpu",
 ) -> Union[np.ndarray, float]:
     """
@@ -162,7 +162,7 @@ def erp_distance(
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     gap_penalty : double, optional
     Penalty for gap insertion/deletion (default is 0.0).
-    n_jobs : int, optional
+    par : int, optional
     Number of jobs to use for computation (default is 1).
 
     Returns
@@ -183,17 +183,17 @@ def erp_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.erp(_u, _v, band, gap_penalty, n_jobs, device)[0][0]
+            return tsd.erp(_u, _v, band, gap_penalty, par, device)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.erp(_u, _v, band, gap_penalty, n_jobs, device))
+            return np.array(tsd.erp(_u, _v, band, gap_penalty, par, device))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.erp(_u, _v, band, gap_penalty, n_jobs, device))
+            return np.array(tsd.erp(_u, _v, band, gap_penalty, par, device))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.erp(_u, _v, band, gap_penalty, n_jobs, device))
+                return np.array(tsd.erp(_u, _v, band, gap_penalty, par, device))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.erp(_u, _v, band, gap_penalty, n_jobs, device))
+                return np.array(tsd.erp(_u, _v, band, gap_penalty, par, device))
 
 @typechecked
 def lcss_distance(
@@ -201,7 +201,7 @@ def lcss_distance(
     v: Optional[np.ndarray] = None,
     band: Optional[float] = 1.0,
     epsilon: Optional[float] = 1.0,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
     device: Optional[str] = "cpu",
 ) -> Union[np.ndarray, float]:
     """
@@ -222,7 +222,7 @@ def lcss_distance(
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     epsilon : double, optional
     Threshold value for the distance between two elements (default is 1.0).
-    n_jobs : int, optional
+    par : int, optional
 
     Returns
     -------
@@ -242,17 +242,17 @@ def lcss_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.lcss(_u, _v, band, epsilon, n_jobs, device)[0][0]
+            return tsd.lcss(_u, _v, band, epsilon, par, device)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.lcss(_u, _v, band, epsilon, n_jobs, device))
+            return np.array(tsd.lcss(_u, _v, band, epsilon, par, device))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.lcss(_u, _v, band, epsilon, n_jobs, device))
+            return np.array(tsd.lcss(_u, _v, band, epsilon, par, device))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.lcss(_u, _v, band, epsilon, n_jobs, device))
+                return np.array(tsd.lcss(_u, _v, band, epsilon, par, device))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.lcss(_u, _v, band, epsilon, n_jobs, device))
+                return np.array(tsd.lcss(_u, _v, band, epsilon, par, device))
 
 
 @typechecked
@@ -260,7 +260,7 @@ def dtw_distance(
     u: np.ndarray,
     v: Optional[np.ndarray] = None,
     band: Optional[float] = 1.0,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
     device: Optional[str] = "cpu",
 ) -> Union[np.ndarray, float]:
     """
@@ -279,7 +279,7 @@ def dtw_distance(
     If `v` is None, pairwise distances within `u` are computed.
     band : double, optional
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
-    n_jobs : int, optional
+    par : int, optional
     Number of jobs to use for computation (default is 1).
 
     Returns
@@ -300,17 +300,17 @@ def dtw_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.dtw(_u, _v, band, n_jobs, device)[0][0]
+            return tsd.dtw(_u, _v, band, par, device)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.dtw(_u, _v, band, n_jobs, device))
+            return np.array(tsd.dtw(_u, _v, band, par, device))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.dtw(_u, _v, band, n_jobs, device))
+            return np.array(tsd.dtw(_u, _v, band, par, device))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.dtw(_u, _v, band, n_jobs, device))
+                return np.array(tsd.dtw(_u, _v, band, par, device))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.dtw(_u, _v, band, n_jobs, device))
+                return np.array(tsd.dtw(_u, _v, band, par, device))
 
 
 @typechecked
@@ -318,7 +318,7 @@ def ddtw_distance(
     u: np.ndarray,
     v: Optional[np.ndarray] = None,
     band: Optional[float] = 1.0,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
     device: Optional[str] = "cpu",
 ) -> Union[np.ndarray, float]:
     """
@@ -337,7 +337,7 @@ def ddtw_distance(
     If `v` is None, pairwise distances within `u` are computed.
     band : double, optional
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
-    n_jobs : int, optional
+    par : int, optional
     Number of jobs to use for computation (default is 1).
 
     Returns
@@ -358,17 +358,17 @@ def ddtw_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.ddtw(_u, _v, band, n_jobs, device)[0][0]
+            return tsd.ddtw(_u, _v, band, par, device)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.ddtw(_u, _v, band, n_jobs, device))
+            return np.array(tsd.ddtw(_u, _v, band, par, device))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.ddtw(_u, _v, band, n_jobs, device))
+            return np.array(tsd.ddtw(_u, _v, band, par, device))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.ddtw(_u, _v, band, n_jobs, device))
+                return np.array(tsd.ddtw(_u, _v, band, par, device))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.ddtw(_u, _v, band, n_jobs, device))
+                return np.array(tsd.ddtw(_u, _v, band, par, device))
 
 @typechecked
 def wdtw_distance(
@@ -376,7 +376,7 @@ def wdtw_distance(
     v: Optional[np.ndarray] = None,
     band: Optional[float] = 1.0,
     g: Optional[float] = 0.05,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
     device: Optional[str] = "cpu",
 ) -> Union[np.ndarray, float]:
     """
@@ -395,7 +395,7 @@ def wdtw_distance(
     If `v` is None, pairwise distances within `u` are computed.
     band : double, optional
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
-    n_jobs : int, optional
+    par : int, optional
     Number of jobs to use for computation (default is 1).
 
     Returns
@@ -416,17 +416,17 @@ def wdtw_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.wdtw(_u, _v, band, g, n_jobs, device)[0][0]
+            return tsd.wdtw(_u, _v, band, g, par, device)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.wdtw(_u, _v, band, g, n_jobs, device))
+            return np.array(tsd.wdtw(_u, _v, band, g, par, device))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.wdtw(_u, _v, band, g, n_jobs, device))
+            return np.array(tsd.wdtw(_u, _v, band, g, par, device))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.wdtw(_u, _v, band, g, n_jobs, device))
+                return np.array(tsd.wdtw(_u, _v, band, g, par, device))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.wdtw(_u, _v, band, g, n_jobs, device))
+                return np.array(tsd.wdtw(_u, _v, band, g, par, device))
 
 
 @typechecked
@@ -435,7 +435,7 @@ def wddtw_distance(
     v: Optional[np.ndarray] = None,
     band: Optional[float] = 1.0,
     g: Optional[float] = 0.05,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
     device: Optional[str] = "cpu",
 ) -> Union[np.ndarray, float]:
     """
@@ -454,7 +454,7 @@ def wddtw_distance(
     If `v` is None, pairwise distances within `u` are computed.
     band : double, optional
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
-    n_jobs : int, optional
+    par : int, optional
 
     Returns
     -------
@@ -474,17 +474,17 @@ def wddtw_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.wddtw(_u, _v, band, g, n_jobs, device)[0][0]
+            return tsd.wddtw(_u, _v, band, g, par, device)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.wddtw(_u, _v, band, g, n_jobs, device))
+            return np.array(tsd.wddtw(_u, _v, band, g, par, device))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.wddtw(_u, _v, band, g, n_jobs, device))
+            return np.array(tsd.wddtw(_u, _v, band, g, par, device))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.wddtw(_u, _v, band, g, n_jobs, device))
+                return np.array(tsd.wddtw(_u, _v, band, g, par, device))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.wddtw(_u, _v, band, g, n_jobs, device))
+                return np.array(tsd.wddtw(_u, _v, band, g, par, device))
 
 
 @typechecked
@@ -493,7 +493,7 @@ def adtw_distance(
     v: Optional[np.ndarray] = None,
     band: Optional[float] = 1.0,
     warp_penalty: Optional[float] = 0.1,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
     device: Optional[str] = "cpu",
 ) -> Union[np.ndarray, float]:
     """
@@ -514,7 +514,7 @@ def adtw_distance(
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
     w : double, optional
     Weight amercing penalty (default is 0.1).
-    n_jobs : int, optional
+    par : int, optional
     Number of jobs to use for computation (default is 1).
 
     Returns
@@ -535,17 +535,17 @@ def adtw_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.adtw(_u, _v, band, warp_penalty, n_jobs, device)[0][0]
+            return tsd.adtw(_u, _v, band, warp_penalty, par, device)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.adtw(_u, _v, band, warp_penalty, n_jobs, device))
+            return np.array(tsd.adtw(_u, _v, band, warp_penalty, par, device))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.adtw(_u, _v, band, warp_penalty, n_jobs, device))
+            return np.array(tsd.adtw(_u, _v, band, warp_penalty, par, device))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.adtw(_u, _v, band, warp_penalty, n_jobs, device))
+                return np.array(tsd.adtw(_u, _v, band, warp_penalty, par, device))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.adtw(_u, _v, band, warp_penalty, n_jobs, device))
+                return np.array(tsd.adtw(_u, _v, band, warp_penalty, par, device))
 
 
 @typechecked
@@ -553,7 +553,7 @@ def msm_distance(
     u: np.ndarray,
     v: Optional[np.ndarray] = None,
     band: Optional[float] = 1.0,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
     device: Optional[str] = "cpu",
 ) -> Union[np.ndarray, float]:
     """
@@ -572,7 +572,7 @@ def msm_distance(
     If `v` is None, pairwise distances within `u` are computed.
     band : double, optional
     Band size for the Sakoe-Chiba dynamic programming algorithm (default is 1.0).
-    n_jobs : int, optional
+    par : int, optional
     Number of jobs to use for computation (default is 1).
 
     Returns
@@ -593,17 +593,17 @@ def msm_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.msm(_u, _v, band, n_jobs, device)[0][0]
+            return tsd.msm(_u, _v, band, par, device)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.msm(_u, _v, band, n_jobs, device))
+            return np.array(tsd.msm(_u, _v, band, par, device))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.msm(_u, _v, band, n_jobs, device))
+            return np.array(tsd.msm(_u, _v, band, par, device))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.msm(_u, _v, band, n_jobs, device))
+                return np.array(tsd.msm(_u, _v, band, par, device))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.msm(_u, _v, band, n_jobs, device))
+                return np.array(tsd.msm(_u, _v, band, par, device))
 
 
 @typechecked
@@ -613,7 +613,7 @@ def twe_distance(
     band: Optional[float] = 1.0,
     stifness: Optional[float] = 0.001,
     penalty: Optional[float] = 1.0,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
     device: Optional[str] = "cpu",
 ) -> Union[np.ndarray, float]:
     """
@@ -636,7 +636,7 @@ def twe_distance(
     Elasticity parameter (default is 0.001).
     penalty : double, optional
     Penalty for gap insertion/deletion (default is 1.0).
-    n_jobs : int, optional
+    par : int, optional
     Number of jobs to use for computation (default is 1).
 
     Returns
@@ -657,24 +657,24 @@ def twe_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.twe(_u, _v, band, stifness, penalty, n_jobs, device)[0][0]
+            return tsd.twe(_u, _v, band, stifness, penalty, par, device)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.twe(_u, _v, band, stifness, penalty, n_jobs, device))
+            return np.array(tsd.twe(_u, _v, band, stifness, penalty, par, device))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.twe(_u, _v, band, stifness, penalty, n_jobs, device))
+            return np.array(tsd.twe(_u, _v, band, stifness, penalty, par, device))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.twe(_u, _v, band, stifness, penalty, n_jobs, device))
+                return np.array(tsd.twe(_u, _v, band, stifness, penalty, par, device))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.twe(_u, _v, band, stifness, penalty, n_jobs, device))
+                return np.array(tsd.twe(_u, _v, band, stifness, penalty, par, device))
 
 
 @typechecked
 def sb_distance(
     u: np.ndarray,
     v: Optional[np.ndarray] = None,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
 ) -> Union[np.ndarray, float]:
     """
     Computes the Shape-Based Distance (SBD) [1] between two 1-D arrays or between two sets of 1-D arrays.
@@ -690,7 +690,7 @@ def sb_distance(
     v : (N,) array_like or (M, N), optional
     Input array.
     If `v` is None, pairwise distances within `u` are computed.
-    n_jobs : int, optional
+    par : int, optional
     Number of jobs to use for computation (default is 1).
 
     Returns
@@ -711,23 +711,23 @@ def sb_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.sb(_u, _v, n_jobs)[0][0]
+            return tsd.sb(_u, _v, par)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.sb(_u, _v, n_jobs))
+            return np.array(tsd.sb(_u, _v, par))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.sb(_u, _v, n_jobs))
+            return np.array(tsd.sb(_u, _v, par))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.sb(_u, _v, n_jobs))
+                return np.array(tsd.sb(_u, _v, par))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.sb(_u, _v, n_jobs))
+                return np.array(tsd.sb(_u, _v, par))
 
 def mp_distance(
     u: np.ndarray,
     window: int = 20,
     v: Optional[np.ndarray] = None,
-    n_jobs: Optional[int] = 1,
+    par: Optional[bool] = True,
 ):
     """
     Computes the Matrix Profile distance (MPdist) [1] between two 1-D arrays or between two sets of 1-D arrays.
@@ -748,7 +748,7 @@ def mp_distance(
     window : int, optional
     Window size for the Matrix Profile calculation (default is 1).
 
-    n_jobs : int, optional
+    par : int, optional
     Number of jobs to use for computation (default is 1).
 
     Returns
@@ -769,17 +769,17 @@ def mp_distance(
 
     if _u.shape[0] == 1:
         if _v.shape[0] == 1:
-            return tsd.mp(_u, window, _v, n_jobs)[0][0]
+            return tsd.mp(_u, window, _v, par)[0][0]
         elif v.shape[0] >= 2:
-            return np.array(tsd.mp(_u, window, _v, n_jobs))
+            return np.array(tsd.mp(_u, window, _v, par))
     elif _u.shape[0] >= 2:
         if _v is None:
-            return np.array(tsd.mp(_u, window, _v, n_jobs))
+            return np.array(tsd.mp(_u, window, _v, par))
         else:
             if _v.shape[0] == 1:
-                return np.array(tsd.mp(_u, window, _v, n_jobs))
+                return np.array(tsd.mp(_u, window, _v, par))
             elif _v.shape[0] >= 2:
-                return np.array(tsd.mp(_u, window, _v, n_jobs))
+                return np.array(tsd.mp(_u, window, _v, par))
 
 __all__ = [
     "euclidean",

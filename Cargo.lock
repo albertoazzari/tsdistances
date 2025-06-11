@@ -139,7 +139,7 @@ dependencies = [
 [[package]]
 name = "catch22"
 version = "0.1.0"
-source = "git+https://github.com/albertoazzari/catch22_rs.git#921ebd6357ceae01b4b729716e99e2aaef827292"
+source = "git+https://github.com/albertoazzari/catch22_rs.git#fe360033abb8e5ad95c52c00ce450d5f66038f17"
 dependencies = [
  "rustfft",
 ]
@@ -347,7 +347,7 @@ checksum = "335ff9f135e4384c8150d6f27c6daed433577f86b4750418338c01a1a2528592"
 dependencies = [
  "cfg-if",
  "libc",
- "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasi 0.11.1+wasi-snapshot-preview1",
 ]
 
 [[package]]
@@ -1036,7 +1036,7 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 [[package]]
 name = "rustc_codegen_spirv"
 version = "0.9.0"
-source = "git+https://github.com/Rust-GPU/rust-gpu.git#77070b70b4af3afd7d12d980f6c997e9b77e6f9c"
+source = "git+https://github.com/Rust-GPU/rust-gpu.git#bd1a6fc5cb05de3bf00d13c22e086a3aac0bc12e"
 dependencies = [
  "ahash",
  "ar",
@@ -1067,12 +1067,12 @@ dependencies = [
 [[package]]
 name = "rustc_codegen_spirv-target-specs"
 version = "0.9.0"
-source = "git+https://github.com/Rust-GPU/rust-gpu.git#77070b70b4af3afd7d12d980f6c997e9b77e6f9c"
+source = "git+https://github.com/Rust-GPU/rust-gpu.git#bd1a6fc5cb05de3bf00d13c22e086a3aac0bc12e"
 
 [[package]]
 name = "rustc_codegen_spirv-types"
 version = "0.9.0"
-source = "git+https://github.com/Rust-GPU/rust-gpu.git#77070b70b4af3afd7d12d980f6c997e9b77e6f9c"
+source = "git+https://github.com/Rust-GPU/rust-gpu.git#bd1a6fc5cb05de3bf00d13c22e086a3aac0bc12e"
 dependencies = [
  "rspirv",
  "serde",
@@ -1268,7 +1268,7 @@ dependencies = [
 [[package]]
 name = "spirv-builder"
 version = "0.9.0"
-source = "git+https://github.com/Rust-GPU/rust-gpu.git#77070b70b4af3afd7d12d980f6c997e9b77e6f9c"
+source = "git+https://github.com/Rust-GPU/rust-gpu.git#bd1a6fc5cb05de3bf00d13c22e086a3aac0bc12e"
 dependencies = [
  "cargo_metadata",
  "memchr",
@@ -1285,7 +1285,7 @@ dependencies = [
 [[package]]
 name = "spirv-std"
 version = "0.9.0"
-source = "git+https://github.com/Rust-GPU/rust-gpu.git#77070b70b4af3afd7d12d980f6c997e9b77e6f9c"
+source = "git+https://github.com/Rust-GPU/rust-gpu.git#bd1a6fc5cb05de3bf00d13c22e086a3aac0bc12e"
 dependencies = [
  "bitflags 1.3.2",
  "glam",
@@ -1298,7 +1298,7 @@ dependencies = [
 [[package]]
 name = "spirv-std-macros"
 version = "0.9.0"
-source = "git+https://github.com/Rust-GPU/rust-gpu.git#77070b70b4af3afd7d12d980f6c997e9b77e6f9c"
+source = "git+https://github.com/Rust-GPU/rust-gpu.git#bd1a6fc5cb05de3bf00d13c22e086a3aac0bc12e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1309,7 +1309,7 @@ dependencies = [
 [[package]]
 name = "spirv-std-types"
 version = "0.9.0"
-source = "git+https://github.com/Rust-GPU/rust-gpu.git#77070b70b4af3afd7d12d980f6c997e9b77e6f9c"
+source = "git+https://github.com/Rust-GPU/rust-gpu.git#bd1a6fc5cb05de3bf00d13c22e086a3aac0bc12e"
 
 [[package]]
 name = "spirv-tools"
@@ -1551,12 +1551,14 @@ dependencies = [
 [[package]]
 name = "tsdistances_gpu"
 version = "0.1.0"
+source = "git+https://github.com/albertoazzari/tsdistances_gpu.git#90a02da701faf39a3079514a5ba40a78c718b1b5"
 dependencies = [
  "bytemuck",
  "dashmap",
  "rspirv",
  "spirv-builder",
  "spirv-std",
+ "spirv-tools",
  "vulkano",
 ]
 
@@ -1649,9 +1651,9 @@ dependencies = [
 
 [[package]]
 name = "wasi"
-version = "0.11.0+wasi-snapshot-preview1"
+version = "0.11.1+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
+checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
 name = "wasi"
@@ -1898,9 +1900,9 @@ checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
 
 [[package]]
 name = "winnow"
-version = "0.7.10"
+version = "0.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c06928c8748d81b05c9be96aad92e1b6ff01833332f281e8cfca3be4b35fc9ec"
+checksum = "74c7b26e3480b707944fc872477815d29a8e429d2f93a1ce000f5fa84a15cbcd"
 dependencies = [
  "memchr",
 ]
