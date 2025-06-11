@@ -11,15 +11,21 @@ from tsdistances import (
     msm_distance,
     twe_distance,
 )
+import time
 
-A = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')[:10]
-B = np.loadtxt('tests/ACSF1/ACSF1_TEST.tsv', delimiter='\t')[:15]
+A = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')
+B = np.loadtxt('tests/ACSF1/ACSF1_TEST.tsv', delimiter='\t')
 band = 1.0
 
 def test_erp_distance():
     gap_penalty = 0.0
+    start_time = time.time()
     D = erp_distance(A, B, gap_penalty=gap_penalty, band=band, n_jobs=-1)
+    end_time = time.time()
+    start_time_gpu = time.time()
     D_gpu = erp_distance(A, B, gap_penalty=gap_penalty, band=band, device='gpu')
+    end_time_gpu = time.time()
+    print(f"Speedup: {end_time - start_time:.4f} / {end_time_gpu - start_time_gpu:.4f} = {(end_time - start_time) / (end_time_gpu - start_time_gpu):.2f}x")
     # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
     assert np.allclose(D, D_gpu, rtol=1e-4, atol=1e-6)
 
