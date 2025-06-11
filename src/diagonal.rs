@@ -1,13 +1,13 @@
-use crate::{matrix::{DiagonalMatrix, Matrix}, Number};
+use crate::{matrix::{DiagonalMatrix, Matrix}, Float};
 
 pub fn diagonal_distance<M: Matrix>(
-    a: &[Number],
-    b: &[Number],
-    init_val: Number,
-    sakoe_chiba_band: Number,
-    init_lambda: impl Fn(&[Number], &[Number], usize, usize, Number, Number, Number) -> Number + Copy,
-    dist_lambda: impl Fn(&[Number], &[Number], usize, usize, Number, Number, Number) -> Number + Copy,
-) -> Number {
+    a: &[Float],
+    b: &[Float],
+    init_val: Float,
+    sakoe_chiba_band: Float,
+    init_lambda: impl Fn(&[Float], &[Float], usize, usize, Float, Float, Float) -> Float + Copy,
+    dist_lambda: impl Fn(&[Float], &[Float], usize, usize, Float, Float, Float) -> Float + Copy,
+) -> Float {
     diagonal_distance_::<M>(
         a.len(),
         b.len(),
@@ -21,11 +21,11 @@ pub fn diagonal_distance<M: Matrix>(
 fn diagonal_distance_<M: Matrix>(
     a_len: usize,
     b_len: usize,
-    init_val: Number,
-    sakoe_chiba_band: Number,
-    init_lambda: impl Fn(usize, usize, Number, Number, Number) -> Number,
-    dist_lambda: impl Fn(usize, usize, Number, Number, Number) -> Number,
-) -> Number {
+    init_val: Float,
+    sakoe_chiba_band: Float,
+    init_lambda: impl Fn(usize, usize, Float, Float, Float) -> Float,
+    dist_lambda: impl Fn(usize, usize, Float, Float, Float) -> Float,
+) -> Float {
     let mut matrix = DiagonalMatrix::new(a_len, b_len, init_val);
 
     let mut i = 0;
@@ -38,14 +38,14 @@ fn diagonal_distance_<M: Matrix>(
     let start_coord = M::index_mat_to_diag(0, 0).1;
     let end_coord = M::index_mat_to_diag(a_len, b_len).1;
 
-    let band_size = sakoe_chiba_band * (a_len as Number);
+    let band_size = sakoe_chiba_band * (a_len as Float);
 
     for d in 2..(a_len + b_len + 1) {
         matrix.set_diagonal_cell(d, d as isize, init_val);
 
         let (s_, e_) = if sakoe_chiba_band < 1.0 {
-            let mid_coord = start_coord as Number
-                + (end_coord as Number - start_coord as Number) / (a_len + b_len) as Number * d as Number;
+            let mid_coord = start_coord as Float
+                + (end_coord as Float - start_coord as Float) / (a_len + b_len) as Float * d as Float;
             (
                 s.max((mid_coord - band_size).floor() as isize),
                 e.min((mid_coord + band_size).ceil() as isize),

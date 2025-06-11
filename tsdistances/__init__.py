@@ -71,10 +71,6 @@ def euclidean_distance(
            [1.        , 0.        ]])
 
     """
-
-    print("euclidean_distance *******************")
-    print(dir(tsd))
-    # exit(0)
     if u.ndim == 1 and v.ndim == 1:
         _u = u.reshape((1, u.shape[0]))
         _v = v.reshape((1, v.shape[0]))

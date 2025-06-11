@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 from tsdistances import (
     euclidean_distance,
-    catcheucl_distance,
     erp_distance,
     lcss_distance,
     dtw_distance,
@@ -19,8 +18,8 @@ from aeon import distances as aeon
 import stumpy
 import time
 
-A = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')[:10]
-B = np.loadtxt('tests/ACSF1/ACSF1_TEST.tsv', delimiter='\t')[:15]
+A = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')
+B = np.loadtxt('tests/ACSF1/ACSF1_TEST.tsv', delimiter='\t')
 band = 1.0
 
 
@@ -31,8 +30,13 @@ def test_euclidean_distance():
 
 def test_erp_distance():
     gap_penalty = 0.0
+    start_time = time.time()
     D = erp_distance(A, B, gap_penalty=gap_penalty, band=band, par=True)
+    end_time = time.time()
+    start_time_aeon = time.time()
     aeon_D = aeon.erp_pairwise_distance(A, B, g=gap_penalty, window=band)
+    end_time_aeon = time.time()
+    print(f"Speedup: {end_time - start_time:.4f} / {end_time_aeon - start_time_aeon:.4f} = {(end_time - start_time) / (end_time_aeon - start_time_aeon):.2f}x")
     assert np.allclose(D, aeon_D, atol=1e-8)
 
 
@@ -95,12 +99,16 @@ def test_sb_distance():
     aeon_D = aeon.sbd_pairwise_distance(A, B)
     assert np.allclose(D, aeon_D, atol=1e-8)
 
-
 def test_mp_distance():
     window = int(0.1 * A.shape[1])
     D = mp_distance(A, window, B, par=True)
-    D_stumpy = np.zeros_like(D)
-    for i in range(A.shape[0]):
-        for j in range(B.shape[0]):
-            D_stumpy[i, j] = stumpy.mpdist(A[i], B[j], m=window)
+    D_stumpy = stumpy.mpdist(A, B, m=window)
     assert np.allclose(D, D_stumpy, atol=1e-8)
+# def test_mp_distance():
+#     window = int(0.1 * A.shape[1])
+#     D = mp_distance(A, window, B, par=True)
+#     D_stumpy = np.zeros_like(D)
+#     for i in range(A.shape[0]):
+#         for j in range(B.shape[0]):
+#             D_stumpy[i, j] = stumpy.mpdist(A[i], B[j], m=window)
+#     assert np.allclose(D, D_stumpy, atol=1e-8)

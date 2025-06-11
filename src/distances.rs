@@ -1,7 +1,7 @@
 use crate::{
     diagonal,
     matrix::DiagonalMatrix,
-    utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore}, Number,
+    utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore}, Float,
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
@@ -174,7 +174,7 @@ pub fn euclidean(
             a.iter()
                 .zip(b.iter())
                 .map(|(x, y)| (x - y).powi(2))
-                .sum::<Number>()
+                .sum::<Float>()
                 .sqrt()
         },
         x1,
@@ -301,7 +301,7 @@ pub fn erp(
     gap_penalty: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Number>>> {
+) -> PyResult<Vec<Vec<Float>>> {
     if gap_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Gap penalty must be non-negative",
@@ -319,7 +319,7 @@ pub fn erp(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let erp_cost_func =
-                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
+                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
                                 (y + (a[i] - b[j]).abs()).min(
                                     (z + (a[i] - gap_penalty).abs())
                                         .min(x + (b[j] - gap_penalty).abs()),
@@ -329,7 +329,7 @@ pub fn erp(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Number::INFINITY,
+                            Float::INFINITY,
                             sakoe_chiba_band,
                             erp_cost_func,
                             erp_cost_func,
@@ -383,7 +383,7 @@ pub fn lcss(
     epsilon: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Number>>> {
+) -> PyResult<Vec<Vec<Float>>> {
     if epsilon < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Epsilon must be non-negative",
@@ -402,10 +402,10 @@ pub fn lcss(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let lcss_cost_func =
-                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
+                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
                                 let dist = (a[i] - b[j]).abs();
-                                (dist <= epsilon) as i32 as Number * (y + 1.0)
-                                    + (dist > epsilon) as i32 as Number * x.max(z)
+                                (dist <= epsilon) as i32 as Float * (y + 1.0)
+                                    + (dist > epsilon) as i32 as Float * x.max(z)
                             };
 
                         let similarity = diagonal::diagonal_distance::<DiagonalMatrix>(
@@ -416,7 +416,7 @@ pub fn lcss(
                             lcss_cost_func,
                             lcss_cost_func,
                         );
-                        let min_len = a.len().min(b.len()) as Number;
+                        let min_len = a.len().min(b.len()) as Float;
                         1.0 - similarity / min_len
                     },
                     x1,
@@ -466,7 +466,7 @@ pub fn dtw(
     sakoe_chiba_band: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Number>>> {
+) -> PyResult<Vec<Vec<Float>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -480,14 +480,14 @@ pub fn dtw(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let dtw_cost_func =
-                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
+                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
                                 let dist = (a[i] - b[j]).powi(2);
                                 dist + z.min(x.min(y))
                             };
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Number::INFINITY,
+                            Float::INFINITY,
                             sakoe_chiba_band,
                             dtw_cost_func,
                             dtw_cost_func,
@@ -540,7 +540,7 @@ pub fn ddtw(
     sakoe_chiba_band: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Number>>> {
+) -> PyResult<Vec<Vec<Float>>> {
     let x1_d = derivate(&x1);
     let x2_d = if let Some(x2) = &x2 {
         Some(derivate(&x2))
@@ -559,7 +559,7 @@ pub fn wdtw(
     g: f64, //constant that controls the curvature (slope) of the function
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Number>>> {
+) -> PyResult<Vec<Vec<Float>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -575,7 +575,7 @@ pub fn wdtw(
                         let weights = dtw_weights(a.len().max(b.len()), g);
 
                         let wdtw_cost_func =
-                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
+                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
                                 let dist = (a[i] - b[j]).powi(2)
                                     * weights[(i as i32 - j as i32).abs() as usize];
                                 dist + z.min(x.min(y))
@@ -584,7 +584,7 @@ pub fn wdtw(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Number::INFINITY,
+                            Float::INFINITY,
                             sakoe_chiba_band,
                             wdtw_cost_func,
                             wdtw_cost_func,
@@ -643,7 +643,7 @@ pub fn wddtw(
     g: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Number>>> {
+) -> PyResult<Vec<Vec<Float>>> {
     let x1_d = derivate(&x1);
     let x2_d = if let Some(x2) = &x2 {
         Some(derivate(&x2))
@@ -661,7 +661,7 @@ pub fn msm(
     sakoe_chiba_band: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Number>>> {
+) -> PyResult<Vec<Vec<Float>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -675,7 +675,7 @@ pub fn msm(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let msm_cost_func =
-                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
+                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
                                 (y + (a[i] - b[j]).abs())
                                     .min(
                                         z + msm_cost_function(
@@ -696,7 +696,7 @@ pub fn msm(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Number::INFINITY,
+                            Float::INFINITY,
                             sakoe_chiba_band,
                             // |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
                             //     if i == 1 && j == 1 {
@@ -768,7 +768,7 @@ pub fn twe(
     penalty: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Number>>> {
+) -> PyResult<Vec<Vec<Float>>> {
     if stiffness < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Stiffness (nu) must be non-negative",
@@ -794,9 +794,9 @@ pub fn twe(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let twe_cost_func =
-                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
+                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
                                 // deletion in a
-                                let del_a: Number = z
+                                let del_a: Float = z
                                     + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs()
                                     + delete_addition;
 
@@ -813,7 +813,7 @@ pub fn twe(
                                 let match_a_b = y
                                     + match_current
                                     + match_previous
-                                    + stiffness * (2.0 * (i as isize - j as isize).abs() as Number);
+                                    + stiffness * (2.0 * (i as isize - j as isize).abs() as Float);
 
                                 del_a.min(del_b.min(match_a_b))
                             };
@@ -821,7 +821,7 @@ pub fn twe(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Number::INFINITY,
+                            Float::INFINITY,
                             sakoe_chiba_band,
                             twe_cost_func,
                             twe_cost_func,
@@ -880,7 +880,7 @@ pub fn adtw(
     warp_penalty: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Number>>> {
+) -> PyResult<Vec<Vec<Float>>> {
     if warp_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Weight must be non-negative",
@@ -898,7 +898,7 @@ pub fn adtw(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let adtw_cost_func =
-                            |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
+                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
                                 let dist = (a[i] - b[j]).powi(2);
                                 dist + (z + warp_penalty).min((x + warp_penalty).min(y))
                             };
@@ -906,7 +906,7 @@ pub fn adtw(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Number::INFINITY,
+                            Float::INFINITY,
                             sakoe_chiba_band,
                             adtw_cost_func,
                             adtw_cost_func,
@@ -973,7 +973,7 @@ pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, par: bool) -> PyResult<V
 #[pyfunction]
 #[pyo3(signature = (x1, window, x2=None, par=true))]
 pub fn mp(
-    x1: Vec<Vec<Number>>,
+    x1: Vec<Vec<Float>>,
     window: i32,
     x2: Option<Vec<Vec<f64>>>,
     par: bool,
@@ -986,7 +986,7 @@ pub fn mp(
             let n_b = b.len();
             let mut p_abba = mp_(&a, &b, window as usize);
             let n = min(
-                (threshold * (n_a + n_b) as Number).ceil() as usize,
+                (threshold * (n_a + n_b) as Float).ceil() as usize,
                 n_a - window + 1 + n_b - window + 1 - 1,
             );
             *p_abba
@@ -1000,14 +1000,14 @@ pub fn mp(
     Ok(distance_matrix)
 }
 
-fn mp_(a: &[Number], b: &[Number], window: usize) -> Vec<Number> {
+fn mp_(a: &[Float], b: &[Float], window: usize) -> Vec<Float> {
     let n_a = a.len();
     let n_b = b.len();
 
     let window = window.min(n_a).min(n_b);
 
-    let mut p_ab = vec![Number::INFINITY; n_a - window + 1];
-    let mut p_ba = vec![Number::INFINITY; n_b - window + 1];
+    let mut p_ab = vec![Float::INFINITY; n_a - window + 1];
+    let mut p_ba = vec![Float::INFINITY; n_b - window + 1];
 
     let (mean_a, std_a) = mean_std_per_windows(&a, window);
     let (mean_b, std_b) = mean_std_per_windows(&b, window);
@@ -1033,27 +1033,27 @@ fn mp_(a: &[Number], b: &[Number], window: usize) -> Vec<Number> {
     }
 }
 
-fn mean_std_per_windows(a: &[Number], window: usize) -> (Vec<Number>, Vec<Number>) {
+fn mean_std_per_windows(a: &[Float], window: usize) -> (Vec<Float>, Vec<Float>) {
     let n = a.len();
 
     let mut means = Vec::with_capacity(n - window + 1);
     let mut stds = Vec::with_capacity(n - window + 1);
 
-    let mut sum: Number = a[0..window].iter().sum();
-    let mut sum_squares: Number = a[0..window].iter().map(|&x| x * x).sum();
+    let mut sum: Float = a[0..window].iter().sum();
+    let mut sum_squares: Float = a[0..window].iter().map(|&x| x * x).sum();
 
-    means.push(sum / window as Number);
-    let var = (sum_squares / window as Number) - (means[0] * means[0]);
+    means.push(sum / window as Float);
+    let var = (sum_squares / window as Float) - (means[0] * means[0]);
     stds.push(var.sqrt());
 
     for i in window..n {
         sum += a[i] - a[i - window];
         sum_squares += a[i] * a[i] - a[i - window] * a[i - window];
 
-        let mean = sum / window as Number;
+        let mean = sum / window as Float;
         means.push(mean);
 
-        let var = (sum_squares / window as Number) - (mean * mean);
+        let var = (sum_squares / window as Float) - (mean * mean);
         stds.push(var.sqrt());
     }
 

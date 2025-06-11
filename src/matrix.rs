@@ -1,9 +1,9 @@
-use crate::Number;
+use crate::Float;
 
 pub trait Matrix: Sync + Send {
-    fn new(a_len: usize, b_len: usize, init_val: Number) -> Self;
-    fn set_diagonal_cell(&mut self, diag_row: usize, diag_offset: isize, value: Number);
-    fn get_diagonal_cell(&self, diag_row: usize, diag_offset: isize) -> Number;
+    fn new(a_len: usize, b_len: usize, init_val: Float) -> Self;
+    fn set_diagonal_cell(&mut self, diag_row: usize, diag_offset: isize, value: Float);
+    fn get_diagonal_cell(&self, diag_row: usize, diag_offset: isize) -> Float;
 
     fn index_mat_to_diag(i: usize, j: usize) -> (usize, isize) {
         (i + j, (j as isize) - (i as isize))
@@ -16,14 +16,14 @@ pub trait Matrix: Sync + Send {
 }
 
 pub struct FullMatrix {
-    matrix: Vec<Vec<Number>>,
+    matrix: Vec<Vec<Float>>,
     diag_len: usize,
     a_len: usize,
     b_len: usize,
 }
 
 impl Matrix for FullMatrix {
-    fn new(a_len: usize, b_len: usize, init_val: Number) -> Self {
+    fn new(a_len: usize, b_len: usize, init_val: Float) -> Self {
         let rowcount = a_len + b_len + 1;
         let diag_len = a_len + b_len + 1;
 
@@ -35,11 +35,11 @@ impl Matrix for FullMatrix {
         }
     }
 
-    fn get_diagonal_cell(&self, diag_row: usize, diag_offset: isize) -> Number {
+    fn get_diagonal_cell(&self, diag_row: usize, diag_offset: isize) -> Float {
         self.matrix[diag_row][self.diag_len.overflowing_add_signed(diag_offset).0 % self.diag_len]
     }
 
-    fn set_diagonal_cell(&mut self, diag_row: usize, diag_offset: isize, value: Number) {
+    fn set_diagonal_cell(&mut self, diag_row: usize, diag_offset: isize, value: Float) {
         self.matrix[diag_row]
             [self.diag_len.overflowing_add_signed(diag_offset).0 % self.diag_len] = value;
     }
@@ -67,12 +67,12 @@ impl Matrix for FullMatrix {
 }
 
 pub struct DiagonalMatrix {
-    diagonal: Vec<Number>,
+    diagonal: Vec<Float>,
     mask: usize,
 }
 
 impl Matrix for DiagonalMatrix {
-    fn new(a_len: usize, _b_len: usize, init_val: Number) -> Self {
+    fn new(a_len: usize, _b_len: usize, init_val: Float) -> Self {
         let diag_len = 2 * (a_len + 1).next_power_of_two();
 
         Self {
@@ -82,12 +82,12 @@ impl Matrix for DiagonalMatrix {
     }
 
     #[inline(always)]
-    fn get_diagonal_cell(&self, _diag_row: usize, diag_offset: isize) -> Number {
+    fn get_diagonal_cell(&self, _diag_row: usize, diag_offset: isize) -> Float {
         self.diagonal[diag_offset as usize & self.mask]
     }
 
     #[inline(always)]
-    fn set_diagonal_cell(&mut self, _diag_row: usize, diag_offset: isize, value: Number) {
+    fn set_diagonal_cell(&mut self, _diag_row: usize, diag_offset: isize, value: Float) {
         self.diagonal[diag_offset as usize & self.mask] = value;
     }
 
@@ -102,14 +102,14 @@ pub struct CheckMatrix {
 }
 
 impl Matrix for CheckMatrix {
-    fn new(a_len: usize, b_len: usize, init_val: Number) -> Self {
+    fn new(a_len: usize, b_len: usize, init_val: Float) -> Self {
         Self {
             full: FullMatrix::new(a_len, b_len, init_val),
             optim: DiagonalMatrix::new(a_len, b_len, init_val),
         }
     }
 
-    fn get_diagonal_cell(&self, diag_row: usize, diag_offset: isize) -> Number {
+    fn get_diagonal_cell(&self, diag_row: usize, diag_offset: isize) -> Float {
         let full = self.full.get_diagonal_cell(diag_row, diag_offset);
         let optim = self.optim.get_diagonal_cell(diag_row, diag_offset);
         if full != optim {
@@ -125,7 +125,7 @@ impl Matrix for CheckMatrix {
         full
     }
 
-    fn set_diagonal_cell(&mut self, diag_row: usize, diag_offset: isize, value: Number) {
+    fn set_diagonal_cell(&mut self, diag_row: usize, diag_offset: isize, value: Float) {
         // if diag_offset == -14 {
         //     println!("Setting diag_offset: {} to value: {}", diag_offset, value);
         // }
