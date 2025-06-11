@@ -36,7 +36,7 @@ def test_erp_distance():
     start_time_aeon = time.time()
     aeon_D = aeon.erp_pairwise_distance(A, B, g=gap_penalty, window=band)
     end_time_aeon = time.time()
-    print(f"Speedup: {end_time - start_time:.4f} / {end_time_aeon - start_time_aeon:.4f} = {(end_time - start_time) / (end_time_aeon - start_time_aeon):.2f}x")
+    print(f"Speedup: AEON -> {end_time_aeon - start_time_aeon:.4f} and tsdistances -> {end_time - start_time:.4f} = {(end_time_aeon - start_time_aeon) / (end_time - start_time):.2f}x")
     assert np.allclose(D, aeon_D, atol=1e-8)
 
 
