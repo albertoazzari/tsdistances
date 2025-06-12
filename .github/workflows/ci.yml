@@ -97,7 +97,7 @@ jobs:
     name: Release
     runs-on: self-hosted
     if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
-    needs: [linux, macos, sdist]
+    needs: [linux, sdist]
     permissions:
       # Use to sign the release artifacts
       id-token: write
