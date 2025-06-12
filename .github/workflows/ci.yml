@@ -41,8 +41,7 @@ jobs:
         with:
           name: wheels-linux-${{ matrix.platform.target }}}-py${{ matrix.python-version }}
           path: dist
-      - name: pytest
-        if: ${{ startsWith(matrix.platform.target, 'x86_64') }}
+      - name: Unit test
         shell: bash
         run: |
           set -e
@@ -68,11 +67,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install Homebrew
-        run: bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        run: sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       - name: Install libxcb
         run: |
-          brew install libxcb
-          brew link --force libxcb
+          sudo brew install libxcb
+          sudo brew link --force libxcb
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -85,6 +84,17 @@ jobs:
         with:
           name: wheels-macos-${{ matrix.platform.target }}}-py${{ matrix.python-version }}
           path: dist
+      - name: Unit test
+        shell: bash
+        run: |
+          set -e
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install tsdistances --find-links dist --force-reinstall
+          pip install pytest
+          pip install aeon
+          pip install stumpy
+          pytest -v tests/test_correctness_cpu.py
 
   sdist:
     runs-on: ubuntu-latest
