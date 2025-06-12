@@ -2,7 +2,7 @@ cargo-features = ["edition2024"]
 
 [package]
 name = "tsdistances"
-version = "0.2.0"
+version = "0.1.2"
 description = "tsdistances is a Python library (with Rust backend) for computing various pairwise distances between sets of time series data."
 edition = "2024"
 authors = [
