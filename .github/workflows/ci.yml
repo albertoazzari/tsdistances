@@ -71,8 +71,8 @@ jobs:
         uses: Homebrew/actions/setup-homebrew@master
       - name: Install libxcb
         run: |
-          sudo brew install libxcb
-          sudo brew link --force libxcb
+          brew install libxcb
+          brew link --force libxcb
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
