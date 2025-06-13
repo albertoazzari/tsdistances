@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   linux:
-    runs-on: self-hosted
+    runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
         platform:
@@ -54,7 +54,7 @@ jobs:
           pytest -v tests/test_correctness_cpu.py
 
   macos:
-    runs-on: self-hosted
+    runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
         platform:
@@ -91,7 +91,7 @@ jobs:
           pytest -v tests/test_correctness_cpu.py
 
   sdist:
-    runs-on: self-hosted
+    runs-on: ${{ matrix.platform.runner }}
     steps:
       - uses: actions/checkout@v4
       - name: Build sdist
@@ -107,7 +107,7 @@ jobs:
 
   release:
     name: Release
-    runs-on: self-hosted
+    runs-on: ${{ matrix.platform.runner }}
     if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
     needs: [linux, macos, sdist]
     permissions:
