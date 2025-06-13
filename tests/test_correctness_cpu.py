@@ -103,13 +103,8 @@ def test_sb_distance():
 def test_mp_distance():
     window = int(0.1 * A.shape[1])
     D = mp_distance(A, window, B, par=True)
-    D_stumpy = stumpy.mpdist(A, B, m=window)
+    D_stumpy = np.zeros_like(D)
+    for i in range(A.shape[0]):
+        for j in range(B.shape[0]):
+            D_stumpy[i, j] = stumpy.mpdist(A[i], B[j], m=window)
     assert np.allclose(D, D_stumpy, atol=1e-8)
-# def test_mp_distance():
-#     window = int(0.1 * A.shape[1])
-#     D = mp_distance(A, window, B, par=True)
-#     D_stumpy = np.zeros_like(D)
-#     for i in range(A.shape[0]):
-#         for j in range(B.shape[0]):
-#             D_stumpy[i, j] = stumpy.mpdist(A[i], B[j], m=window)
-#     assert np.allclose(D, D_stumpy, atol=1e-8)
