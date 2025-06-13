@@ -39,7 +39,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux-${{ matrix.platform.target }}-py${{ matrix.python-version }}
+          name: wheels-${{ matrix.platform.runner }}-${{ matrix.platform.target }}-py${{ matrix.python-version }}
           path: dist
       - name: Unit test
         shell: bash
@@ -66,13 +66,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      # - name: Set up Homebrew
-      #   id: set-up-homebrew
-      #   uses: Homebrew/actions/setup-homebrew@master
-      # - name: Install libxcb
-      #   run: |
-      #     brew install libxcb
-      #     brew link --force libxcb
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -83,7 +76,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-macos-${{ matrix.platform.target }}-py${{ matrix.python-version }}
+          name: wheels-${{ matrix.platform.runner }}-${{ matrix.platform.target }}-py${{ matrix.python-version }}
           path: dist
       - name: Unit test
         shell: bash

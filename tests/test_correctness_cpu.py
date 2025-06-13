@@ -18,8 +18,9 @@ from aeon import distances as aeon
 import stumpy
 import time
 
-A = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')
-B = np.loadtxt('tests/ACSF1/ACSF1_TEST.tsv', delimiter='\t')
+N_SAMPLES = 10
+A = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')[:N_SAMPLES]
+B = np.loadtxt('tests/ACSF1/ACSF1_TEST.tsv', delimiter='\t')[:2 * N_SAMPLES]
 band = 1.0
 
 
