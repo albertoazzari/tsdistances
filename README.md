@@ -40,7 +40,7 @@ The library is designed to be fast and scalable, leveraging parallel computation
 
 2.  Parallel Computation: Utilizes multiple CPU cores to speed up computations.
 
-3.  GPU Acceleration: Optional GPU support based on [Vulkan](https://www.vulkan.org/) for even faster computations.
+3.  GPU Acceleration: Optional GPU support based on [Vulkan](https://www.vulkan.org/) for even faster computations with [Rust-GPU](https://rust-gpu.github.io/).
 
 ## Benchmark
 
@@ -124,21 +124,21 @@ This can be done by going through the following steps in sequence:
     np.random.seed(42)
     X = np.random.rand(10, 50)
 
-    # Pairwise DTW distances within the set X (on CPU, 4 parallel jobs)
-    pairwise_distances = tsdistances.dtw_distance(X, n_jobs=4, device='cpu')
+    # Pairwise DTW distances within the set X (on CPU, single thread)
+    pairwise_distances = tsdistances.dtw_distance(X, par=False, device='cpu')
     print("Pairwise DTW distance matrix (CPU, 4 jobs):")
     print(pairwise_distances)
 
     # Compare two batches: compute distances between each element of X and each element of Y
     Y = np.random.rand(8, 50)
-    batch_distances = tsdistances.dtw_distance(X, Y, n_jobs=-1, device='cpu')
+    batch_distances = tsdistances.dtw_distance(X, Y, par=True, device='cpu')
     print("Batch DTW distance matrix (X vs Y):")
     print(batch_distances)
 ```
 Notes
 1. `device='gpu'` enables GPU acceleration.
 
-2. `n_jobs` controls parallelism. Set it to `-1` to use all available CPU cores.
+2. `par` controls parallelism. Set it to `True` to use all available CPU cores.
 
 3. If `v` is not provided, the function computes pairwise distances within `u`.
 
@@ -161,6 +161,6 @@ All distance implementations in `tsdistances` are **tested against [AEON](https:
 To run the correctness tests, simply use `pytest`:
 
 ```bash
-pytest -v tests/test_correctness.py
+pytest -v tests/test_correctness_cpu.py
 ```
 

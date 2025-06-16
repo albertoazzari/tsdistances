@@ -114,34 +114,32 @@ def test_tsdistances():
 
         X = np.vstack((X_train, X_test))
 
-        for j, distance in enumerate(TSDISTANCES):
-            print(f"\tDistance: {distance.__name__}")
+        for j, (tsdist, aeondist)  in enumerate(zip(TSDISTANCES, AEONDISTANCES)):
+            print(f"\tDistance: {tsdist.__name__}")
             print("\t\tSingle thread")
             start = time.time()
-            D = distance(X, None, n_jobs=1)
+            D = tsdist(X, par=False)
             end = time.time()
             tsdistances_times[i, j, 0] = end - start
 
             print("\t\tParallel")
             start = time.time()
-            D = distance(X, None, n_jobs=-1)
+            D = tsdist(X, par=True)
             end = time.time()
             tsdistances_times[i, j, 1] = end - start
 
-            if distance.__name__ in ["erp_distance", "lcss_distance", "dtw_distance", "ddtw_distance", "wdtw_distance", "wddtw_distance", "adtw_distance", "msm_distance", "twe_distance"]:
+            if tsdist.__name__ in ["erp_distance", "lcss_distance", "dtw_distance", "ddtw_distance", "wdtw_distance", "wddtw_distance", "adtw_distance", "msm_distance", "twe_distance"]:
                 print("\t\tGPU")
                 start = time.time()
-                D = distance(X, None, device='gpu')
+                D = tsdist(X, device='gpu')
                 end = time.time()
                 tsdistances_times[i, j, 2] = end - start
-        
-        for j, distance in enumerate(AEONDISTANCES):
-            print(f"\tDistance: {distance.__name__}")
-            print("\t\tSingle thread")
+
+            # AEON distances
             start = time.time()
-            D = distance(X)
+            D = aeondist(X)
             end = time.time()
             aeon_times[i, j] = end - start
-
+            
     np.save("times_tsdistances.npy", tsdistances_times)
     np.save("times_aeon.npy", aeon_times)
