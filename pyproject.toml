@@ -19,6 +19,7 @@ dynamic = ["authors", "description", "version"]
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
+python-source = "python"
 strip = true
 
 [project.urls]
