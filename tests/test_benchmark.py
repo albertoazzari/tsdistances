@@ -33,7 +33,7 @@ import pathlib
 
 UCR_ARCHIVE_PATH = pathlib.Path('../../DATA/ucr')
 BENCHMARKS_DS = ["ACSF1", "Adiac", "Beef", "CBF", "ChlorineConcentration", "CinCECGTorso", "CricketX", "DiatomSizeReduction", "DistalPhalanxOutlineCorrect", "ECG200", "EthanolLevel", "FreezerRegularTrain", "FreezerSmallTrain", "Ham", "Haptics", "HouseTwenty", "ItalyPowerDemand", "MixedShapesSmallTrain", "NonInvasiveFetalECGThorax1", "ShapesAll", "Strawberry", "UWaveGestureLibraryX", "Wafer"]
-TSDISTANCES = [euclidean_distance, catcheucl_distance, erp_distance, lcss_distance, dtw_distance, ddtw_distance, wdtw_distance, wddtw_distance, adtw_distance, msm_distance, twe_distance, sb_distance, mp_distance]
+TSDISTANCES = [euclidean_distance, erp_distance, lcss_distance, dtw_distance, ddtw_distance, wdtw_distance, wddtw_distance, adtw_distance, msm_distance, twe_distance, sb_distance]
 AEONDISTANCES = [euclidean_pairwise_distance, erp_pairwise_distance, lcss_pairwise_distance, dtw_pairwise_distance, ddtw_pairwise_distance, wdtw_pairwise_distance, wddtw_pairwise_distance, adtw_pairwise_distance, msm_pairwise_distance, twe_pairwise_distance, sbd_pairwise_distance]
 MODALITIES = ["", "par", "gpu"]
 
@@ -104,11 +104,16 @@ DATASETS_PATH = load_benchmark()
 def test_tsdistances():
     tsdistances_times = np.full((len(DATASETS_PATH), len(TSDISTANCES), len(MODALITIES)), np.nan)
     aeon_times = np.full((len(DATASETS_PATH), len(TSDISTANCES)), np.nan)
+    dataset_info = np.zeros((len(DATASETS_PATH), 3))
 
     for i, dataset in enumerate(DATASETS_PATH):
         print(f"\nDataset: {dataset.name}")
         train = np.loadtxt(dataset / f"{dataset.name}_TRAIN.tsv", delimiter="\t")
         test = np.loadtxt(dataset / f"{dataset.name}_TEST.tsv", delimiter="\t")
+        dataset_info[i, 0] = train.shape[0]  # Total number of time series in train set
+        dataset_info[i, 1] = test.shape[0] # Total number of time series in test set
+        dataset_info[i, 2] = train.shape[1] - 1 # Length of time series
+
         X_train = train[:, 1:]
         X_test = test[:, 1:]
 
@@ -141,5 +146,5 @@ def test_tsdistances():
             end = time.time()
             aeon_times[i, j] = end - start
             
-    np.save("times_tsdistances.npy", tsdistances_times)
-    np.save("times_aeon.npy", aeon_times)
+            np.save("times_tsdistances.npy", tsdistances_times)
+            np.save("times_aeon.npy", aeon_times)
