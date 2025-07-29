@@ -1,5 +1,3 @@
-cargo-features = ["edition2024"]
-
 [package]
 name = "tsdistances"
 version = "0.1.5"
@@ -19,7 +17,8 @@ pyo3 = { version = "0.23.5", features = ["extension-module"] }
 rand = "0.8.5"
 rayon = "1.10.0"
 rustfft = "6.3.0"
-tsdistances_gpu = { git = "https://github.com/albertoazzari/tsdistances_gpu.git"}
+tsdistances_gpu = { version = "0.1.0", path = "../tsdistances_gpu", default-features = false }
+# tsdistances_gpu = { git = "https://github.com/albertoazzari/tsdistances_gpu.git", default-features = false }
 
 [lib]
 crate-type = ["cdylib"]
@@ -28,5 +27,14 @@ name = "tsdistances"
 [profile.release]
 lto = true
 opt-level = 3
-codegen-units = 1
+codegen-units = 16
 strip = true
+
+[features]
+default = ["use-compiled-tools"]
+use-compiled-tools = [
+    "tsdistances_gpu/use-compiled-tools",
+]
+use-installed-tools = [
+    "tsdistances_gpu/use-installed-tools",
+]

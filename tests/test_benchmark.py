@@ -33,8 +33,8 @@ import pathlib
 
 UCR_ARCHIVE_PATH = pathlib.Path('../../DATA/ucr')
 BENCHMARKS_DS = ["ACSF1", "Adiac", "Beef", "CBF", "ChlorineConcentration", "CinCECGTorso", "CricketX", "DiatomSizeReduction", "DistalPhalanxOutlineCorrect", "ECG200", "EthanolLevel", "FreezerRegularTrain", "FreezerSmallTrain", "Ham", "Haptics", "HouseTwenty", "ItalyPowerDemand", "MixedShapesSmallTrain", "NonInvasiveFetalECGThorax1", "ShapesAll", "Strawberry", "UWaveGestureLibraryX", "Wafer"]
-TSDISTANCES = [euclidean_distance, erp_distance, lcss_distance, dtw_distance, ddtw_distance, wdtw_distance, wddtw_distance, adtw_distance, msm_distance, twe_distance, sb_distance]
-AEONDISTANCES = [euclidean_pairwise_distance, erp_pairwise_distance, lcss_pairwise_distance, dtw_pairwise_distance, ddtw_pairwise_distance, wdtw_pairwise_distance, wddtw_pairwise_distance, adtw_pairwise_distance, msm_pairwise_distance, twe_pairwise_distance, sbd_pairwise_distance]
+TSDISTANCES = [euclidean_distance, lcss_distance, dtw_distance, adtw_distance]
+AEONDISTANCES = [euclidean_pairwise_distance, lcss_pairwise_distance, dtw_pairwise_distance, adtw_pairwise_distance]
 MODALITIES = ["", "par", "gpu"]
 
 def load_benchmark():

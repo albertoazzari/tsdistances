@@ -13,7 +13,7 @@ from tsdistances import (
 )
 import time
 
-N_SAMPLES = 10
+N_SAMPLES = 100
 A = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')[:N_SAMPLES]
 B = np.loadtxt('tests/ACSF1/ACSF1_TEST.tsv', delimiter='\t')[:2 * N_SAMPLES]
 band = 1.0
@@ -90,4 +90,18 @@ def test_twe_distance():
     D = twe_distance(A, B, band=band, stifness=stiffness, penalty=penalty, par=True)
     D_gpu = twe_distance(A, B, band=band, stifness=stiffness, penalty=penalty, device='gpu')
     # Check that the GPU and CPU results are close (compare double precision with the single precision of GPU)
+    assert np.allclose(D, D_gpu, rtol=1e-4, atol=1e-6)
+
+
+def test_gpu_performance():
+    print(A.shape, B.shape)
+    start_time = time.time()
+    D = dtw_distance(A, B, band=band, par=True)
+    end_time = time.time()
+    print(f"CPU time: {end_time - start_time:.4f} seconds")
+    start_time_gpu = time.time()
+    D_gpu = dtw_distance(A, B, band=band, device='gpu')
+    end_time_gpu = time.time()
+    print(f"GPU time: {end_time_gpu - start_time_gpu:.4f} seconds")
+    print(f"Speedup: {end_time - start_time:.4f} / {end_time_gpu - start_time_gpu:.4f} = {(end_time - start_time) / (end_time_gpu - start_time_gpu):.2f}x")
     assert np.allclose(D, D_gpu, rtol=1e-4, atol=1e-6)
