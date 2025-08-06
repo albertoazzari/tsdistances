@@ -19,8 +19,8 @@ import stumpy
 import time
 
 N_SAMPLES = 10
-A = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')[:N_SAMPLES]
-B = np.loadtxt('tests/ACSF1/ACSF1_TEST.tsv', delimiter='\t')[:2 * N_SAMPLES]
+A = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')[:N_SAMPLES, 1:]
+B = np.loadtxt('tests/ACSF1/ACSF1_TEST.tsv', delimiter='\t')[:2 * N_SAMPLES, 1:]
 band = 1.0
 
 

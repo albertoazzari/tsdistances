@@ -1,12 +1,14 @@
 use crate::{
     diagonal,
     matrix::DiagonalMatrix,
-    utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore}, Float,
+    utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore},
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use rustfft::num_traits;
 use std::cmp::min;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use tsdistances_gpu::{
     utils::get_device,
     warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode},
@@ -174,7 +176,7 @@ pub fn euclidean(
             a.iter()
                 .zip(b.iter())
                 .map(|(x, y)| (x - y).powi(2))
-                .sum::<Float>()
+                .sum::<f64>()
                 .sqrt()
         },
         x1,
@@ -301,7 +303,7 @@ pub fn erp(
     gap_penalty: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Float>>> {
+) -> PyResult<Vec<Vec<f64>>> {
     if gap_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Gap penalty must be non-negative",
@@ -319,7 +321,7 @@ pub fn erp(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let erp_cost_func =
-                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 (y + (a[i] - b[j]).abs()).min(
                                     (z + (a[i] - gap_penalty).abs())
                                         .min(x + (b[j] - gap_penalty).abs()),
@@ -329,7 +331,7 @@ pub fn erp(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Float::INFINITY,
+                            f64::INFINITY,
                             sakoe_chiba_band,
                             erp_cost_func,
                             erp_cost_func,
@@ -383,7 +385,7 @@ pub fn lcss(
     epsilon: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Float>>> {
+) -> PyResult<Vec<Vec<f64>>> {
     if epsilon < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Epsilon must be non-negative",
@@ -402,10 +404,10 @@ pub fn lcss(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let lcss_cost_func =
-                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 let dist = (a[i] - b[j]).abs();
-                                (dist <= epsilon) as i32 as Float * (y + 1.0)
-                                    + (dist > epsilon) as i32 as Float * x.max(z)
+                                (dist <= epsilon) as i32 as f64 * (y + 1.0)
+                                    + (dist > epsilon) as i32 as f64 * x.max(z)
                             };
 
                         let similarity = diagonal::diagonal_distance::<DiagonalMatrix>(
@@ -416,7 +418,7 @@ pub fn lcss(
                             lcss_cost_func,
                             lcss_cost_func,
                         );
-                        let min_len = a.len().min(b.len()) as Float;
+                        let min_len = a.len().min(b.len()) as f64;
                         1.0 - similarity / min_len
                     },
                     x1,
@@ -466,7 +468,7 @@ pub fn dtw(
     sakoe_chiba_band: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Float>>> {
+) -> PyResult<Vec<Vec<f64>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -480,14 +482,14 @@ pub fn dtw(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let dtw_cost_func =
-                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 let dist = (a[i] - b[j]).powi(2);
                                 dist + z.min(x.min(y))
                             };
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Float::INFINITY,
+                            f64::INFINITY,
                             sakoe_chiba_band,
                             dtw_cost_func,
                             dtw_cost_func,
@@ -540,7 +542,7 @@ pub fn ddtw(
     sakoe_chiba_band: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Float>>> {
+) -> PyResult<Vec<Vec<f64>>> {
     let x1_d = derivate(&x1);
     let x2_d = if let Some(x2) = &x2 {
         Some(derivate(&x2))
@@ -559,7 +561,7 @@ pub fn wdtw(
     g: f64, //constant that controls the curvature (slope) of the function
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Float>>> {
+) -> PyResult<Vec<Vec<f64>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -575,7 +577,7 @@ pub fn wdtw(
                         let weights = dtw_weights(a.len().max(b.len()), g);
 
                         let wdtw_cost_func =
-                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 let dist = (a[i] - b[j]).powi(2)
                                     * weights[(i as i32 - j as i32).abs() as usize];
                                 dist + z.min(x.min(y))
@@ -584,7 +586,7 @@ pub fn wdtw(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Float::INFINITY,
+                            f64::INFINITY,
                             sakoe_chiba_band,
                             wdtw_cost_func,
                             wdtw_cost_func,
@@ -643,7 +645,7 @@ pub fn wddtw(
     g: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Float>>> {
+) -> PyResult<Vec<Vec<f64>>> {
     let x1_d = derivate(&x1);
     let x2_d = if let Some(x2) = &x2 {
         Some(derivate(&x2))
@@ -661,7 +663,7 @@ pub fn msm(
     sakoe_chiba_band: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Float>>> {
+) -> PyResult<Vec<Vec<f64>>> {
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -675,20 +677,26 @@ pub fn msm(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let msm_cost_func =
-                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
-                                (y + (a[i] - b[j]).abs())
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                                
+                                let a_i = a[i];
+                                let b_j = b[j];
+                                let a_prev = if i == 0 {0.0} else {a[i - 1]};
+                                let b_prev = if j == 0 {0.0} else {b[j - 1]};
+
+                                (y + (a_i - b_j).abs())
                                     .min(
                                         z + msm_cost_function(
-                                            a[i],
-                                            a.get(i - 1).copied().unwrap_or_default(),
-                                            b[j],
+                                            a_i,
+                                            a_prev,
+                                            b_j,
                                         ),
                                     )
                                     .min(
                                         x + msm_cost_function(
-                                            b[j],
-                                            a[i],
-                                            b.get(j - 1).copied().unwrap_or_default(),
+                                            b_j,
+                                            a_i,
+                                            b_prev,
                                         ),
                                     )
                             };
@@ -696,25 +704,8 @@ pub fn msm(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Float::INFINITY,
+                            f64::INFINITY,
                             sakoe_chiba_band,
-                            // |a: &[Number], b: &[Number], i: usize, j: usize, x: Number, y: Number, z: Number| {
-                            //     if i == 1 && j == 1 {
-                            //         y + (a[i] - b[j]).abs()
-                            //     } else if j == 1 {
-                            //         x + msm_cost_function(
-                            //             b[j],
-                            //             a[i],
-                            //             b.get(j - 1).copied().unwrap_or(0.0),
-                            //         )
-                            //     } else {
-                            //         z + msm_cost_function(
-                            //             a[i],
-                            //             a.get(i - 1).copied().unwrap_or(0.0),
-                            //             b[j],
-                            //         )
-                            //     }
-                            // },
                             msm_cost_func,
                             msm_cost_func,
                         )
@@ -768,7 +759,7 @@ pub fn twe(
     penalty: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Float>>> {
+) -> PyResult<Vec<Vec<f64>>> {
     if stiffness < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Stiffness (nu) must be non-negative",
@@ -794,26 +785,29 @@ pub fn twe(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let twe_cost_func =
-                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                                
+                                let a_i = a[i];
+                                let b_j = b[j];
+                                let a_prev = if i == 0 {0.0} else {a[i - 1]};
+                                let b_prev = if j == 0 {0.0} else {b[j - 1]};
                                 // deletion in a
-                                let del_a: Float = z
-                                    + (a.get(i - 1).copied().unwrap_or(0.0) - a[i]).abs()
+                                let del_a: f64 = z
+                                    + (a_prev - a_i).abs()
                                     + delete_addition;
 
                                 // deletion in b
                                 let del_b = x
-                                    + (b.get(j - 1).copied().unwrap_or(0.0) - b[j]).abs()
+                                    + (b_prev - b_j).abs()
                                     + delete_addition;
 
                                 // match
-                                let match_current = (a[i] - b[j]).abs();
-                                let match_previous = (a.get(i - 1).copied().unwrap_or(0.0)
-                                    - b.get(j - 1).copied().unwrap_or(0.0))
-                                .abs();
+                                let match_current = (a_i - b_j).abs();
+                                let match_previous = (a_prev - b_prev).abs();
                                 let match_a_b = y
                                     + match_current
                                     + match_previous
-                                    + stiffness * (2.0 * (i as isize - j as isize).abs() as Float);
+                                    + stiffness * (2.0 * (i as isize - j as isize).abs() as f64);
 
                                 del_a.min(del_b.min(match_a_b))
                             };
@@ -821,7 +815,7 @@ pub fn twe(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Float::INFINITY,
+                            f64::INFINITY,
                             sakoe_chiba_band,
                             twe_cost_func,
                             twe_cost_func,
@@ -833,8 +827,6 @@ pub fn twe(
                 ));
             }
             "gpu" => {
-                println!("X1: {:?}", x1);
-                println!("X2: {:?}", x2);
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
                         let (device, queue, sba, sda, ma) = get_device();
@@ -871,6 +863,7 @@ pub fn twe(
     }
 }
 
+
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, warp_penalty=0.1, par=true, device="cpu"))]
 pub fn adtw(
@@ -880,7 +873,7 @@ pub fn adtw(
     warp_penalty: f64,
     par: bool,
     device: Option<&str>,
-) -> PyResult<Vec<Vec<Float>>> {
+) -> PyResult<Vec<Vec<f64>>> {
     if warp_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Weight must be non-negative",
@@ -898,7 +891,7 @@ pub fn adtw(
                 distance_matrix = Some(compute_distance(
                     |a, b| {
                         let adtw_cost_func =
-                            |a: &[Float], b: &[Float], i: usize, j: usize, x: Float, y: Float, z: Float| {
+                            |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 let dist = (a[i] - b[j]).powi(2);
                                 dist + (z + warp_penalty).min((x + warp_penalty).min(y))
                             };
@@ -906,7 +899,7 @@ pub fn adtw(
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
                             b,
-                            Float::INFINITY,
+                            f64::INFINITY,
                             sakoe_chiba_band,
                             adtw_cost_func,
                             adtw_cost_func,
@@ -973,7 +966,7 @@ pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, par: bool) -> PyResult<V
 #[pyfunction]
 #[pyo3(signature = (x1, window, x2=None, par=true))]
 pub fn mp(
-    x1: Vec<Vec<Float>>,
+    x1: Vec<Vec<f64>>,
     window: i32,
     x2: Option<Vec<Vec<f64>>>,
     par: bool,
@@ -986,7 +979,7 @@ pub fn mp(
             let n_b = b.len();
             let mut p_abba = mp_(&a, &b, window as usize);
             let n = min(
-                (threshold * (n_a + n_b) as Float).ceil() as usize,
+                (threshold * (n_a + n_b) as f64).ceil() as usize,
                 n_a - window + 1 + n_b - window + 1 - 1,
             );
             *p_abba
@@ -1000,14 +993,14 @@ pub fn mp(
     Ok(distance_matrix)
 }
 
-fn mp_(a: &[Float], b: &[Float], window: usize) -> Vec<Float> {
+fn mp_(a: &[f64], b: &[f64], window: usize) -> Vec<f64> {
     let n_a = a.len();
     let n_b = b.len();
 
     let window = window.min(n_a).min(n_b);
 
-    let mut p_ab = vec![Float::INFINITY; n_a - window + 1];
-    let mut p_ba = vec![Float::INFINITY; n_b - window + 1];
+    let mut p_ab = vec![f64::INFINITY; n_a - window + 1];
+    let mut p_ba = vec![f64::INFINITY; n_b - window + 1];
 
     let (mean_a, std_a) = mean_std_per_windows(&a, window);
     let (mean_b, std_b) = mean_std_per_windows(&b, window);
@@ -1033,29 +1026,101 @@ fn mp_(a: &[Float], b: &[Float], window: usize) -> Vec<Float> {
     }
 }
 
-fn mean_std_per_windows(a: &[Float], window: usize) -> (Vec<Float>, Vec<Float>) {
+fn mean_std_per_windows(a: &[f64], window: usize) -> (Vec<f64>, Vec<f64>) {
     let n = a.len();
 
     let mut means = Vec::with_capacity(n - window + 1);
     let mut stds = Vec::with_capacity(n - window + 1);
 
-    let mut sum: Float = a[0..window].iter().sum();
-    let mut sum_squares: Float = a[0..window].iter().map(|&x| x * x).sum();
+    let mut sum: f64 = a[0..window].iter().sum();
+    let mut sum_squares: f64 = a[0..window].iter().map(|&x| x * x).sum();
 
-    means.push(sum / window as Float);
-    let var = (sum_squares / window as Float) - (means[0] * means[0]);
+    means.push(sum / window as f64);
+    let var = (sum_squares / window as f64) - (means[0] * means[0]);
     stds.push(var.sqrt());
 
     for i in window..n {
         sum += a[i] - a[i - window];
         sum_squares += a[i] * a[i] - a[i - window] * a[i - window];
 
-        let mean = sum / window as Float;
+        let mean = sum / window as f64;
         means.push(mean);
 
-        let var = (sum_squares / window as Float) - (mean * mean);
+        let var = (sum_squares / window as f64) - (mean * mean);
         stds.push(var.sqrt());
     }
 
     (means, stds)
 }
+
+// #[test]
+// fn test_twe() {
+//     let sakoe_chiba_band = 1.0;
+//     let stiffness = 0.001;
+//     let penalty = 1.0;
+//     let delete_addition = stiffness + penalty;
+//     let x1 = read_csv("tests/ACSF1/ACSF1_TRAIN.tsv", '\t');
+//     let x2 = read_csv("tests/ACSF1/ACSF1_TEST.tsv", '\t');
+//     let start_time = std::time::Instant::now();
+//     let twe_res = Some(compute_distance(
+//                     |a, b| {
+//                         let twe_cost_func =
+//                             |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
+                                
+//                                 let a_i = a[i];
+//                                 let b_j = b[j];
+//                                 let a_prev = if i == 0 {0.0} else {a[i - 1]};
+//                                 let b_prev = if j == 0 {0.0} else {b[j - 1]};
+//                                 // deletion in a
+//                                 let del_a: f64 = z
+//                                     + (a_prev - a_i).abs()
+//                                     + delete_addition;
+
+//                                 // deletion in b
+//                                 let del_b = x
+//                                     + (b_prev - b_j).abs()
+//                                     + delete_addition;
+
+//                                 // match
+//                                 let match_current = (a_i - b_j).abs();
+//                                 let match_previous = (a_prev - b_prev).abs();
+//                                 let match_a_b = y
+//                                     + match_current
+//                                     + match_previous
+//                                     + stiffness * (2.0 * (i as isize - j as isize).abs() as f64);
+
+//                                 del_a.min(del_b.min(match_a_b))
+//                             };
+
+//                         diagonal::diagonal_distance::<DiagonalMatrix>(
+//                             a,
+//                             b,
+//                             f64::INFINITY,
+//                             sakoe_chiba_band,
+//                             twe_cost_func,
+//                             twe_cost_func,
+//                         )
+//                     },
+//                     x1,
+//                     Some(x2),
+//                     false,
+//                 ));
+//     let duration = start_time.elapsed();
+//     println!("TWE distance computed in: {:?}", duration);
+// }
+
+// fn read_csv(path: &str, del: char) -> Vec<Vec<f64>> {
+
+//     let file = File::open(path).expect("Unable to open file");
+//     let reader = BufReader::new(file);
+
+//     reader
+//         .lines()
+//         .map(|line| {
+//             line.expect("Unable to read line")
+//                 .split(del)
+//                 .map(|value| value.parse::<f64>().expect("Unable to parse value"))
+//                 .collect::<Vec<f64>>()
+//         })
+//         .collect()
+// }

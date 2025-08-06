@@ -7,8 +7,6 @@ pub mod warps;
 use ctrlc;
 use pyo3::prelude::*;
 
-pub type Float = f64;
-
 #[pymodule]
 #[pyo3(name = "tsdistances")]
 fn py_module(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {

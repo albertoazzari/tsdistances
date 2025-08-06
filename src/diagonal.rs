@@ -1,13 +1,13 @@
-use crate::{matrix::{DiagonalMatrix, Matrix}, Float};
+use crate::{matrix::{DiagonalMatrix, Matrix}};
 
 pub fn diagonal_distance<M: Matrix>(
-    a: &[Float],
-    b: &[Float],
-    init_val: Float,
-    sakoe_chiba_band: Float,
-    init_lambda: impl Fn(&[Float], &[Float], usize, usize, Float, Float, Float) -> Float + Copy,
-    dist_lambda: impl Fn(&[Float], &[Float], usize, usize, Float, Float, Float) -> Float + Copy,
-) -> Float {
+    a: &[f64],
+    b: &[f64],
+    init_val: f64,
+    sakoe_chiba_band: f64,
+    init_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
+    dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
+) -> f64 {
     diagonal_distance_::<M>(
         a.len(),
         b.len(),
@@ -21,11 +21,11 @@ pub fn diagonal_distance<M: Matrix>(
 fn diagonal_distance_<M: Matrix>(
     a_len: usize,
     b_len: usize,
-    init_val: Float,
-    sakoe_chiba_band: Float,
-    init_lambda: impl Fn(usize, usize, Float, Float, Float) -> Float,
-    dist_lambda: impl Fn(usize, usize, Float, Float, Float) -> Float,
-) -> Float {
+    init_val: f64,
+    sakoe_chiba_band: f64,
+    init_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
+    dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
+) -> f64 {
     let mut matrix = DiagonalMatrix::new(a_len, b_len, init_val);
 
     let mut i = 0;
@@ -38,14 +38,14 @@ fn diagonal_distance_<M: Matrix>(
     let start_coord = M::index_mat_to_diag(0, 0).1;
     let end_coord = M::index_mat_to_diag(a_len, b_len).1;
 
-    let band_size = sakoe_chiba_band * (a_len as Float);
+    let band_size = sakoe_chiba_band * (a_len as f64);
 
     for d in 2..(a_len + b_len + 1) {
         matrix.set_diagonal_cell(d, d as isize, init_val);
 
         let (s_, e_) = if sakoe_chiba_band < 1.0 {
-            let mid_coord = start_coord as Float
-                + (end_coord as Float - start_coord as Float) / (a_len + b_len) as Float * d as Float;
+            let mid_coord = start_coord as f64
+                + (end_coord as f64 - start_coord as f64) / (a_len + b_len) as f64 * d as f64;
             (
                 s.max((mid_coord - band_size).floor() as isize),
                 e.min((mid_coord + band_size).ceil() as isize),

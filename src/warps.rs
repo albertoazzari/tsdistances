@@ -1,4 +1,4 @@
-use crate::{matrix::Matrix, utils::next_multiple_of_n, Float};
+use crate::{matrix::Matrix, utils::next_multiple_of_n};
 const DIAMOND_SIZE: usize = 64;
 
 // #[test]
@@ -88,9 +88,9 @@ const DIAMOND_SIZE: usize = 64;
 pub fn diamond_partitioning_<M: Matrix>(
     a_len: usize,
     b_len: usize,
-    init_val: Float,
-    dist_lambda: impl Fn(usize, usize, Float, Float, Float) -> Float + Copy,
-) -> Float {
+    init_val: f64,
+    dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64 + Copy,
+) -> f64 {
     let padded_a_len = next_multiple_of_n(a_len, DIAMOND_SIZE);
     let padded_b_len = next_multiple_of_n(b_len, DIAMOND_SIZE);
 
@@ -153,7 +153,7 @@ pub fn diagonal_distance_v2<M: Matrix>(
     b_start: usize,
     diag_mid: isize,
     diag_count: usize,
-    dist_lambda: impl Fn(usize, usize, Float, Float, Float) -> Float,
+    dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
 ) {
     let mut i = a_start;
     let mut j = b_start;

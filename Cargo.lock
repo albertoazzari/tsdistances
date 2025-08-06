@@ -500,6 +500,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8355be11b20d696c8f18f6cc018c4e372165b1fa8126cef092399c9951984ffa"
 
 [[package]]
+name = "likely"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d3722166f160163dedaa2fe3c043de863023fbc8cbeff9ae0665d35866e0ca4"
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1539,6 +1545,7 @@ version = "0.1.5"
 dependencies = [
  "catch22",
  "ctrlc",
+ "likely",
  "parking_lot",
  "pyo3",
  "rand",

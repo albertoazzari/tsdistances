@@ -2,39 +2,23 @@ import pytest
 import numpy as np
 from tsdistances import (
     euclidean_distance,
-    catcheucl_distance,
-    erp_distance,
     lcss_distance,
     dtw_distance,
-    ddtw_distance,
-    wdtw_distance,
-    wddtw_distance,
-    adtw_distance,
-    msm_distance,
     twe_distance,
-    sb_distance,
-    mp_distance,
 )
 from aeon.distances import (
     euclidean_pairwise_distance,
-    erp_pairwise_distance,
     lcss_pairwise_distance,
     dtw_pairwise_distance,
-    ddtw_pairwise_distance,
-    wdtw_pairwise_distance,
-    wddtw_pairwise_distance,
-    adtw_pairwise_distance,
-    msm_pairwise_distance,
     twe_pairwise_distance,
-    sbd_pairwise_distance,
 )
 import time
 import pathlib
 
 UCR_ARCHIVE_PATH = pathlib.Path('../../DATA/ucr')
 BENCHMARKS_DS = ["ACSF1", "Adiac", "Beef", "CBF", "ChlorineConcentration", "CinCECGTorso", "CricketX", "DiatomSizeReduction", "DistalPhalanxOutlineCorrect", "ECG200", "EthanolLevel", "FreezerRegularTrain", "FreezerSmallTrain", "Ham", "Haptics", "HouseTwenty", "ItalyPowerDemand", "MixedShapesSmallTrain", "NonInvasiveFetalECGThorax1", "ShapesAll", "Strawberry", "UWaveGestureLibraryX", "Wafer"]
-TSDISTANCES = [euclidean_distance, lcss_distance, dtw_distance, adtw_distance]
-AEONDISTANCES = [euclidean_pairwise_distance, lcss_pairwise_distance, dtw_pairwise_distance, adtw_pairwise_distance]
+TSDISTANCES = [euclidean_distance, lcss_distance, dtw_distance, twe_distance]
+AEONDISTANCES = [euclidean_pairwise_distance, lcss_pairwise_distance, dtw_pairwise_distance, twe_pairwise_distance]
 MODALITIES = ["", "par", "gpu"]
 
 def load_benchmark():
@@ -117,34 +101,35 @@ def test_tsdistances():
         X_train = train[:, 1:]
         X_test = test[:, 1:]
 
-        X = np.vstack((X_train, X_test))
-
         for j, (tsdist, aeondist)  in enumerate(zip(TSDISTANCES, AEONDISTANCES)):
-            print(f"\tDistance: {tsdist.__name__}")
-            print("\t\tSingle thread")
             start = time.time()
-            D = tsdist(X, par=False)
+            D = tsdist(X_train, X_test, par=False)
             end = time.time()
             tsdistances_times[i, j, 0] = end - start
 
-            print("\t\tParallel")
             start = time.time()
-            D = tsdist(X, par=True)
+            D_par = tsdist(X_train, X_test, par=True)
             end = time.time()
             tsdistances_times[i, j, 1] = end - start
 
-            if tsdist.__name__ in ["erp_distance", "lcss_distance", "dtw_distance", "ddtw_distance", "wdtw_distance", "wddtw_distance", "adtw_distance", "msm_distance", "twe_distance"]:
-                print("\t\tGPU")
+            if tsdist.__name__ in ["lcss_distance", "dtw_distance", "twe_distance"]:
                 start = time.time()
-                D = tsdist(X, device='gpu')
+                D_gpu = tsdist(X_train, X_test, device='gpu')
                 end = time.time()
                 tsdistances_times[i, j, 2] = end - start
 
             # AEON distances
             start = time.time()
-            D = aeondist(X)
+            D_aeon = aeondist(X_train, X_test)
             end = time.time()
             aeon_times[i, j] = end - start
             
+            print(f"\t{tsdist.__name__} - \n\t\tTime: {tsdistances_times[i, j, 0]:.4f} (s), {tsdistances_times[i, j, 1]:.4f} (p), {tsdistances_times[i, j, 2]:.4f} (gpu) | AEON: {aeon_times[i, j]:.4f}")
+            if not np.allclose(D, D_par):
+                print("Parallel and single-threaded results do not match")
+
+            if not np.allclose(D, D_aeon):
+                print("AEON and tsdistances results do not match")
+
             np.save("times_tsdistances.npy", tsdistances_times)
             np.save("times_aeon.npy", aeon_times)

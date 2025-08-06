@@ -105,3 +105,10 @@ def test_gpu_performance():
     print(f"GPU time: {end_time_gpu - start_time_gpu:.4f} seconds")
     print(f"Speedup: {end_time - start_time:.4f} / {end_time_gpu - start_time_gpu:.4f} = {(end_time - start_time) / (end_time_gpu - start_time_gpu):.2f}x")
     assert np.allclose(D, D_gpu, rtol=1e-4, atol=1e-6)
+
+# CPU time: 12.5166 seconds
+# GPU diamond partitioning data transfer took 146 ms
+# GPU diamond partitioning command buffer execution took 953 ms
+# GPU diamond partitioning data read took 0 ms
+# GPU diamond partitioning took 1149 ms
+# GPU time: 1.4768 seconds
