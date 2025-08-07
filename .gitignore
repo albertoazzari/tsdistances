@@ -10,3 +10,6 @@ requirements*
 .pytest_cache/
 .DS_Store
 *.lock
+*.svg
+*.tex
+*.npy

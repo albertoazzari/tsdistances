@@ -12,7 +12,6 @@ authors = [
 [dependencies]
 catch22 = { git = "https://github.com/albertoazzari/catch22_rs.git", version = "0.1.0" }
 ctrlc = "3.4.7"
-likely = "0.2.0"
 parking_lot = "0.12.4"
 pyo3 = { version = "0.23.5", features = ["extension-module"] }
 rand = "0.8.5"

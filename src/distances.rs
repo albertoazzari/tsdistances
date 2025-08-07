@@ -681,8 +681,8 @@ pub fn msm(
                                 
                                 let a_i = a[i];
                                 let b_j = b[j];
-                                let a_prev = if i == 0 {0.0} else {a[i - 1]};
-                                let b_prev = if j == 0 {0.0} else {b[j - 1]};
+                                let a_prev = if likely(i != 0) {a[i - 1]} else {0.0};
+                                let b_prev = if likely(j != 0) {b[j - 1]} else {0.0};
 
                                 (y + (a_i - b_j).abs())
                                     .min(
@@ -789,8 +789,8 @@ pub fn twe(
                                 
                                 let a_i = a[i];
                                 let b_j = b[j];
-                                let a_prev = if i == 0 {0.0} else {a[i - 1]};
-                                let b_prev = if j == 0 {0.0} else {b[j - 1]};
+                                let a_prev = if likely(i != 0) { a[i - 1] } else { 0.0 };
+                                let b_prev = if likely(j != 0) { b[j - 1] } else { 0.0 };
                                 // deletion in a
                                 let del_a: f64 = z
                                     + (a_prev - a_i).abs()
@@ -1053,6 +1053,15 @@ fn mean_std_per_windows(a: &[f64], window: usize) -> (Vec<f64>, Vec<f64>) {
     (means, stds)
 }
 
+#[inline]
+#[cold]
+fn cold() {}
+
+#[inline]
+fn likely(b: bool) -> bool {
+    if !b { cold() }
+    b
+}
 // #[test]
 // fn test_twe() {
 //     let sakoe_chiba_band = 1.0;
