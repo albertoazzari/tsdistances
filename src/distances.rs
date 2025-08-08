@@ -13,6 +13,7 @@ use tsdistances_gpu::{
     utils::get_device,
     warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode},
 };
+use vulkano::memory::MemoryHeapFlags;
 
 fn compute_distance_batched<T: Copy>(
     distance: impl (Fn(&[Vec<T>], &[Vec<T>], bool) -> Vec<Vec<T>>) + Sync + Send,
@@ -21,13 +22,12 @@ fn compute_distance_batched<T: Copy>(
     chunk_size: usize,
 ) -> Vec<Vec<T>> {
     let mut result = Vec::with_capacity(x1.len());
-
     let mut x1_offset = 0;
-    for x1_part in x1.chunks(chunk_size) {
+    for (i, x1_part) in x1.chunks(chunk_size).enumerate() {
         result.resize_with(x1_offset + x1_part.len(), || {
             Vec::with_capacity(x2.as_ref().map_or(x1.len(), |x| x.len()))
         });
-        for x2_part in x2.as_ref().unwrap_or(&x1).chunks(chunk_size) {
+        for (j, x2_part) in x2.as_ref().unwrap_or(&x1).chunks(chunk_size).enumerate() {
             let distance_matrix = distance(x1_part, x2_part, x2.is_none());
 
             for (x1_idx, row) in distance_matrix.iter().enumerate() {
@@ -134,14 +134,23 @@ macro_rules! gpu_call {
         $distance_matrix = Some(
             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
                 type $BatchMode = MultiBatchMode;
-
+                let (device, _, _, _, _) = get_device();
+                let max_subgroup_size = device.physical_device().properties().max_subgroup_size.unwrap() as usize;
+                let memory_properties = device.physical_device().memory_properties();
+                let total_device_memory = memory_properties.memory_heaps
+                    .iter()
+                    .filter(|heap| heap.flags.contains(MemoryHeapFlags::DEVICE_LOCAL))
+                    .map(|heap| heap.size)
+                    .sum::<u64>() as usize / std::mem::size_of::<f32>();
+                let x1_len = next_multiple_of_n($x1[0].len(), max_subgroup_size);
+                let chunk_size = total_device_memory / (x1_len * 4 * x1_len.next_power_of_two());
                 let result = compute_distance_batched(
                     |$a, $b, _| {
                         $($body)*
                     },
                     $x1,
                     $x2,
-                    usize::MAX,
+                    chunk_size,
                 );
                 result.into_iter()
                     .map(|v| v.into_iter().map(|f| f as f64).collect())
@@ -162,6 +171,9 @@ macro_rules! gpu_call {
             }
         );
     };
+}
+fn next_multiple_of_n(x: usize, n: usize) -> usize {
+    (x + n - 1) / n * n
 }
 
 #[pyfunction]

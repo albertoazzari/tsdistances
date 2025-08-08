@@ -1545,6 +1545,7 @@ dependencies = [
  "rayon",
  "rustfft",
  "tsdistances_gpu",
+ "vulkano",
 ]
 
 [[package]]

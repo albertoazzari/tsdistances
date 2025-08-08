@@ -2,12 +2,14 @@ import pytest
 import numpy as np
 from tsdistances import (
     euclidean_distance,
+    erp_distance,
     lcss_distance,
     dtw_distance,
     twe_distance,
 )
 from aeon.distances import (
     euclidean_pairwise_distance,
+    erp_pairwise_distance,
     lcss_pairwise_distance,
     dtw_pairwise_distance,
     twe_pairwise_distance,
@@ -18,10 +20,10 @@ import pathlib
 
 UCR_ARCHIVE_PATH = pathlib.Path('../../DATA/ucr')
 BENCHMARKS_DS = ["ACSF1", "Adiac", "Beef", "CBF", "ChlorineConcentration", "CinCECGTorso", "CricketX", "DiatomSizeReduction", "DistalPhalanxOutlineCorrect", "ECG200", "EthanolLevel", "FreezerRegularTrain", "FreezerSmallTrain", "Ham", "Haptics", "HouseTwenty", "ItalyPowerDemand", "MixedShapesSmallTrain", "NonInvasiveFetalECGThorax1", "ShapesAll", "Strawberry", "UWaveGestureLibraryX", "Wafer"]
-TSDISTANCES = [euclidean_distance, lcss_distance, dtw_distance, twe_distance]
-AEONDISTANCES = [euclidean_pairwise_distance, lcss_pairwise_distance, dtw_pairwise_distance, twe_pairwise_distance]
-# TSDISTANCES = [twe_distance]
-# AEONDISTANCES = [twe_pairwise_distance]
+# TSDISTANCES = [euclidean_distance, lcss_distance, dtw_distance, twe_distance]
+# AEONDISTANCES = [euclidean_pairwise_distance, lcss_pairwise_distance, dtw_pairwise_distance, twe_pairwise_distance]
+TSDISTANCES = [dtw_distance]
+AEONDISTANCES = [dtw_pairwise_distance]
 MODALITIES = ["", "par", "gpu"]
 
 def load_benchmark():
@@ -115,12 +117,11 @@ def test_tsdistances():
             # end = time.time()
             # tsdistances_times[i, j, 1] = end - start
 
-            if tsdist.__name__ in ["lcss_distance", "dtw_distance", "twe_distance"]:
+            if tsdist.__name__ != "euclidean_distance":
                 start = time.time()
                 D_gpu = tsdist(X_train, X_test, device='gpu')
                 end = time.time()
                 tsdistances_times[i, j, 2] = end - start
-
             # AEON distances
             # start = time.time()
             # D_aeon = aeondist(X_train, X_test)
