@@ -1,4 +1,3 @@
-
 pub trait Matrix: Sync + Send {
     fn new(a_len: usize, b_len: usize, init_val: f64) -> Self;
     fn set_diagonal_cell(&mut self, diag_row: usize, diag_offset: isize, value: f64);

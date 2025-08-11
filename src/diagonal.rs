@@ -1,4 +1,4 @@
-use crate::{matrix::{DiagonalMatrix, Matrix}};
+use crate::matrix::{DiagonalMatrix, Matrix};
 
 pub fn diagonal_distance<M: Matrix>(
     a: &[f64],

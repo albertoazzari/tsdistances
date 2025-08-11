@@ -1,5 +1,11 @@
 use rustfft::{Fft, FftDirection, algorithm::Radix4, num_complex::Complex};
 
+pub fn min<T: PartialOrd>(x: T, y: T) -> T {
+    if x < y { x } else { y }
+}
+pub fn max<T: PartialOrd>(x: T, y: T) -> T {
+    if x > y { x } else { y }
+}
 pub fn next_multiple_of_n(x: usize, n: usize) -> usize {
     (x + n - 1) / n * n
 }
@@ -22,8 +28,8 @@ pub fn dtw_weights(len: usize, g: f64) -> Vec<f64> {
     let mut weights = vec![0.0; len];
     let half_len = len as f64 / 2.0;
     for i in 0..len {
-        weights[i] =
-            WEIGHT_MAX / (1.0 + (std::f64::consts::E as f64).powf(-g * (i as f64 - half_len as f64)));
+        weights[i] = WEIGHT_MAX
+            / (1.0 + (std::f64::consts::E as f64).powf(-g * (i as f64 - half_len as f64)));
     }
     weights
 }

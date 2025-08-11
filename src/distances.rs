@@ -1,14 +1,11 @@
 use crate::{
     diagonal,
     matrix::DiagonalMatrix,
-    utils::{cross_correlation, derivate, dtw_weights, l2_norm, msm_cost_function, zscore},
+    utils::{cross_correlation, derivate, dtw_weights, l2_norm, min, msm_cost_function, zscore},
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use rustfft::num_traits;
-use std::cmp::min;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use tsdistances_gpu::{
     utils::get_device,
     warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode},
@@ -23,11 +20,11 @@ fn compute_distance_batched<T: Copy>(
 ) -> Vec<Vec<T>> {
     let mut result = Vec::with_capacity(x1.len());
     let mut x1_offset = 0;
-    for (i, x1_part) in x1.chunks(chunk_size).enumerate() {
+    for x1_part in x1.chunks(chunk_size) {
         result.resize_with(x1_offset + x1_part.len(), || {
             Vec::with_capacity(x2.as_ref().map_or(x1.len(), |x| x.len()))
         });
-        for (j, x2_part) in x2.as_ref().unwrap_or(&x1).chunks(chunk_size).enumerate() {
+        for x2_part in x2.as_ref().unwrap_or(&x1).chunks(chunk_size) {
             let distance_matrix = distance(x1_part, x2_part, x2.is_none());
 
             for (x1_idx, row) in distance_matrix.iter().enumerate() {
@@ -134,7 +131,7 @@ macro_rules! gpu_call {
         $distance_matrix = Some(
             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
                 type $BatchMode = MultiBatchMode;
-                let (device, _, _, _, _) = get_device();
+                let (device, queue, sba, sda, ma) = get_device();
                 let max_subgroup_size = device.physical_device().properties().max_subgroup_size.unwrap() as usize;
                 let memory_properties = device.physical_device().memory_properties();
                 let total_device_memory = memory_properties.memory_heaps
@@ -334,9 +331,9 @@ pub fn erp(
                     |a, b| {
                         let erp_cost_func =
                             |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
-                                (y + (a[i] - b[j]).abs()).min(
-                                    (z + (a[i] - gap_penalty).abs())
-                                        .min(x + (b[j] - gap_penalty).abs()),
+                                min(
+                                    min(y + (a[i] - b[j]).abs(), z + (a[i] - gap_penalty).abs()),
+                                    x + (b[j] - gap_penalty).abs(),
                                 )
                             };
 
@@ -357,7 +354,6 @@ pub fn erp(
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        let (device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::erp::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -419,7 +415,7 @@ pub fn lcss(
                             |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 let dist = (a[i] - b[j]).abs();
                                 (dist <= epsilon) as i32 as f64 * (y + 1.0)
-                                    + (dist > epsilon) as i32 as f64 * x.max(z)
+                                    + (dist > epsilon) as i32 as f64 * max(x, z)
                             };
 
                         let similarity = diagonal::diagonal_distance::<DiagonalMatrix>(
@@ -430,7 +426,7 @@ pub fn lcss(
                             lcss_cost_func,
                             lcss_cost_func,
                         );
-                        let min_len = a.len().min(b.len()) as f64;
+                        let min_len = min(a.len(), b.len()) as f64;
                         1.0 - similarity / min_len
                     },
                     x1,
@@ -441,7 +437,6 @@ pub fn lcss(
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        let (device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::lcss::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -496,7 +491,7 @@ pub fn dtw(
                         let dtw_cost_func =
                             |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 let dist = (a[i] - b[j]).powi(2);
-                                dist + z.min(x.min(y))
+                                dist + min(min(z, x), y)
                             };
                         diagonal::diagonal_distance::<DiagonalMatrix>(
                             a,
@@ -515,7 +510,6 @@ pub fn dtw(
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        let (device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::dtw::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -592,7 +586,7 @@ pub fn wdtw(
                             |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 let dist = (a[i] - b[j]).powi(2)
                                     * weights[(i as i32 - j as i32).abs() as usize];
-                                dist + z.min(x.min(y))
+                                dist + min(min(z, x), y)
                             };
 
                         diagonal::diagonal_distance::<DiagonalMatrix>(
@@ -612,7 +606,6 @@ pub fn wdtw(
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        let (device, queue, sba, sda, ma) = get_device();
                         let weights = dtw_weights(
                             BatchMode::get_sample_length(&a).max(BatchMode::get_sample_length(&b)),
                             g,
@@ -690,27 +683,18 @@ pub fn msm(
                     |a, b| {
                         let msm_cost_func =
                             |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
-                                
                                 let a_i = a[i];
                                 let b_j = b[j];
-                                let a_prev = if likely(i != 0) {a[i - 1]} else {0.0};
-                                let b_prev = if likely(j != 0) {b[j - 1]} else {0.0};
+                                let a_prev = if likely(i != 0) { a[i - 1] } else { 0.0 };
+                                let b_prev = if likely(j != 0) { b[j - 1] } else { 0.0 };
 
-                                (y + (a_i - b_j).abs())
-                                    .min(
-                                        z + msm_cost_function(
-                                            a_i,
-                                            a_prev,
-                                            b_j,
-                                        ),
-                                    )
-                                    .min(
-                                        x + msm_cost_function(
-                                            b_j,
-                                            a_i,
-                                            b_prev,
-                                        ),
-                                    )
+                                min(
+                                    min(
+                                        y + (a_i - b_j).abs(),
+                                        z + msm_cost_function(a_i, a_prev, b_j),
+                                    ),
+                                    x + msm_cost_function(b_j, a_i, b_prev),
+                                )
                             };
 
                         diagonal::diagonal_distance::<DiagonalMatrix>(
@@ -730,7 +714,6 @@ pub fn msm(
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        let (device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::msm::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -798,20 +781,15 @@ pub fn twe(
                     |a, b| {
                         let twe_cost_func =
                             |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
-                                
                                 let a_i = a[i];
                                 let b_j = b[j];
                                 let a_prev = if likely(i != 0) { a[i - 1] } else { 0.0 };
                                 let b_prev = if likely(j != 0) { b[j - 1] } else { 0.0 };
                                 // deletion in a
-                                let del_a: f64 = z
-                                    + (a_prev - a_i).abs()
-                                    + delete_addition;
+                                let del_a: f64 = z + (a_prev - a_i).abs() + delete_addition;
 
                                 // deletion in b
-                                let del_b = x
-                                    + (b_prev - b_j).abs()
-                                    + delete_addition;
+                                let del_b = x + (b_prev - b_j).abs() + delete_addition;
 
                                 // match
                                 let match_current = (a_i - b_j).abs();
@@ -821,7 +799,7 @@ pub fn twe(
                                     + match_previous
                                     + stiffness * (2.0 * (i as isize - j as isize).abs() as f64);
 
-                                del_a.min(del_b.min(match_a_b))
+                                min(min(del_a, del_b), match_a_b)
                             };
 
                         diagonal::diagonal_distance::<DiagonalMatrix>(
@@ -841,8 +819,6 @@ pub fn twe(
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        let (device, queue, sba, sda, ma) = get_device();
-
                         tsdistances_gpu::cpu::twe::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -875,7 +851,6 @@ pub fn twe(
     }
 }
 
-
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, warp_penalty=0.1, par=true, device="cpu"))]
 pub fn adtw(
@@ -905,7 +880,7 @@ pub fn adtw(
                         let adtw_cost_func =
                             |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
                                 let dist = (a[i] - b[j]).powi(2);
-                                dist + (z + warp_penalty).min((x + warp_penalty).min(y))
+                                dist + min(min(z + warp_penalty, x + warp_penalty), y)
                             };
 
                         diagonal::diagonal_distance::<DiagonalMatrix>(
@@ -925,7 +900,6 @@ pub fn adtw(
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
-                        let (device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::adtw::<BatchMode>(
                             device.clone(),
                             queue.clone(),
@@ -1071,77 +1045,8 @@ fn cold() {}
 
 #[inline]
 fn likely(b: bool) -> bool {
-    if !b { cold() }
+    if !b {
+        cold()
+    }
     b
 }
-// #[test]
-// fn test_twe() {
-//     let sakoe_chiba_band = 1.0;
-//     let stiffness = 0.001;
-//     let penalty = 1.0;
-//     let delete_addition = stiffness + penalty;
-//     let x1 = read_csv("tests/ACSF1/ACSF1_TRAIN.tsv", '\t');
-//     let x2 = read_csv("tests/ACSF1/ACSF1_TEST.tsv", '\t');
-//     let start_time = std::time::Instant::now();
-//     let twe_res = Some(compute_distance(
-//                     |a, b| {
-//                         let twe_cost_func =
-//                             |a: &[f64], b: &[f64], i: usize, j: usize, x: f64, y: f64, z: f64| {
-                                
-//                                 let a_i = a[i];
-//                                 let b_j = b[j];
-//                                 let a_prev = if i == 0 {0.0} else {a[i - 1]};
-//                                 let b_prev = if j == 0 {0.0} else {b[j - 1]};
-//                                 // deletion in a
-//                                 let del_a: f64 = z
-//                                     + (a_prev - a_i).abs()
-//                                     + delete_addition;
-
-//                                 // deletion in b
-//                                 let del_b = x
-//                                     + (b_prev - b_j).abs()
-//                                     + delete_addition;
-
-//                                 // match
-//                                 let match_current = (a_i - b_j).abs();
-//                                 let match_previous = (a_prev - b_prev).abs();
-//                                 let match_a_b = y
-//                                     + match_current
-//                                     + match_previous
-//                                     + stiffness * (2.0 * (i as isize - j as isize).abs() as f64);
-
-//                                 del_a.min(del_b.min(match_a_b))
-//                             };
-
-//                         diagonal::diagonal_distance::<DiagonalMatrix>(
-//                             a,
-//                             b,
-//                             f64::INFINITY,
-//                             sakoe_chiba_band,
-//                             twe_cost_func,
-//                             twe_cost_func,
-//                         )
-//                     },
-//                     x1,
-//                     Some(x2),
-//                     false,
-//                 ));
-//     let duration = start_time.elapsed();
-//     println!("TWE distance computed in: {:?}", duration);
-// }
-
-// fn read_csv(path: &str, del: char) -> Vec<Vec<f64>> {
-
-//     let file = File::open(path).expect("Unable to open file");
-//     let reader = BufReader::new(file);
-
-//     reader
-//         .lines()
-//         .map(|line| {
-//             line.expect("Unable to read line")
-//                 .split(del)
-//                 .map(|value| value.parse::<f64>().expect("Unable to parse value"))
-//                 .collect::<Vec<f64>>()
-//         })
-//         .collect()
-// }
