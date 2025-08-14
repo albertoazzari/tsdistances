@@ -721,7 +721,7 @@ def sb_distance(
 
 def mp_distance(
     u: np.ndarray,
-    window: int = 20,
+    window: Optional[int] = 20,
     v: Optional[np.ndarray] = None,
     par: Optional[bool] = True,
 ):

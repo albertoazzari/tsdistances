@@ -1,7 +1,7 @@
 use crate::{
     diagonal,
     matrix::DiagonalMatrix,
-    utils::{cross_correlation, derivate, dtw_weights, l2_norm, min, msm_cost_function, zscore},
+    utils::{cross_correlation, derivate, dtw_weights, l2_norm, min, max, msm_cost_function, zscore},
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
@@ -123,17 +123,15 @@ macro_rules! gpu_call {
     (
         $distance_matrix:ident = |$x1:ident($a:ident), $x2:ident($b:ident), $BatchMode:ident| {
         $($body:tt)*
-    },
-    $par:expr) => {
+    }) => {
         let $x1 = $x1.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>();
         let $x2 = $x2.map(|x2| x2.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>());
-
+        let (gpu_device, _, _, _, _) = get_device();
         $distance_matrix = Some(
             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
                 type $BatchMode = MultiBatchMode;
-                let (device, queue, sba, sda, ma) = get_device();
-                let max_subgroup_size = device.physical_device().properties().max_subgroup_size.unwrap() as usize;
-                let memory_properties = device.physical_device().memory_properties();
+                let max_subgroup_size = gpu_device.physical_device().properties().max_subgroup_size.unwrap() as usize;
+                let memory_properties = gpu_device.physical_device().memory_properties();
                 let total_device_memory = memory_properties.memory_heaps
                     .iter()
                     .filter(|heap| heap.flags.contains(MemoryHeapFlags::DEVICE_LOCAL))
@@ -160,7 +158,7 @@ macro_rules! gpu_call {
                     },
                     $x1,
                     $x2,
-                    $par,
+                    true
                 );
                 result.into_iter()
                     .map(|v| v.into_iter().map(|f| f as f64).collect())
@@ -178,7 +176,7 @@ fn next_multiple_of_n(x: usize, n: usize) -> usize {
 pub fn euclidean(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    par: bool,
+    par: Option<bool>,
 ) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
@@ -190,7 +188,7 @@ pub fn euclidean(
         },
         x1,
         x2,
-        par,
+        par.unwrap_or(true),
     );
     Ok(distance_matrix)
 }
@@ -200,7 +198,7 @@ pub fn euclidean(
 pub fn catch_euclidean(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    par: bool,
+    par: Option<bool>,
 ) -> PyResult<Vec<Vec<f64>>> {
     let x1 = x1
         .iter()
@@ -308,11 +306,13 @@ pub fn catch_euclidean(
 pub fn erp(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    gap_penalty: f64,
-    par: bool,
+    sakoe_chiba_band: Option<f64>,
+    gap_penalty: Option<f64>,
+    par: Option<bool>,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
+    let sakoe_chiba_band = sakoe_chiba_band.unwrap_or(1.0);
+    let gap_penalty = gap_penalty.unwrap_or(0.0);
     if gap_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Gap penalty must be non-negative",
@@ -348,14 +348,15 @@ pub fn erp(
                     },
                     x1,
                     x2,
-                    par,
+                    par.unwrap_or(true),
                 ));
             }
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (gpu_device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::erp::<BatchMode>(
-                            device.clone(),
+                            gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
                             sda.clone(),
@@ -364,8 +365,7 @@ pub fn erp(
                             b,
                             gap_penalty as f32,
                         )
-                    },
-                    par
+                    }
                 );
             }
             _ => {
@@ -389,11 +389,13 @@ pub fn erp(
 pub fn lcss(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    epsilon: f64,
-    par: bool,
+    sakoe_chiba_band: Option<f64>,
+    epsilon: Option<f64>,
+    par: Option<bool>,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
+    let sakoe_chiba_band = sakoe_chiba_band.unwrap_or(1.0);
+    let epsilon = epsilon.unwrap_or(1.0);
     if epsilon < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Epsilon must be non-negative",
@@ -431,14 +433,15 @@ pub fn lcss(
                     },
                     x1,
                     x2,
-                    par,
+                    par.unwrap_or(true),
                 ));
             }
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (gpu_device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::lcss::<BatchMode>(
-                            device.clone(),
+                            gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
                             sda.clone(),
@@ -447,8 +450,7 @@ pub fn lcss(
                             b,
                             epsilon as f32,
                         )
-                    },
-                    par
+                    }
                 );
             }
             _ => {
@@ -472,10 +474,11 @@ pub fn lcss(
 pub fn dtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    par: bool,
+    sakoe_chiba_band: Option<f64>,
+    par: Option<bool>,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
+    let sakoe_chiba_band = sakoe_chiba_band.unwrap_or(1.0);
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -504,14 +507,15 @@ pub fn dtw(
                     },
                     x1,
                     x2,
-                    par,
+                    par.unwrap_or(true),
                 ));
             }
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (gpu_device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::dtw::<BatchMode>(
-                            device.clone(),
+                            gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
                             sda.clone(),
@@ -519,8 +523,7 @@ pub fn dtw(
                             a,
                             b,
                         )
-                    },
-                    par
+                    }
                 );
             }
             _ => {
@@ -545,8 +548,8 @@ pub fn dtw(
 pub fn ddtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    par: bool,
+    sakoe_chiba_band: Option<f64>,
+    par: Option<bool>,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
     let x1_d = derivate(&x1);
@@ -563,11 +566,13 @@ pub fn ddtw(
 pub fn wdtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    g: f64, //constant that controls the curvature (slope) of the function
-    par: bool,
+    sakoe_chiba_band: Option<f64>,
+    g: Option<f64>,
+    par: Option<bool>,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
+    let sakoe_chiba_band = sakoe_chiba_band.unwrap_or(1.0);
+    let g = g.unwrap_or(0.05);
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -600,7 +605,7 @@ pub fn wdtw(
                     },
                     x1,
                     x2,
-                    par,
+                    par.unwrap_or(true),
                 ));
             }
             "gpu" => {
@@ -610,8 +615,9 @@ pub fn wdtw(
                             BatchMode::get_sample_length(&a).max(BatchMode::get_sample_length(&b)),
                             g,
                         );
+                        let (gpu_device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::wdtw::<BatchMode>(
-                            device.clone(),
+                            gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
                             sda.clone(),
@@ -620,8 +626,7 @@ pub fn wdtw(
                             b,
                             &weights.iter().map(|x| *x as f32).collect::<Vec<_>>(),
                         )
-                    },
-                    par
+                    }
                 );
             }
             _ => {
@@ -646,9 +651,9 @@ pub fn wdtw(
 pub fn wddtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    g: f64,
-    par: bool,
+    sakoe_chiba_band: Option<f64>,
+    g: Option<f64>,
+    par: Option<bool>,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
     let x1_d = derivate(&x1);
@@ -665,10 +670,11 @@ pub fn wddtw(
 pub fn msm(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    par: bool,
+    sakoe_chiba_band: Option<f64>,
+    par: Option<bool>,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
+    let sakoe_chiba_band = sakoe_chiba_band.unwrap_or(1.0);
     if sakoe_chiba_band < 0.0 || sakoe_chiba_band > 1.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Sakoe-Chiba band must be non-negative and less than 1.0",
@@ -708,14 +714,15 @@ pub fn msm(
                     },
                     x1,
                     x2,
-                    par,
+                    par.unwrap_or(true),
                 ));
             }
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (gpu_device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::msm::<BatchMode>(
-                            device.clone(),
+                            gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
                             sda.clone(),
@@ -723,8 +730,7 @@ pub fn msm(
                             a,
                             b,
                         )
-                    },
-                    par
+                    }
                 );
             }
             _ => {
@@ -749,12 +755,15 @@ pub fn msm(
 pub fn twe(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    stiffness: f64,
-    penalty: f64,
-    par: bool,
+    sakoe_chiba_band: Option<f64>,
+    stiffness: Option<f64>,
+    penalty: Option<f64>,
+    par: Option<bool>,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
+    let sakoe_chiba_band = sakoe_chiba_band.unwrap_or(1.0);
+    let stiffness = stiffness.unwrap_or(0.001);
+    let penalty = penalty.unwrap_or(1.0);
     if stiffness < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Stiffness (nu) must be non-negative",
@@ -813,14 +822,15 @@ pub fn twe(
                     },
                     x1,
                     x2,
-                    par,
+                    par.unwrap_or(true),
                 ));
             }
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (gpu_device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::twe::<BatchMode>(
-                            device.clone(),
+                            gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
                             sda.clone(),
@@ -830,8 +840,7 @@ pub fn twe(
                             stiffness as f32,
                             penalty as f32,
                         )
-                    },
-                    par
+                    }
                 );
             }
             _ => {
@@ -856,11 +865,13 @@ pub fn twe(
 pub fn adtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
-    sakoe_chiba_band: f64,
-    warp_penalty: f64,
-    par: bool,
+    sakoe_chiba_band: Option<f64>,
+    warp_penalty: Option<f64>,
+    par: Option<bool>,
     device: Option<&str>,
 ) -> PyResult<Vec<Vec<f64>>> {
+    let sakoe_chiba_band = sakoe_chiba_band.unwrap_or(1.0);
+    let warp_penalty = warp_penalty.unwrap_or(0.1);
     if warp_penalty < 0.0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "Weight must be non-negative",
@@ -894,14 +905,15 @@ pub fn adtw(
                     },
                     x1,
                     x2,
-                    par,
+                    par.unwrap_or(true),
                 ));
             }
             "gpu" => {
                 gpu_call!(
                     distance_matrix = |x1(a), x2(b), BatchMode| {
+                        let (gpu_device, queue, sba, sda, ma) = get_device();
                         tsdistances_gpu::cpu::adtw::<BatchMode>(
-                            device.clone(),
+                            gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
                             sda.clone(),
@@ -910,8 +922,7 @@ pub fn adtw(
                             b,
                             warp_penalty as f32,
                         )
-                    },
-                    par
+                    }
                 );
             }
             _ => {
@@ -933,7 +944,7 @@ pub fn adtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, par=true))]
-pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, par: bool) -> PyResult<Vec<Vec<f64>>> {
+pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, par: Option<bool>) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
             let a = zscore(&a);
@@ -944,21 +955,21 @@ pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, par: bool) -> PyResult<V
         },
         x1,
         x2,
-        par,
+        par.unwrap_or(true),
     );
     Ok(distance_matrix)
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, window, x2=None, par=true))]
+#[pyo3(signature = (x1, window=20, x2=None, par=true))]
 pub fn mp(
     x1: Vec<Vec<f64>>,
-    window: i32,
+    window: Option<i32>,
     x2: Option<Vec<Vec<f64>>>,
-    par: bool,
+    par: Option<bool>,
 ) -> PyResult<Vec<Vec<f64>>> {
     let threshold = 0.05;
-    let window = window as usize;
+    let window = window.unwrap_or(20) as usize;
     let distance_matrix = compute_distance(
         |a, b| {
             let n_a = a.len();
@@ -974,7 +985,7 @@ pub fn mp(
         },
         x1,
         x2,
-        par,
+        par.unwrap_or(true),
     );
     Ok(distance_matrix)
 }
