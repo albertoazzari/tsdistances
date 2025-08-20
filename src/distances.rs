@@ -1,7 +1,9 @@
 use crate::{
     diagonal,
-    matrix::DiagonalMatrix,
-    utils::{cross_correlation, derivate, dtw_weights, l2_norm, min, max, msm_cost_function, zscore},
+    matrix::WavefrontMatrix,
+    utils::{
+        cross_correlation, derivate, dtw_weights, l2_norm, max, min, msm_cost_function, zscore,
+    },
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
@@ -337,7 +339,7 @@ pub fn erp(
                                 )
                             };
 
-                        diagonal::diagonal_distance::<DiagonalMatrix>(
+                        diagonal::diagonal_distance::<WavefrontMatrix>(
                             a,
                             b,
                             f64::INFINITY,
@@ -420,7 +422,7 @@ pub fn lcss(
                                     + (dist > epsilon) as i32 as f64 * max(x, z)
                             };
 
-                        let similarity = diagonal::diagonal_distance::<DiagonalMatrix>(
+                        let similarity = diagonal::diagonal_distance::<WavefrontMatrix>(
                             a,
                             b,
                             0.0,
@@ -496,7 +498,7 @@ pub fn dtw(
                                 let dist = (a[i] - b[j]).powi(2);
                                 dist + min(min(z, x), y)
                             };
-                        diagonal::diagonal_distance::<DiagonalMatrix>(
+                        diagonal::diagonal_distance::<WavefrontMatrix>(
                             a,
                             b,
                             f64::INFINITY,
@@ -594,7 +596,7 @@ pub fn wdtw(
                                 dist + min(min(z, x), y)
                             };
 
-                        diagonal::diagonal_distance::<DiagonalMatrix>(
+                        diagonal::diagonal_distance::<WavefrontMatrix>(
                             a,
                             b,
                             f64::INFINITY,
@@ -703,7 +705,7 @@ pub fn msm(
                                 )
                             };
 
-                        diagonal::diagonal_distance::<DiagonalMatrix>(
+                        diagonal::diagonal_distance::<WavefrontMatrix>(
                             a,
                             b,
                             f64::INFINITY,
@@ -811,7 +813,7 @@ pub fn twe(
                                 min(min(del_a, del_b), match_a_b)
                             };
 
-                        diagonal::diagonal_distance::<DiagonalMatrix>(
+                        diagonal::diagonal_distance::<WavefrontMatrix>(
                             a,
                             b,
                             f64::INFINITY,
@@ -894,7 +896,7 @@ pub fn adtw(
                                 dist + min(min(z + warp_penalty, x + warp_penalty), y)
                             };
 
-                        diagonal::diagonal_distance::<DiagonalMatrix>(
+                        diagonal::diagonal_distance::<WavefrontMatrix>(
                             a,
                             b,
                             f64::INFINITY,
@@ -944,7 +946,11 @@ pub fn adtw(
 
 #[pyfunction]
 #[pyo3(signature = (x1, x2=None, par=true))]
-pub fn sb(x1: Vec<Vec<f64>>, x2: Option<Vec<Vec<f64>>>, par: Option<bool>) -> PyResult<Vec<Vec<f64>>> {
+pub fn sb(
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+    par: Option<bool>,
+) -> PyResult<Vec<Vec<f64>>> {
     let distance_matrix = compute_distance(
         |a, b| {
             let a = zscore(&a);

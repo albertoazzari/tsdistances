@@ -64,12 +64,12 @@ impl Matrix for FullMatrix {
     }
 }
 
-pub struct DiagonalMatrix {
+pub struct WavefrontMatrix {
     diagonal: Vec<f64>,
     mask: usize,
 }
 
-impl Matrix for DiagonalMatrix {
+impl Matrix for WavefrontMatrix {
     fn new(a_len: usize, _b_len: usize, init_val: f64) -> Self {
         let diag_len = 2 * (a_len + 1).next_power_of_two();
 
@@ -96,14 +96,14 @@ impl Matrix for DiagonalMatrix {
 
 pub struct CheckMatrix {
     full: FullMatrix,
-    optim: DiagonalMatrix,
+    optim: WavefrontMatrix,
 }
 
 impl Matrix for CheckMatrix {
     fn new(a_len: usize, b_len: usize, init_val: f64) -> Self {
         Self {
             full: FullMatrix::new(a_len, b_len, init_val),
-            optim: DiagonalMatrix::new(a_len, b_len, init_val),
+            optim: WavefrontMatrix::new(a_len, b_len, init_val),
         }
     }
 

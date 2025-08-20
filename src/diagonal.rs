@@ -1,4 +1,4 @@
-use crate::matrix::{DiagonalMatrix, Matrix};
+use crate::matrix::{Matrix, WavefrontMatrix};
 
 pub fn diagonal_distance<M: Matrix>(
     a: &[f64],
@@ -26,7 +26,7 @@ fn diagonal_distance_<M: Matrix>(
     init_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
     dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
 ) -> f64 {
-    let mut matrix = DiagonalMatrix::new(a_len, b_len, init_val);
+    let mut matrix = WavefrontMatrix::new(a_len, b_len, init_val);
 
     let mut i = 0;
     let mut j = 0;
