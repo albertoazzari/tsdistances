@@ -132,15 +132,23 @@ macro_rules! gpu_call {
         $distance_matrix = Some(
             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
                 type $BatchMode = MultiBatchMode;
-                let max_subgroup_size = gpu_device.physical_device().properties().max_subgroup_size.unwrap() as usize;
-                let memory_properties = gpu_device.physical_device().memory_properties();
-                let total_device_memory = memory_properties.memory_heaps
+                let pdevice = gpu_device.physical_device();
+                let max_subgroup_size = pdevice.properties().max_subgroup_size.unwrap() as usize;
+                let max_storage_buffer_range = pdevice.properties().max_storage_buffer_range as usize / std::mem::size_of::<f32>();
+                
+                let total_device_memory = pdevice.memory_properties().memory_heaps
                     .iter()
                     .filter(|heap| heap.flags.contains(MemoryHeapFlags::DEVICE_LOCAL))
                     .map(|heap| heap.size)
                     .sum::<u64>() as usize / std::mem::size_of::<f32>();
-                let x1_len = next_multiple_of_n($x1[0].len(), max_subgroup_size);
-                let chunk_size = total_device_memory / (x1_len * 4 * x1_len.next_power_of_two());
+
+                let ts_len = 2 * next_multiple_of_n($x1[0].len(), max_subgroup_size);
+                let diag_len = 2 * ts_len.next_power_of_two();
+
+                let chunk_size = total_device_memory / (ts_len * diag_len);
+                
+                let chunk_size = chunk_size.min(max_storage_buffer_range / chunk_size).max(1);
+                // panic!("1: {}\n2: {}\n3: {}", total_device_memory / (ts_len * diag_len), max_storage_buffer_range / ts_len, max_storage_buffer_range / diag_len);
                 let result = compute_distance_batched(
                     |$a, $b, _| {
                         $($body)*
