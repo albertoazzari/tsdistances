@@ -18,8 +18,8 @@ fn compute_distance_batched<T: Copy>(
     distance: impl (Fn(&[Vec<T>], &[Vec<T>], bool) -> Vec<Vec<T>>) + Sync + Send,
     x1: Vec<Vec<T>>,
     x2: Option<Vec<Vec<T>>>,
-    chunk_size: usize,
 ) -> Vec<Vec<T>> {
+    let chunk_size = usize::MAX;
     let mut result = Vec::with_capacity(x1.len());
     let mut x1_offset = 0;
     for x1_part in x1.chunks(chunk_size) {
@@ -132,30 +132,12 @@ macro_rules! gpu_call {
         $distance_matrix = Some(
             if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
                 type $BatchMode = MultiBatchMode;
-                let pdevice = gpu_device.physical_device();
-                let max_subgroup_size = pdevice.properties().max_subgroup_size.unwrap() as usize;
-                let max_storage_buffer_range = pdevice.properties().max_storage_buffer_range as usize / std::mem::size_of::<f32>();
-                
-                let total_device_memory = pdevice.memory_properties().memory_heaps
-                    .iter()
-                    .filter(|heap| heap.flags.contains(MemoryHeapFlags::DEVICE_LOCAL))
-                    .map(|heap| heap.size)
-                    .sum::<u64>() as usize / std::mem::size_of::<f32>();
-
-                let ts_len = 2 * next_multiple_of_n($x1[0].len(), max_subgroup_size);
-                let diag_len = 2 * ts_len.next_power_of_two();
-
-                let chunk_size = total_device_memory / (ts_len * diag_len);
-                
-                let chunk_size = chunk_size.min(max_storage_buffer_range / chunk_size).max(1);
-                // panic!("1: {}\n2: {}\n3: {}", total_device_memory / (ts_len * diag_len), max_storage_buffer_range / ts_len, max_storage_buffer_range / diag_len);
                 let result = compute_distance_batched(
                     |$a, $b, _| {
                         $($body)*
                     },
                     $x1,
                     $x2,
-                    chunk_size,
                 );
                 result.into_iter()
                     .map(|v| v.into_iter().map(|f| f as f64).collect())

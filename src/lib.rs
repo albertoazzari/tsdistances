@@ -2,7 +2,6 @@ pub mod diagonal;
 mod distances;
 pub mod matrix;
 mod utils;
-pub mod warps;
 
 use ctrlc;
 use pyo3::prelude::*;
