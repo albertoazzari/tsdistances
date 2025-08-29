@@ -26,7 +26,26 @@ fn diagonal_distance_<M: Matrix>(
     init_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
     dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
 ) -> f64 {
+    assert!(a_len <= b_len);
     let mut matrix = WavefrontMatrix::new(a_len, b_len, init_val);
+
+    let upper_bound = {
+        let min_len = a_len.min(b_len) as f64;
+        let mut distance = 0.0;
+        for i in 0..min_len as usize {
+            distance = dist_lambda(i + 1, i + 1, f64::INFINITY, distance, f64::INFINITY);
+        }
+
+        if b_len > a_len {
+            for i in min_len as usize..b_len {
+                distance = dist_lambda(a_len, i + 1, f64::INFINITY, f64::INFINITY, distance);
+            }
+        }
+
+        distance
+    };
+
+    println!("Upper bound: {}", upper_bound);
 
     let mut i = 0;
     let mut j = 0;
