@@ -7,6 +7,7 @@ pub fn diagonal_distance<M: Matrix>(
     sakoe_chiba_band: f64,
     init_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
     dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
+    convert_to_distance: impl Fn(f64) -> f64,
 ) -> f64 {
     diagonal_distance_::<M>(
         a.len(),
@@ -15,6 +16,7 @@ pub fn diagonal_distance<M: Matrix>(
         sakoe_chiba_band,
         |i, j, x, y, z| init_lambda(&a, &b, i, j, x, y, z),
         |i, j, x, y, z| dist_lambda(&a, &b, i, j, x, y, z),
+        convert_to_distance,
     )
 }
 
@@ -25,9 +27,8 @@ fn diagonal_distance_<M: Matrix>(
     sakoe_chiba_band: f64,
     init_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
     dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
+    convert_to_distance: impl Fn(f64) -> f64,
 ) -> f64 {
-
-    // DA TENERE IN CONSIDERAZIONE LCSS CHE CERCA I MAX E NON I MIN 
     assert!(a_len <= b_len);
     let mut matrix = WavefrontMatrix::new(a_len, b_len, init_val);
 
@@ -44,7 +45,7 @@ fn diagonal_distance_<M: Matrix>(
             }
         }
 
-        distance
+        convert_to_distance(distance)
     };
 
     let mut i = 0;
@@ -58,13 +59,9 @@ fn diagonal_distance_<M: Matrix>(
     let end_coord = M::index_mat_to_diag(a_len, b_len).1;
 
     let band_size = sakoe_chiba_band * (a_len as f64);
-    
-    let mut bound_indexes = [
-        (isize::MIN, isize::MAX),
-        (isize::MIN, isize::MAX),
-    ];
-    let mut parity = 0;
 
+    let mut bound_indexes = [(isize::MIN, isize::MAX), (isize::MIN, isize::MAX)];
+    let mut parity = 0;
 
     for d in 2..(a_len + b_len + 1) {
         matrix.set_diagonal_cell(d, d as isize, init_val);
@@ -118,17 +115,12 @@ fn diagonal_distance_<M: Matrix>(
                 dist_lambda(i1, j1, dleft, ddiag, dup)
             };
 
-            if dist <= upper_bound {
+            if convert_to_distance(dist) <= upper_bound {
                 first_cell = first_cell.min(k);
                 last_cell = last_cell.max(k);
             }
 
-            matrix.set_diagonal_cell(
-                d,
-                k,
-                dist,
-            );
-        
+            matrix.set_diagonal_cell(d, k, dist);
 
             i1 = i1.wrapping_sub(1);
             j1 += 1;
