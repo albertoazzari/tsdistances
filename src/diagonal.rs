@@ -26,6 +26,8 @@ fn diagonal_distance_<M: Matrix>(
     init_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
     dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
 ) -> f64 {
+
+    // DA TENERE IN CONSIDERAZIONE LCSS CHE CERCA I MAX E NON I MIN 
     assert!(a_len <= b_len);
     let mut matrix = WavefrontMatrix::new(a_len, b_len, init_val);
 
@@ -33,19 +35,17 @@ fn diagonal_distance_<M: Matrix>(
         let min_len = a_len.min(b_len) as f64;
         let mut distance = 0.0;
         for i in 0..min_len as usize {
-            distance = dist_lambda(i + 1, i + 1, f64::INFINITY, distance, f64::INFINITY);
+            distance = dist_lambda(i, i, f64::INFINITY, distance, f64::INFINITY);
         }
 
         if b_len > a_len {
             for i in min_len as usize..b_len {
-                distance = dist_lambda(a_len, i + 1, f64::INFINITY, f64::INFINITY, distance);
+                distance = dist_lambda(a_len - 1, i, f64::INFINITY, f64::INFINITY, distance);
             }
         }
 
         distance
     };
-
-    println!("Upper bound: {}", upper_bound);
 
     let mut i = 0;
     let mut j = 0;
@@ -58,6 +58,13 @@ fn diagonal_distance_<M: Matrix>(
     let end_coord = M::index_mat_to_diag(a_len, b_len).1;
 
     let band_size = sakoe_chiba_band * (a_len as f64);
+    
+    let mut bound_indexes = [
+        (isize::MIN, isize::MAX),
+        (isize::MIN, isize::MAX),
+    ];
+    let mut parity = 0;
+
 
     for d in 2..(a_len + b_len + 1) {
         matrix.set_diagonal_cell(d, d as isize, init_val);
@@ -86,24 +93,52 @@ fn diagonal_distance_<M: Matrix>(
             s_step += 2;
         }
 
+        let mut first_cell = e_;
+        let mut last_cell = s_step;
+
+        let lower_bound_index = bound_indexes[0].0.min(bound_indexes[1].0).max(s_step);
+        let upper_bound_index = bound_indexes[0].1.max(bound_indexes[1].1).min(e_);
+
+        let s_step_loop_skips = ((lower_bound_index - s_step + 1) / 2);
+
+        let mut s_step = s_step + s_step_loop_skips * 2;
+        let e_ = upper_bound_index;
+
+        i1 = i1.wrapping_sub(s_step_loop_skips as usize);
+        j1 += s_step_loop_skips as usize;
+
         for k in (s_step..e_ + 1).step_by(2) {
             let dleft = matrix.get_diagonal_cell(d - 1, k - 1);
             let ddiag = matrix.get_diagonal_cell(d - 2, k);
             let dup = matrix.get_diagonal_cell(d - 1, k + 1);
 
+            let dist = if i1 == 1 || j1 == 1 {
+                init_lambda(i1, j1, dleft, ddiag, dup)
+            } else {
+                dist_lambda(i1, j1, dleft, ddiag, dup)
+            };
+
+            if dist <= upper_bound {
+                first_cell = first_cell.min(k);
+                last_cell = last_cell.max(k);
+            }
+
             matrix.set_diagonal_cell(
                 d,
                 k,
-                if i1 == 1 || j1 == 1 {
-                    init_lambda(i1, j1, dleft, ddiag, dup)
-                } else {
-                    dist_lambda(i1, j1, dleft, ddiag, dup)
-                },
+                dist,
             );
+        
+
             i1 = i1.wrapping_sub(1);
             j1 += 1;
             s_step += 2;
         }
+
+        let next_parity = (parity + 1) % 2;
+        bound_indexes[next_parity].0 = first_cell - 1;
+        bound_indexes[next_parity].1 = last_cell + 1;
+        parity = next_parity;
 
         // Post init for sakoe chiba band skipped cells
         for k in (s_step..(e + 1)).step_by(2) {
@@ -128,5 +163,6 @@ fn diagonal_distance_<M: Matrix>(
     }
 
     let (rx, cx) = M::index_mat_to_diag(a_len, b_len);
+
     matrix.get_diagonal_cell(rx, cx)
 }

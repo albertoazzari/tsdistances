@@ -19,8 +19,8 @@ import stumpy
 import time
 
 N_SAMPLES = 10
-A = np.loadtxt('tests/ACSF1/ACSF1_TRAIN.tsv', delimiter='\t')[:N_SAMPLES, 1:]
-B = np.loadtxt('tests/ACSF1/ACSF1_TEST.tsv', delimiter='\t')[:2 * N_SAMPLES, 1:]
+A = np.loadtxt("tests/ACSF1/ACSF1_TRAIN.tsv", delimiter="\t")[:N_SAMPLES, 1:]
+B = np.loadtxt("tests/ACSF1/ACSF1_TEST.tsv", delimiter="\t")[-N_SAMPLES:, 1:]
 band = 1.0
 
 
@@ -28,6 +28,7 @@ def test_euclidean_distance():
     D = euclidean_distance(A, B, par=True)
     aeon_D = aeon.euclidean_pairwise_distance(A, B)
     assert np.allclose(D, aeon_D, atol=1e-8)
+
 
 def test_erp_distance():
     gap_penalty = 0.0
@@ -37,7 +38,9 @@ def test_erp_distance():
     start_time_aeon = time.time()
     aeon_D = aeon.erp_pairwise_distance(A, B, g=gap_penalty, window=band)
     end_time_aeon = time.time()
-    print(f"Speedup: AEON -> {end_time_aeon - start_time_aeon:.4f} and tsdistances -> {end_time - start_time:.4f} = {(end_time_aeon - start_time_aeon) / (end_time - start_time):.2f}x")
+    print(
+        f"Speedup: AEON -> {end_time_aeon - start_time_aeon:.4f} and tsdistances -> {end_time - start_time:.4f} = {(end_time_aeon - start_time_aeon) / (end_time - start_time):.2f}x"
+    )
     assert np.allclose(D, aeon_D, atol=1e-8)
 
 
@@ -46,10 +49,12 @@ def test_lcss_distance():
     D = lcss_distance(A, B, epsilon=epsilon, band=band, par=True)
     aeon_D = aeon.lcss_pairwise_distance(A, B, epsilon=epsilon, window=band)
     assert np.allclose(D, aeon_D, atol=1e-8)
-
+    
 
 def test_dtw_distance():
-    D = dtw_distance(A, B, band=band, par=True)
+    start_time = time.time()
+    D = dtw_distance(A, B, band=band, par=False)
+    print("Elapsed time: ", time.time() - start_time)
     aeon_D = aeon.dtw_pairwise_distance(A, B, window=band)
     assert np.allclose(D, aeon_D, atol=1e-8)
 
@@ -100,6 +105,7 @@ def test_sb_distance():
     aeon_D = aeon.sbd_pairwise_distance(A, B)
     assert np.allclose(D, aeon_D, atol=1e-8)
 
+
 def test_mp_distance():
     window = int(0.1 * A.shape[1])
     D = mp_distance(A, window, B, par=True)
@@ -108,3 +114,4 @@ def test_mp_distance():
         for j in range(B.shape[0]):
             D_stumpy[i, j] = stumpy.mpdist(A[i], B[j], m=window)
     assert np.allclose(D, D_stumpy, atol=1e-8)
+

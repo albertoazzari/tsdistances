@@ -20,10 +20,10 @@ import pathlib
 
 UCR_ARCHIVE_PATH = pathlib.Path('../../DATA/ucr')
 BENCHMARKS_DS = ["ACSF1", "Adiac", "Beef", "CBF", "ChlorineConcentration", "CinCECGTorso", "CricketX", "DiatomSizeReduction", "DistalPhalanxOutlineCorrect", "ECG200", "EthanolLevel", "FreezerRegularTrain", "FreezerSmallTrain", "Ham", "Haptics", "HouseTwenty", "ItalyPowerDemand", "MixedShapesSmallTrain", "NonInvasiveFetalECGThorax1", "ShapesAll", "Strawberry", "UWaveGestureLibraryX", "Wafer"]
-# TSDISTANCES = [euclidean_distance, lcss_distance, dtw_distance, twe_distance]
-# AEONDISTANCES = [euclidean_pairwise_distance, lcss_pairwise_distance, dtw_pairwise_distance, twe_pairwise_distance]
-TSDISTANCES = [dtw_distance]
-AEONDISTANCES = [dtw_distance]
+TSDISTANCES = [euclidean_distance, lcss_distance, dtw_distance, twe_distance]
+AEONDISTANCES = [euclidean_pairwise_distance, lcss_pairwise_distance, dtw_pairwise_distance, twe_pairwise_distance]
+# TSDISTANCES = [dtw_distance]
+# AEONDISTANCES = [dtw_distance]
 MODALITIES = ["", "par", "gpu"]
 
 def load_benchmark():
@@ -98,7 +98,7 @@ def test_tsdistances():
     tsdistances_times = np.full((len(DATASETS_PATH), len(TSDISTANCES), len(MODALITIES)), np.nan)
     aeon_times = np.full((len(DATASETS_PATH), len(TSDISTANCES)), np.nan)
 
-    for i, dataset in enumerate([DATASETS_PATH[-5]]):
+    for i, dataset in enumerate(DATASETS_PATH):
         print(f"\nDataset: {dataset.name}")
         train = np.loadtxt(dataset / f"{dataset.name}_TRAIN.tsv", delimiter="\t")
         test = np.loadtxt(dataset / f"{dataset.name}_TEST.tsv", delimiter="\t")
@@ -106,22 +106,22 @@ def test_tsdistances():
         X_test = test[:, 1:]
 
         for j, (tsdist, aeondist)  in enumerate(zip(TSDISTANCES, AEONDISTANCES)):
-            # start = time.time()
-            # D = tsdist(X_train, X_test, par=False)
-            # end = time.time()
-            # tsdistances_times[i, j, 0] = end - start
+            start = time.time()
+            D = tsdist(X_train, X_test, par=False)
+            end = time.time()
+            tsdistances_times[i, j, 0] = end - start
 
-            # start = time.time()
-            # D_par = tsdist(X_train, X_test, par=True)
-            # end = time.time()
-            # tsdistances_times[i, j, 1] = end - start
+            start = time.time()
+            D_par = tsdist(X_train, X_test, par=True)
+            end = time.time()
+            tsdistances_times[i, j, 1] = end - start
 
-            if tsdist.__name__ != "euclidean_distance":
-                start = time.time()
-                D_gpu = tsdist(X_train, X_test, device='gpu')
+            # if tsdist.__name__ != "euclidean_distance":
+            #     start = time.time()
+            #     D_gpu = tsdist(X_train, X_test, device='gpu')
                 
-                end = time.time()
-                tsdistances_times[i, j, 2] = end - start
+            #     end = time.time()
+            #     tsdistances_times[i, j, 2] = end - start
             # AEON distances
             # start = time.time()
             # D_aeon = aeondist(X_train, X_test)
@@ -135,7 +135,7 @@ def test_tsdistances():
             # if not np.allclose(D, D_aeon):
             #     print("AEON and tsdistances results do not match")
 
-            # np.save("times_tsdistances.npy", tsdistances_times)
+            np.save("times_tsdistances_with_silva_and_batista.npy", tsdistances_times)
             # np.save("times_aeon.npy", aeon_times)
     
 def test_analysis():
