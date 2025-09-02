@@ -7,7 +7,7 @@ pub fn diagonal_distance<M: Matrix>(
     sakoe_chiba_band: f64,
     init_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
     dist_lambda: impl Fn(&[f64], &[f64], usize, usize, f64, f64, f64) -> f64 + Copy,
-    convert_to_distance: impl Fn(f64) -> f64,
+    use_upper_bound: bool,
 ) -> f64 {
     diagonal_distance_::<M>(
         a.len(),
@@ -16,7 +16,7 @@ pub fn diagonal_distance<M: Matrix>(
         sakoe_chiba_band,
         |i, j, x, y, z| init_lambda(&a, &b, i, j, x, y, z),
         |i, j, x, y, z| dist_lambda(&a, &b, i, j, x, y, z),
-        convert_to_distance,
+        use_upper_bound,
     )
 }
 
@@ -27,12 +27,12 @@ fn diagonal_distance_<M: Matrix>(
     sakoe_chiba_band: f64,
     init_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
     dist_lambda: impl Fn(usize, usize, f64, f64, f64) -> f64,
-    convert_to_distance: impl Fn(f64) -> f64,
+    use_upper_bound: bool,
 ) -> f64 {
     assert!(a_len <= b_len);
     let mut matrix = WavefrontMatrix::new(a_len, b_len, init_val);
 
-    let upper_bound = {
+    let upper_bound = if use_upper_bound {
         let min_len = a_len.min(b_len) as f64;
         let mut distance = 0.0;
         for i in 0..min_len as usize {
@@ -45,7 +45,9 @@ fn diagonal_distance_<M: Matrix>(
             }
         }
 
-        convert_to_distance(distance)
+        distance
+    } else {
+        0.0
     };
 
     let mut i = 0;
@@ -83,6 +85,8 @@ fn diagonal_distance_<M: Matrix>(
         let mut s_step = s;
 
         // Pre init for sakoe chiba band skipped cells
+
+        // TODO: optimize the indices so that no useless cells are set to init_val (especially when using upper bound)
         for k in (s..s_).step_by(2) {
             matrix.set_diagonal_cell(d, k, init_val);
             i1 = i1.wrapping_sub(1);
@@ -115,7 +119,7 @@ fn diagonal_distance_<M: Matrix>(
                 dist_lambda(i1, j1, dleft, ddiag, dup)
             };
 
-            if convert_to_distance(dist) <= upper_bound {
+            if !use_upper_bound || dist <= upper_bound {
                 first_cell = first_cell.min(k);
                 last_cell = last_cell.max(k);
             }

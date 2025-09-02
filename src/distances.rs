@@ -1,5 +1,3 @@
-use std::convert::identity;
-
 use crate::{
     diagonal,
     matrix::WavefrontMatrix,
@@ -338,7 +336,7 @@ pub fn erp(
                             sakoe_chiba_band,
                             erp_cost_func,
                             erp_cost_func,
-                            identity,
+                            true,
                         )
                     },
                     x1,
@@ -414,7 +412,7 @@ pub fn lcss(
                                 (dist <= epsilon) as i32 as f64 * (y + 1.0)
                                     + (dist > epsilon) as i32 as f64 * max(x, z)
                             };
-
+                        let min_len = min(a.len(), b.len()) as f64;
                         let similarity = diagonal::diagonal_distance::<WavefrontMatrix>(
                             a,
                             b,
@@ -422,9 +420,8 @@ pub fn lcss(
                             sakoe_chiba_band,
                             lcss_cost_func,
                             lcss_cost_func,
-                            |x| -x,
+                            false,
                         );
-                        let min_len = min(a.len(), b.len()) as f64;
                         1.0 - similarity / min_len
                     },
                     x1,
@@ -499,7 +496,7 @@ pub fn dtw(
                             sakoe_chiba_band,
                             dtw_cost_func,
                             dtw_cost_func,
-                            identity,
+                            true,
                         )
                     },
                     x1,
@@ -598,7 +595,7 @@ pub fn wdtw(
                             sakoe_chiba_band,
                             wdtw_cost_func,
                             wdtw_cost_func,
-                            identity,
+                            true,
                         )
                     },
                     x1,
@@ -708,7 +705,7 @@ pub fn msm(
                             sakoe_chiba_band,
                             msm_cost_func,
                             msm_cost_func,
-                            identity,
+                            true,
                         )
                     },
                     x1,
@@ -817,7 +814,7 @@ pub fn twe(
                             sakoe_chiba_band,
                             twe_cost_func,
                             twe_cost_func,
-                            identity,
+                            true,
                         )
                     },
                     x1,
@@ -901,7 +898,7 @@ pub fn adtw(
                             sakoe_chiba_band,
                             adtw_cost_func,
                             adtw_cost_func,
-                            identity,
+                            true,
                         )
                     },
                     x1,

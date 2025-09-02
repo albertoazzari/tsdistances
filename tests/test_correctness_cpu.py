@@ -32,15 +32,8 @@ def test_euclidean_distance():
 
 def test_erp_distance():
     gap_penalty = 0.0
-    start_time = time.time()
     D = erp_distance(A, B, gap_penalty=gap_penalty, band=band, par=True)
-    end_time = time.time()
-    start_time_aeon = time.time()
     aeon_D = aeon.erp_pairwise_distance(A, B, g=gap_penalty, window=band)
-    end_time_aeon = time.time()
-    print(
-        f"Speedup: AEON -> {end_time_aeon - start_time_aeon:.4f} and tsdistances -> {end_time - start_time:.4f} = {(end_time_aeon - start_time_aeon) / (end_time - start_time):.2f}x"
-    )
     assert np.allclose(D, aeon_D, atol=1e-8)
 
 
@@ -49,12 +42,10 @@ def test_lcss_distance():
     D = lcss_distance(A, B, epsilon=epsilon, band=band, par=True)
     aeon_D = aeon.lcss_pairwise_distance(A, B, epsilon=epsilon, window=band)
     assert np.allclose(D, aeon_D, atol=1e-8)
-    
+
 
 def test_dtw_distance():
-    start_time = time.time()
-    D = dtw_distance(A, B, band=band, par=False)
-    print("Elapsed time: ", time.time() - start_time)
+    D = dtw_distance(A, B, band=band, par=True)
     aeon_D = aeon.dtw_pairwise_distance(A, B, window=band)
     assert np.allclose(D, aeon_D, atol=1e-8)
 
