@@ -100,7 +100,7 @@ fn diagonal_distance_<M: Matrix>(
         let lower_bound_index = bound_indexes[0].0.min(bound_indexes[1].0).max(s_step);
         let upper_bound_index = bound_indexes[0].1.max(bound_indexes[1].1).min(e_);
 
-        let s_step_loop_skips = ((lower_bound_index - s_step + 1) / 2);
+        let s_step_loop_skips = (lower_bound_index - s_step + 1) / 2;
 
         let mut s_step = s_step + s_step_loop_skips * 2;
         let e_ = upper_bound_index;

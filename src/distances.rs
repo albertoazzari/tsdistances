@@ -7,35 +7,22 @@ use crate::{
 };
 use pyo3::prelude::*;
 use rayon::prelude::*;
-use rustfft::num_traits;
 use tsdistances_gpu::{
     utils::get_device,
-    warps::{GpuBatchMode, MultiBatchMode, SingleBatchMode},
 };
-use vulkano::memory::MemoryHeapFlags;
 
-fn compute_distance_batched<T: Copy>(
-    distance: impl (Fn(&[Vec<T>], &[Vec<T>], bool) -> Vec<Vec<T>>) + Sync + Send,
-    x1: Vec<Vec<T>>,
-    x2: Option<Vec<Vec<T>>>,
-) -> Vec<Vec<T>> {
-    let chunk_size = usize::MAX;
-    let mut result = Vec::with_capacity(x1.len());
-    let mut x1_offset = 0;
-    for x1_part in x1.chunks(chunk_size) {
-        result.resize_with(x1_offset + x1_part.len(), || {
-            Vec::with_capacity(x2.as_ref().map_or(x1.len(), |x| x.len()))
-        });
-        for x2_part in x2.as_ref().unwrap_or(&x1).chunks(chunk_size) {
-            let distance_matrix = distance(x1_part, x2_part, x2.is_none());
+fn compute_distance_gpu(
+    distance: impl (Fn(&Vec<Vec<f32>>, &Vec<Vec<f32>>) -> Vec<Vec<f32>>) + Sync + Send,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
+) -> Vec<Vec<f64>> {
+    
+    let x1 = x1.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>();
+    let x2 = x2.map(|x2| x2.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>());
 
-            for (x1_idx, row) in distance_matrix.iter().enumerate() {
-                result[x1_offset + x1_idx].extend_from_slice(&row[..]);
-            }
-        }
-        x1_offset += x1_part.len();
-    }
-    result
+    let result = distance(&x1, x2.as_ref().unwrap_or(&x1));
+
+    result.into_iter().map(|v| v.into_iter().map(|f| f as f64).collect()).collect()
 }
 
 /// Computes the pairwise distance between two sets of timeseries.
@@ -44,12 +31,12 @@ fn compute_distance_batched<T: Copy>(
 /// provided distance function. The computation is parallelized across multiple threads to improve
 /// performance. The number of threads used can be controlled via the `par` parameter.
 ///
-fn compute_distance<T: Copy + Sync + Send + num_traits::Num>(
-    distance: impl (Fn(&[T], &[T]) -> T) + Sync + Send,
-    x1: Vec<Vec<T>>,
-    x2: Option<Vec<Vec<T>>>,
+fn compute_distance(
+    distance: impl (Fn(&[f64], &[f64]) -> f64) + Sync + Send,
+    x1: Vec<Vec<f64>>,
+    x2: Option<Vec<Vec<f64>>>,
     par: bool,
-) -> Vec<Vec<T>> {
+) -> Vec<Vec<f64>> {
     let x1 = x1.into_iter().enumerate().collect::<Vec<_>>();
     let distance_matrix = if par {
         x1.par_iter()
@@ -100,7 +87,7 @@ fn compute_distance<T: Copy + Sync + Send + num_traits::Num>(
         for i in 0..distance_matrix.len() {
             let row_len = distance_matrix.len();
             distance_matrix[i].reserve(row_len - i);
-            distance_matrix[i].push(T::zero());
+            distance_matrix[i].push(0.0);
             for j in i + 1..distance_matrix.len() {
                 let d = distance_matrix[j][i];
                 distance_matrix[i].push(d);
@@ -112,53 +99,6 @@ fn compute_distance<T: Copy + Sync + Send + num_traits::Num>(
     }
 }
 
-fn check_same_length<T>(x: &[Vec<T>]) -> bool {
-    if x.len() == 0 {
-        return false;
-    }
-
-    let len = x[0].len();
-    x.iter().all(|a| a.len() == len)
-}
-
-macro_rules! gpu_call {
-    (
-        $distance_matrix:ident = |$x1:ident($a:ident), $x2:ident($b:ident), $BatchMode:ident| {
-        $($body:tt)*
-    }) => {
-        let $x1 = $x1.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>();
-        let $x2 = $x2.map(|x2| x2.into_iter().map(|v| v.into_iter().map(|f| f as f32).collect()).collect::<Vec<_>>());
-        let (gpu_device, _, _, _, _) = get_device();
-        $distance_matrix = Some(
-            if check_same_length(&$x1) && $x2.as_ref().map(|x2| check_same_length(&x2)).unwrap_or(true) {
-                type $BatchMode = MultiBatchMode;
-                let result = compute_distance_batched(
-                    |$a, $b, _| {
-                        $($body)*
-                    },
-                    $x1,
-                    $x2,
-                );
-                result.into_iter()
-                    .map(|v| v.into_iter().map(|f| f as f64).collect())
-                    .collect()
-            } else {
-                type $BatchMode = SingleBatchMode;
-                let result = compute_distance(
-                    |$a, $b| {
-                        $($body)*
-                    },
-                    $x1,
-                    $x2,
-                    true
-                );
-                result.into_iter()
-                    .map(|v| v.into_iter().map(|f| f as f64).collect())
-                    .collect()
-            }
-        );
-    };
-}
 fn next_multiple_of_n(x: usize, n: usize) -> usize {
     (x + n - 1) / n * n
 }
@@ -333,7 +273,7 @@ pub fn erp(
                             b,
                             f64::INFINITY,
                             sakoe_chiba_band,
-                            erp_init,
+                            erp_cost_func,
                             erp_cost_func,
                             true,
                         )
@@ -344,10 +284,11 @@ pub fn erp(
                 ));
             }
             "gpu" => {
-                gpu_call!(
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                    distance_matrix = Some(
+                        compute_distance_gpu(
+                        |a, b| {
                         let (gpu_device, queue, sba, sda, ma) = get_device();
-                        tsdistances_gpu::cpu::erp::<BatchMode>(
+                        tsdistances_gpu::cpu::erp(
                             gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
@@ -357,8 +298,8 @@ pub fn erp(
                             b,
                             gap_penalty as f32,
                         )
-                    }
-                );
+                    }, x1, x2)
+                    );
             }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
@@ -429,10 +370,11 @@ pub fn lcss(
                 ));
             }
             "gpu" => {
-                gpu_call!(
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                distance_matrix = Some(
+                        compute_distance_gpu(
+                        |a, b| {
                         let (gpu_device, queue, sba, sda, ma) = get_device();
-                        tsdistances_gpu::cpu::lcss::<BatchMode>(
+                        tsdistances_gpu::cpu::lcss(
                             gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
@@ -442,8 +384,8 @@ pub fn lcss(
                             b,
                             epsilon as f32,
                         )
-                    }
-                );
+                    }, x1, x2
+                ));
             }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
@@ -504,10 +446,11 @@ pub fn dtw(
                 ));
             }
             "gpu" => {
-                gpu_call!(
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                distance_matrix = Some(
+                        compute_distance_gpu(
+                        |a, b| {
                         let (gpu_device, queue, sba, sda, ma) = get_device();
-                        tsdistances_gpu::cpu::dtw::<BatchMode>(
+                        tsdistances_gpu::cpu::dtw(
                             gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
@@ -516,8 +459,8 @@ pub fn dtw(
                             a,
                             b,
                         )
-                    }
-                );
+                    }, x1, x2
+                ));
             }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
@@ -603,14 +546,15 @@ pub fn wdtw(
                 ));
             }
             "gpu" => {
-                gpu_call!(
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                distance_matrix = Some(
+                        compute_distance_gpu(
+                        |a, b| {
                         let weights = dtw_weights(
-                            BatchMode::get_sample_length(&a).max(BatchMode::get_sample_length(&b)),
+                            max(a.first().unwrap().len(), b.first().unwrap().len()),
                             g,
                         );
                         let (gpu_device, queue, sba, sda, ma) = get_device();
-                        tsdistances_gpu::cpu::wdtw::<BatchMode>(
+                        tsdistances_gpu::cpu::wdtw(
                             gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
@@ -620,8 +564,8 @@ pub fn wdtw(
                             b,
                             &weights.iter().map(|x| *x as f32).collect::<Vec<_>>(),
                         )
-                    }
-                );
+                    }, x1, x2
+                ));
             }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
@@ -713,10 +657,11 @@ pub fn msm(
                 ));
             }
             "gpu" => {
-                gpu_call!(
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                distance_matrix = Some(
+                        compute_distance_gpu(
+                        |a, b| {
                         let (gpu_device, queue, sba, sda, ma) = get_device();
-                        tsdistances_gpu::cpu::msm::<BatchMode>(
+                        tsdistances_gpu::cpu::msm(
                             gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
@@ -725,8 +670,8 @@ pub fn msm(
                             a,
                             b,
                         )
-                    }
-                );
+                    }, x1, x2
+                ));
             }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
@@ -822,10 +767,11 @@ pub fn twe(
                 ));
             }
             "gpu" => {
-                gpu_call!(
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                distance_matrix = Some(
+                        compute_distance_gpu(
+                        |a, b| {
                         let (gpu_device, queue, sba, sda, ma) = get_device();
-                        tsdistances_gpu::cpu::twe::<BatchMode>(
+                        tsdistances_gpu::cpu::twe(
                             gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
@@ -836,8 +782,8 @@ pub fn twe(
                             stiffness as f32,
                             penalty as f32,
                         )
-                    }
-                );
+                    }, x1, x2
+                ));
             }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(
@@ -906,10 +852,11 @@ pub fn adtw(
                 ));
             }
             "gpu" => {
-                gpu_call!(
-                    distance_matrix = |x1(a), x2(b), BatchMode| {
+                distance_matrix = Some(
+                        compute_distance_gpu(
+                        |a, b| {
                         let (gpu_device, queue, sba, sda, ma) = get_device();
-                        tsdistances_gpu::cpu::adtw::<BatchMode>(
+                        tsdistances_gpu::cpu::adtw(
                             gpu_device.clone(),
                             queue.clone(),
                             sba.clone(),
@@ -919,8 +866,8 @@ pub fn adtw(
                             b,
                             warp_penalty as f32,
                         )
-                    }
-                );
+                    }, x1, x2
+                ));
             }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(

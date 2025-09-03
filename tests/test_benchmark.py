@@ -121,17 +121,16 @@ def test_tsdistances():
             end = time.time()
             tsdistances_times[i, j, 0] = end - start
 
-            # start = time.time()
-            # D_par = tsdist(X_train, X_test, par=True)
-            # end = time.time()
-            # tsdistances_times[i, j, 1] = end - start
+            start = time.time()
+            D_par = tsdist(X_train, X_test, par=True)
+            end = time.time()
+            tsdistances_times[i, j, 1] = end - start
 
-            # if tsdist.__name__ != "euclidean_distance":
-            #     start = time.time()
-            #     D_gpu = tsdist(X_train, X_test, device='gpu')
-                
-            #     end = time.time()
-            #     tsdistances_times[i, j, 2] = end - start
+            if tsdist.__name__ != "euclidean_distance":
+                start = time.time()
+                D_gpu = tsdist(X_train, X_test, device='gpu')
+                end = time.time()
+                tsdistances_times[i, j, 2] = end - start
             # AEON distances
             start = time.time()
             D_aeon = aeondist(X_train, X_test)
