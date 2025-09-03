@@ -3,15 +3,12 @@ import numpy as np
 from tsdistances import (
     euclidean_distance,
     erp_distance,
-    lcss_distance,
-    dtw_distance,
+    adtw_distance,
     twe_distance,
 )
 from aeon.distances import (
-    euclidean_pairwise_distance,
     erp_pairwise_distance,
-    lcss_pairwise_distance,
-    dtw_pairwise_distance,
+    adtw_pairwise_distance,
     twe_pairwise_distance,
 )
 import time
@@ -20,8 +17,8 @@ import pathlib
 
 UCR_ARCHIVE_PATH = pathlib.Path('../../DATA/ucr')
 BENCHMARKS_DS = ["ACSF1", "Adiac", "Beef", "CBF", "ChlorineConcentration", "CinCECGTorso", "CricketX", "DiatomSizeReduction", "DistalPhalanxOutlineCorrect", "ECG200", "EthanolLevel", "FreezerRegularTrain", "FreezerSmallTrain", "Ham", "Haptics", "HouseTwenty", "ItalyPowerDemand", "MixedShapesSmallTrain", "NonInvasiveFetalECGThorax1", "ShapesAll", "Strawberry", "UWaveGestureLibraryX", "Wafer"]
-TSDISTANCES = [euclidean_distance, lcss_distance, dtw_distance, twe_distance]
-AEONDISTANCES = [euclidean_pairwise_distance, lcss_pairwise_distance, dtw_pairwise_distance, twe_pairwise_distance]
+TSDISTANCES = [erp_distance, adtw_distance]
+AEONDISTANCES = [erp_pairwise_distance, adtw_pairwise_distance]
 # TSDISTANCES = [dtw_distance]
 # AEONDISTANCES = [dtw_distance]
 MODALITIES = ["", "par", "gpu"]
@@ -93,6 +90,19 @@ def test_draw_scatter_ucr():
 
     plt.savefig("benchmark_datasets.svg", dpi=300)
 
+def test_with_threads():
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    times = np.loadtxt("tests/ACSF1/times_per_thread.csv", delimiter=",")
+    times = times.mean(axis=1)
+    # bar plot with number of threads on x and times on y
+    sns.barplot(x=np.arange(1, 17), y=times[::-1])
+    plt.xlabel("Number of Threads")
+    plt.ylabel("Time (s)")
+    plt.title("ACSF1 vs Number of Threads")
+    plt.savefig("tests/times_per_thread.svg", dpi=300)
+    caption = "Elapsed time computing the DTW distance on the ACSF1 Dataset (TRAIN vs TEST), changing the number of threads used."
 
 def test_tsdistances():
     tsdistances_times = np.full((len(DATASETS_PATH), len(TSDISTANCES), len(MODALITIES)), np.nan)
@@ -111,10 +121,10 @@ def test_tsdistances():
             end = time.time()
             tsdistances_times[i, j, 0] = end - start
 
-            start = time.time()
-            D_par = tsdist(X_train, X_test, par=True)
-            end = time.time()
-            tsdistances_times[i, j, 1] = end - start
+            # start = time.time()
+            # D_par = tsdist(X_train, X_test, par=True)
+            # end = time.time()
+            # tsdistances_times[i, j, 1] = end - start
 
             # if tsdist.__name__ != "euclidean_distance":
             #     start = time.time()
@@ -123,10 +133,10 @@ def test_tsdistances():
             #     end = time.time()
             #     tsdistances_times[i, j, 2] = end - start
             # AEON distances
-            # start = time.time()
-            # D_aeon = aeondist(X_train, X_test)
-            # end = time.time()
-            # aeon_times[i, j] = end - start
+            start = time.time()
+            D_aeon = aeondist(X_train, X_test)
+            end = time.time()
+            aeon_times[i, j] = end - start
             
             print(f"\t{tsdist.__name__} - \n\t\tTime: {tsdistances_times[i, j, 0]:.4f} (s), {tsdistances_times[i, j, 1]:.4f} (p), {tsdistances_times[i, j, 2]:.4f} (gpu) | AEON: {aeon_times[i, j]:.4f}")
             # if not np.allclose(D, D_par):
@@ -135,16 +145,5 @@ def test_tsdistances():
             # if not np.allclose(D, D_aeon):
             #     print("AEON and tsdistances results do not match")
 
-            np.save("times_tsdistances_with_silva_and_batista.npy", tsdistances_times)
-            # np.save("times_aeon.npy", aeon_times)
-    
-def test_analysis():
-    times_tsdistances = np.load("times_tsdistances.npy")
-    times_aeon = np.load("times_aeon.npy")
-    res = pd.DataFrame(times_tsdistances.reshape(-1, len(TSDISTANCES)*len(MODALITIES)), columns=[f"{tsdist.__name__}_{mod}" for tsdist in TSDISTANCES for mod in MODALITIES], index=[ds.name for ds in DATASETS_PATH])
-    res.to_csv("times_tsdistances.csv")
-    print("TSDistances Times (s):")
-    for i, dataset in enumerate(DATASETS_PATH):
-        print(f"Dataset: {dataset.name}")
-        for j, tsdist in enumerate(TSDISTANCES):
-            print(f"\t{tsdist.__name__} - \n\t\tTime: {times_tsdistances[i, j, 0]:.4f} (s), {times_tsdistances[i, j, 1]:.4f} (p), {times_tsdistances[i, j, 2]:.4f} (gpu) | AEON: {times_aeon[i, j]:.4f}")
+            np.save("times_tsdistances.npy", tsdistances_times)
+            np.save("times_aeon.npy", aeon_times)

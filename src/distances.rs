@@ -328,13 +328,12 @@ pub fn erp(
                                     x + (b[j] - gap_penalty).abs(),
                                 )
                             };
-
                         diagonal::diagonal_distance::<WavefrontMatrix>(
                             a,
                             b,
                             f64::INFINITY,
                             sakoe_chiba_band,
-                            erp_cost_func,
+                            erp_init,
                             erp_cost_func,
                             true,
                         )
@@ -858,7 +857,7 @@ pub fn twe(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, warp_penalty=0.1, par=true, device="cpu"))]
+#[pyo3(signature = (x1, x2=None, sakoe_chiba_band=1.0, warp_penalty=1.0, par=true, device="cpu"))]
 pub fn adtw(
     x1: Vec<Vec<f64>>,
     x2: Option<Vec<Vec<f64>>>,
